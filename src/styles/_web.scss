@@ -1,0 +1,28 @@
+@use "tokens" as *;
+
+// =====================================================================
+//  Trợ lý: chọn nơi tìm câu trả lời (tài liệu / hiểu biết chung / Internet), gợi ý câu hỏi đã kiểm chứng, chip gợi ý
+// =====================================================================
+.ask-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px;
+  button { display: flex; align-items: flex-start; gap: 9px; padding: 10px 12px; border: 1.5px solid $line; border-radius: $r-md; background: #fff; color: $ink-2; font: inherit; text-align: left; cursor: pointer; transition: all .12s;
+    svg { flex-shrink: 0; margin-top: 2px; color: $brand; }
+    b { display: block; font-size: .9em; color: $ink; line-height: 1.25; }
+    small { display: block; font-size: .76em; color: $muted; line-height: 1.3; margin-top: 2px; }
+    &:hover { border-color: $brand-line; background: #fbf9ff; }
+    &.on { border-color: $brand; background: $brand-soft; box-shadow: inset 0 0 0 1px $brand; b { color: $brand-deep; } } } }
+
+.ask-scope { min-height: 38px; padding: 0 10px; border: 1.5px solid $line; border-radius: $r-md; background: #fff; font: inherit; font-weight: 600; color: $ink; cursor: pointer;
+  &:focus { outline: none; border-color: $brand; } }
+
+.ask-sugg { border: 1.5px solid #f3d38a; background: #fffbeb; border-radius: $r-md; padding: 8px; display: flex; flex-direction: column; gap: 4px;
+  .cap { display: flex; align-items: center; gap: 6px; font-size: .8em; font-weight: 700; color: #92400e; padding: 2px 4px 4px; }
+  button { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 6px; background: #fff; color: $ink; font: inherit; text-align: left; cursor: pointer;
+    svg { flex-shrink: 0; color: #b45309; }
+    b { display: block; font-size: .9em; line-height: 1.3; } small { display: block; font-size: .75em; color: $muted; }
+    &:hover { background: #fef3c7; } } }
+
+.web-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid $brand-line; border-radius: 999px; background: #fff; color: $brand-dark; font: inherit; font-size: .85em; font-weight: 700; cursor: pointer; text-align: left; line-height: 1.35;
+  &:hover { background: $brand-soft; } }
+
+// Số trích dẫn [n] trong câu trả lời Internet
+.md-body a[href^="http"]:not([href*=" "]) { text-underline-offset: 2px; }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { AlertTriangle, CheckCircle2, Eye, FileSearch, Loader2, ScanSearch, ScanText, ShieldCheck, ShieldAlert, Sparkles } from 'lucide-react'
-import { ApiError, get, post } from '../lib/api'
+import { ApiError, get, isAudioName, post } from '../lib/api'
 import { can } from '../lib/permissions'
 import type { Attachment } from '../lib/types'
 import { useAuth } from '../store/auth'
@@ -46,7 +46,7 @@ export function TextBadge({ att }: { att: Attachment }) {
     {att.text_review === 'rejected' && <Pill sm tone="bad">Chữ bị từ chối</Pill>}
     {att.page_count ? <Pill sm tone="gray">{att.page_count} trang</Pill> : null}
   </>
-  if (att.ai_readable) return <Pill sm tone="warn">Chưa có chữ · nhờ AI đọc</Pill>
+  if (att.ai_readable) return <Pill sm tone="warn">{isAudioName(att.filename) ? 'Chưa có chữ · nhờ AI chép lời' : 'Chưa có chữ · nhờ AI đọc'}</Pill>
   if (att.kind === 'archive') return <Pill sm tone="gray">Chỉ lưu trữ</Pill>
   return <Pill sm tone="gray">Không trích chữ</Pill>
 }
@@ -112,12 +112,15 @@ export function ExtractModal({ att, onClose, onDone }: { att: Pick<Attachment, '
     } finally { setBusy(false) }
   }
   const again = att.text_source === 'ai'
+  const audio = isAudioName(att.filename)
   return (
-    <Modal title={`AI đọc chữ: ${att.filename}`} size="md" onClose={onClose}
-      footer={<><button className="btn outline" onClick={onClose}>{res ? 'Đóng' : 'Hủy'}</button>{!res && <button className="btn" disabled={busy} onClick={run}>{busy ? <Loader2 size={15} className="animate-spin" /> : <ScanText size={15} />}{again ? 'Đọc lại' : 'Bắt đầu đọc'}</button>}</>}>
+    <Modal title={`${audio ? 'AI chép lời' : 'AI đọc chữ'}: ${att.filename}`} size="md" onClose={onClose}
+      footer={<><button className="btn outline" onClick={onClose}>{res ? 'Đóng' : 'Hủy'}</button>{!res && <button className="btn" disabled={busy} onClick={run}>{busy ? <Loader2 size={15} className="animate-spin" /> : <ScanText size={15} />}{again ? (audio ? 'Chép lại' : 'Đọc lại') : (audio ? 'Bắt đầu chép lời' : 'Bắt đầu đọc')}</button>}</>}>
       {!res ? (
         <div className="flex flex-col gap-3 text-sm leading-relaxed">
-          <p className="m-0">AI sẽ đọc chữ trong {again ? 'tệp (đọc lại, thay bản cũ)' : 'tệp'} và <b>lưu làm văn bản của tệp</b>, từ đó <b>tìm kiếm</b> và <b>hỏi đáp AI / Agent</b> dùng được. Phần sơ đồ, ảnh chụp được mô tả thêm ở mục “[Mô tả hình ảnh]”.</p>
+          {audio
+            ? <p className="m-0">AI sẽ <b>nghe và chép lời</b> bản ghi {again ? '(chép lại, thay bản cũ)' : ''} rồi <b>lưu làm văn bản của tệp</b>, có mốc thời gian từng đoạn, từ đó <b>tìm kiếm</b> và <b>hỏi đáp AI / Agent</b> dùng được. Bản ghi dài được cắt ở chỗ ngắt nghỉ và chép song song.</p>
+            : <p className="m-0">AI sẽ đọc chữ trong {again ? 'tệp (đọc lại, thay bản cũ)' : 'tệp'} và <b>lưu làm văn bản của tệp</b>, từ đó <b>tìm kiếm</b> và <b>hỏi đáp AI / Agent</b> dùng được. Phần sơ đồ, ảnh chụp được mô tả thêm ở mục “[Mô tả hình ảnh]”.</p>}
           <ul className="m-0 pl-5 text-muted">
             <li>Chữ do AI đọc có thể sai — hãy đối chiếu chi tiết quan trọng với tệp gốc.</li>
             <li>Tệp dài có thể chỉ đọc phần đầu. Văn bản đọc ra được quét bí mật; nếu có bí mật sẽ bị chặn và không lưu.</li>
@@ -161,14 +164,16 @@ export function AttachAiActions({ att, onChanged, size = 'sm' }: { att: Attachme
   const role = useAuth((s) => s.user?.role)
   const hasVision = useAiFeature('vision')
   const hasExtract = useAiFeature('vision_extract')
+  const hasTranscribe = useAiFeature('transcribe')
+  const audio = isAudioName(att.filename)
   const [modal, setModal] = useState<'ask' | 'extract' | 'verify' | 'ingest' | null>(null)
-  const canAsk = att.ai_readable && can(role, 'ask') && hasVision
-  const canExtract = att.ai_readable && can(role, 'write') && hasExtract && !(att.text_extracted && att.text_source !== 'ai')
+  const canAsk = att.ai_readable && !audio && can(role, 'ask') && hasVision
+  const canExtract = att.ai_readable && can(role, 'write') && (audio ? hasTranscribe : hasExtract) && !(att.text_extracted && att.text_source !== 'ai')
   void size
   return (
     <>
       {canAsk && <button className="btn outline sm" title="AI nhìn tệp và trả lời câu hỏi (không lưu)" onClick={() => setModal('ask')}><Eye size={13} />Hỏi AI</button>}
-      {canExtract && <button className="btn outline sm" title="AI đọc chữ rồi lưu để tìm kiếm và để AI dùng" onClick={() => setModal('extract')}><ScanText size={13} />{att.text_source === 'ai' ? 'Đọc lại' : 'AI đọc chữ'}</button>}
+      {canExtract && <button className="btn outline sm" title={audio ? 'AI chép lời bản ghi rồi lưu để tìm kiếm và để AI dùng' : 'AI đọc chữ rồi lưu để tìm kiếm và để AI dùng'} onClick={() => setModal('extract')}><ScanText size={13} />{att.text_source === 'ai' ? (audio ? 'Chép lại' : 'Đọc lại') : (audio ? 'AI chép lời' : 'AI đọc chữ')}</button>}
       {(att.text_extracted ?? att.has_text) || att.ingest_status ? <button className="btn outline sm" title="Hệ thống đã đọc, hiểu và ghi nhớ gì về tệp này" onClick={() => setModal('ingest')}><ScanSearch size={13} />Đã hiểu</button> : null}
       <button className="btn ghost sm icon" title="Kiểm tra toàn vẹn (SHA-256)" aria-label="Kiểm tra toàn vẹn" onClick={() => setModal('verify')}><FileSearch size={14} /></button>
       {modal === 'ask' && <AnalyzeModal att={att} onClose={() => setModal(null)} />}

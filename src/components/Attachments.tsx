@@ -2,7 +2,7 @@ import { DragEvent, useCallback, useEffect, useMemo, useRef, useState } from 're
 import clsx from 'clsx'
 import { AlertCircle, CheckCircle2, Clipboard, ClipboardPaste, Download, Eye, FileUp, Image as ImageIcon, Info, Loader2, Paperclip, Replace, Trash2, UploadCloud, X } from 'lucide-react'
 import {
-  ApiError, LocalFile, checkFile, del, download, fetchAttachment, forgetAttachment, fromBrowserFile, get, isAiVisionName, pickLocalFiles, uploadAttachment, uploadAttachments,
+  ApiError, LocalFile, checkFile, del, download, fetchAttachment, forgetAttachment, fromBrowserFile, get, isAiVisionName, isAudioName, pickLocalFiles, uploadAttachment, uploadAttachments,
 } from '../lib/api'
 import { bytes as fmtBytes, FILE_ICON } from '../lib/format'
 import { KIND_LABEL, extOf, isPreviewable, kindOf } from '../lib/preview'
@@ -219,7 +219,7 @@ export function Uploader({ itemId, onUploaded, compact }: { itemId: number; onUp
         <label className="check text-xs mt-3 justify-center"><input type="checkbox" checked={confirmMasked} onChange={(e) => setConfirmMasked(e.target.checked)} />Tệp văn bản đã che bí mật (confirm_masked)</label>
       </div>
       <div className="flex items-start gap-2 text-xs rounded-lg bg-amber-50 border border-amber-200 text-amber-900 px-3 py-2"><Info size={14} className="shrink-0 mt-0.5" />
-        <span>Hệ thống <b>tự đọc chữ</b> của docx, xlsx, pptx, odt/ods/odp, rtf, txt, md, csv, tsv, log, json, xml, yaml. <b>Ảnh và PDF</b> chỉ được lưu — bấm <b>“AI đọc chữ”</b> sau khi tải lên để tìm kiếm/AI dùng được. doc/xls/ppt bản cũ chưa đọc được (hãy chuyển sang bản mới).</span></div>
+        <span>Hệ thống <b>tự đọc chữ</b> của docx, xlsx, pptx, odt/ods/odp, rtf, txt, md, csv, tsv, log, json, xml, yaml. <b>Ảnh và PDF</b> chỉ được lưu — bấm <b>“AI đọc chữ”</b> sau khi tải lên để tìm kiếm/AI dùng được. <b>File ghi âm</b> (mp3, m4a, wav…, tối đa 25 MB) được AI chép lời. doc/xls/ppt bản cũ chưa đọc được (hãy chuyển sang bản mới).</span></div>
       {jobs.length > 0 && (
         <div className="border border-line rounded-lg divide-y divide-line-soft bg-white">
           {jobs.map((j) => (
@@ -232,7 +232,7 @@ export function Uploader({ itemId, onUploaded, compact }: { itemId: number; onUp
                 {j.status === 'run' && <div className="text-xs text-brand-700">Đang tải lên…</div>}</div>
               {j.status === 'run' || j.status === 'wait' ? <Loader2 size={16} className={clsx('text-brand-500 shrink-0', j.status === 'run' && 'animate-spin')} /> : j.status === 'ok' ? <CheckCircle2 size={16} className="text-green-600 shrink-0" /> : <AlertCircle size={16} className="text-red-600 shrink-0" />}
               {j.needMask && <button className="btn outline sm" onClick={() => retryMasked(j)}>Đã che bí mật — thử lại</button>}
-              {j.status === 'ok' && j.attId && isAiVisionName(j.file.name) && <button className="btn outline sm" onClick={() => setExtract({ id: j.attId!, filename: j.file.name })}>AI đọc chữ</button>}
+              {j.status === 'ok' && j.attId && (isAiVisionName(j.file.name) || isAudioName(j.file.name)) && <button className="btn outline sm" onClick={() => setExtract({ id: j.attId!, filename: j.file.name })}>{isAudioName(j.file.name) ? 'AI chép lời' : 'AI đọc chữ'}</button>}
               {(j.status === 'ok' || j.status === 'err') && <button className="btn ghost sm icon" aria-label="Bỏ" onClick={() => setJobs((x) => x.filter((y) => y.key !== j.key))}><X size={14} /></button>}
             </div>))}
         </div>)}

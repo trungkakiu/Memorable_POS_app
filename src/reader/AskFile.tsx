@@ -36,8 +36,8 @@ const QUICK = [
 
 function friendlyErr(e: unknown) {
   const er = e as ApiError; const st = er?.status
-  if (st === 413) return 'Tệp quá lớn (mỗi tệp tối đa 10 MB) hoặc quá 5 tệp một lần.'
-  if (st === 415) return 'Loại tệp này trợ lý chưa đọc được. Hãy dùng ảnh, PDF, Word, Excel, PowerPoint hoặc văn bản.'
+  if (st === 413) return 'Tệp quá lớn (mỗi tệp tối đa 10 MB, file ghi âm 25 MB) hoặc quá 5 tệp một lần.'
+  if (st === 415) return 'Loại tệp này trợ lý chưa đọc được. Hãy dùng ảnh, PDF, Word, Excel, PowerPoint, văn bản hoặc file ghi âm.'
   if (st === 422) return 'Trợ lý không dùng được tệp hoặc câu hỏi này — có thể tệp chứa mật khẩu, mã bí mật hoặc số điện thoại. ' + (er.message || '')
   if (st === 429) return 'Hôm nay trợ lý đã được dùng quá nhiều. Bạn thử lại sau ít phút nhé.'
   if (st === 503) return 'Trợ lý đang tạm nghỉ (quản trị viên chưa bật tính năng này).'

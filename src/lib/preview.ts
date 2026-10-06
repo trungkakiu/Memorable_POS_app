@@ -1,13 +1,16 @@
-// Tạo bản xem trước cho các loại tệp mà API cho phép: pdf, docx, xlsx, pptx, png, jpg, txt, md, csv.
+// Tạo bản xem trước cho các loại tệp mà API cho phép: pdf, docx, xlsx, pptx, ảnh (png, jpg/jfif, webp, gif, bmp, avif; TIFF/HEIC chỉ tải về), txt, md, csv.
 // Mọi thứ chạy ngay trong ứng dụng (không gửi tệp đi đâu); thư viện nặng được nạp khi cần.
 import { parseCsv } from './csv'
+import { AUDIO_MIME, DOWNLOAD_ONLY_IMAGE, IMAGE_MIME } from './api'
 
-export type FileKind = 'image' | 'pdf' | 'text' | 'md' | 'csv' | 'docx' | 'xlsx' | 'pptx' | 'archive' | 'office' | 'other'
+export type FileKind = 'image' | 'rawimage' | 'audio' | 'pdf' | 'text' | 'md' | 'csv' | 'docx' | 'xlsx' | 'pptx' | 'archive' | 'office' | 'other'
 
 export const extOf = (name: string) => (name.split('.').pop() || '').toLowerCase()
 export function kindOf(name: string): FileKind {
   const e = extOf(name)
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(e)) return 'image'
+  if (DOWNLOAD_ONLY_IMAGE.includes(e)) return 'rawimage'
+  if (IMAGE_MIME[e]) return 'image'
+  if (AUDIO_MIME[e]) return 'audio'
   if (e === 'pdf') return 'pdf'
   if (['txt', 'log', 'json', 'xml', 'yaml', 'yml'].includes(e)) return 'text'
   if (e === 'md') return 'md'
@@ -20,16 +23,17 @@ export function kindOf(name: string): FileKind {
   return 'other'
 }
 export const KIND_LABEL: Record<FileKind, string> = {
-  image: 'Ảnh', pdf: 'PDF', text: 'Văn bản', md: 'Markdown', csv: 'Bảng CSV', docx: 'Word', xlsx: 'Excel', pptx: 'PowerPoint', archive: 'Tệp nén', office: 'Tài liệu Office', other: 'Tệp',
+  image: 'Ảnh', rawimage: 'Ảnh (TIFF/HEIC, tải về để xem)', audio: 'Ghi âm', pdf: 'PDF', text: 'Văn bản', md: 'Markdown', csv: 'Bảng CSV', docx: 'Word', xlsx: 'Excel', pptx: 'PowerPoint', archive: 'Tệp nén', office: 'Tài liệu Office', other: 'Tệp',
 }
-export const isPreviewable = (name: string) => !['other', 'archive', 'office'].includes(kindOf(name))
-const MIME: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', pdf: 'application/pdf' }
+export const isPreviewable = (name: string) => !['other', 'archive', 'office', 'rawimage'].includes(kindOf(name))
+const MIME: Record<string, string> = { ...IMAGE_MIME, ...AUDIO_MIME, pdf: 'application/pdf' }
 export const mimeOf = (name: string) => MIME[extOf(name)] || 'application/octet-stream'
 
 export interface Sheet { name: string; rows: string[][]; truncated?: boolean }
 export type Preview =
   | { type: 'image'; url: string }
   | { type: 'pdf'; url: string }
+  | { type: 'audio'; url: string }
   | { type: 'text'; text: string; truncated?: boolean }
   | { type: 'md'; text: string }
   | { type: 'table'; sheets: Sheet[] }
@@ -104,6 +108,7 @@ export async function buildPreview(name: string, bytes: Uint8Array): Promise<Pre
   switch (kind) {
     case 'image': return { type: 'image', url: URL.createObjectURL(new Blob([bytes as BlobPart], { type: mimeOf(name) })) }
     case 'pdf': return { type: 'pdf', url: URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' })) }
+    case 'audio': return { type: 'audio', url: URL.createObjectURL(new Blob([bytes as BlobPart], { type: mimeOf(name) })) }
     case 'text': { const t = decode(bytes); return { type: 'text', text: t.slice(0, MAX_TEXT), truncated: t.length > MAX_TEXT } }
     case 'md': return { type: 'md', text: decode(bytes).slice(0, MAX_TEXT) }
     case 'csv': {
@@ -119,8 +124,9 @@ export async function buildPreview(name: string, bytes: Uint8Array): Promise<Pre
       const html = DOMPurify.sanitize(res.value, { USE_PROFILES: { html: true } })
       return { type: 'html', html, notes: res.messages.filter((m) => m.type === 'warning' && !/Unrecognised|style/i.test(m.message)).slice(0, 3).map((m) => m.message) }
     }
+    case 'rawimage': return { type: 'none', reason: `Ảnh .${extOf(name).toUpperCase()} (thường từ máy scan hoặc iPhone) chưa hiển thị được trong ứng dụng — hãy tải về hoặc mở bằng ứng dụng của máy. AI vẫn đọc được ảnh này.` }
     default: return { type: 'none', reason: 'Loại tệp này chưa xem trước được trong ứng dụng' }
   }
 }
 
-export const releasePreview = (p: Preview | null | undefined) => { if (p && (p.type === 'image' || p.type === 'pdf')) URL.revokeObjectURL(p.url) }
+export const releasePreview = (p: Preview | null | undefined) => { if (p && (p.type === 'image' || p.type === 'pdf' || p.type === 'audio')) URL.revokeObjectURL(p.url) }

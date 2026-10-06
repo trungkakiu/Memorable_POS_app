@@ -2,7 +2,7 @@ import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'reac
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  BookMarked, Brain, ChevronDown, FileSearch, GitCompare, Clock, Compass, FolderOpen, History, Home, LayoutDashboard, LogOut, MessageCircleQuestion, Minus, PlayCircle, Plus, Search, Star, Timer, Type,
+  AudioLines, BookMarked, Brain, ChevronDown, FileSearch, GitCompare, Clock, Compass, FolderOpen, History, Home, LayoutDashboard, LogOut, MessageCircleQuestion, Minus, PlayCircle, Plus, Search, Star, Timer, Type,
 } from 'lucide-react'
 import { ApiError, get, post } from '../lib/api'
 import { ROLE_LABEL, WORK_TYPE, num, todayStr } from '../lib/format'
@@ -92,6 +92,7 @@ function Rail({ onTime }: { onTime: () => void }) {
       <div className="grp"><div className="cap">Công cụ</div>
         <RailLink onClick={() => chat.setOpen(!chat.open)} active={chat.open} icon={<MessageCircleQuestion size={19} />} label="Hỏi trợ lý" />
         <RailLink to="/my-file" icon={<FileSearch size={19} />} label="Hỏi về tệp của tôi" />
+        <RailLink to="/transcribe" icon={<AudioLines size={19} />} label="Chép lời ghi âm" />
         <RailLink to="/compare" icon={<GitCompare size={19} />} label="So sánh các bài" />
         <RailLink onClick={onTime} icon={<Timer size={19} />} label="Ghi giờ làm" />
       </div>

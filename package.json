@@ -13,7 +13,6 @@
     "icon": "node scripts/make-icon.cjs",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder --win --x64",
-    "vosk": "node scripts/copy-vosk.cjs",
     "api:check": "node scripts/api-watch.cjs",
     "api:accept": "node scripts/api-watch.cjs --accept"
   },
@@ -45,7 +44,6 @@
     "tesseract.js": "^7.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
-    "vosk-browser": "^0.0.8",
     "wait-on": "^9.5.1",
     "zustand": "^5.0.15"
   },

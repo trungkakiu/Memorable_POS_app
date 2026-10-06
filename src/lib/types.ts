@@ -148,3 +148,22 @@ export interface RelatedItem {
   shared_tags: { id: number; name: string; kind: TagKind }[]; semantic_score: number | null; reasons: string[]
 }
 export interface TagGraph { nodes: { id: number; name: string; kind: TagKind; origin: string; items: number }[]; edges: { from: number; to: number; shared_items: number }[]; categories: number; topics: number }
+
+// ---------- Nhập tri thức thông minh (POST /ai/draft-item, /ai/draft-item/text) ----------
+export interface DraftConfidence { score: number; evidence: string }
+export interface SmartDraft {
+  index: number; source_files: number[]; type: ItemType; type_reason: string; title: string; summary: string; content: string
+  space_id: number | null; tags: { id: number; name: string; kind: TagKind }[]; new_tags: { name: string; kind: TagKind }[]
+  risk_level: Risk; risk_reason: string; sensitivity_level: 'internal' | 'restricted'; sensitivity_reason: string
+  effective_date: string | null; next_review_date: string | null
+  runbook?: { symptom: string; affected_system: string; severity_level: 'low' | 'medium' | 'high' | 'critical' | null; prerequisites: string; steps: RunbookStep[]; verification: string; rollback: string; contact_info: string }
+  prompt?: { purpose: string; model_used: string; variables: PromptVar[]; usage_guide: string; example_input: string; example_output: string; limitations: string }
+  confidence: Record<string, DraftConfidence>; uncertain: string[]; missing: string[]; missing_required: string[]; secret_warning: boolean
+  similar: { id: number; title: string; status?: string | null; tier?: SourceTier; tier_label?: string; reason: 'title' | 'content'; score: number; excerpt?: string }[]
+}
+export interface SmartImportResult {
+  drafts: SmartDraft[]; split_reason: string; language: string
+  files: { filename: string; kind: string; filetype: string; size: number; method: string; pages?: number | null; chars: number; uncertain: number; preview: string }[]
+  skipped: { filename?: string; reason?: string }[]; rejected?: { filename: string; status: number; message: string }[]
+  spaces_available: number; note: string; model: string; cost_usd: number
+}

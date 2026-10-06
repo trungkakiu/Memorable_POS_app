@@ -79,9 +79,18 @@ async function httpDownload({ path: p, query, token, filename, filters }) {
   return { ok: true, filePath }
 }
 
-const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', pdf: 'application/pdf', txt: 'text/plain', md: 'text/markdown', csv: 'text/csv', json: 'application/json', zip: 'application/zip' }
-const ALLOWED = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'txt', 'md', 'csv', 'tsv', 'log', 'json', 'xml', 'yaml', 'yml', 'zip']
+// Ảnh: các biến thể JPEG (jfif, jpe, pjpeg, pjp) là cùng định dạng; TIFF/HEIC chỉ tải về nhưng AI vẫn đọc được
+const IMAGE_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', jfif: 'image/jpeg', jpe: 'image/jpeg', pjpeg: 'image/jpeg', pjp: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', avif: 'image/avif', tif: 'image/tiff', tiff: 'image/tiff', heic: 'image/heic', heif: 'image/heif' }
+const IMAGE_EXT = Object.keys(IMAGE_MIME)
+// File ghi âm: AI chép lời trên máy chủ; được tới 25 MB (cuộc họp dài)
+const AUDIO_MIME = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', webm: 'audio/webm', flac: 'audio/flac', amr: 'audio/amr', wma: 'audio/x-ms-wma', '3gp': 'audio/3gpp' }
+const AUDIO_EXT = Object.keys(AUDIO_MIME)
+const MIME = { ...IMAGE_MIME, ...AUDIO_MIME, pdf: 'application/pdf', txt: 'text/plain', md: 'text/markdown', csv: 'text/csv', json: 'application/json', zip: 'application/zip' }
+const ALLOWED = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf', ...IMAGE_EXT, ...AUDIO_EXT, 'txt', 'md', 'csv', 'tsv', 'log', 'json', 'xml', 'yaml', 'yml', 'zip']
 const MAX_UPLOAD = 10 * 1024 * 1024
+const MAX_AUDIO_UPLOAD = 25 * 1024 * 1024
+const extOfName = (n) => String(n || '').split('.').pop().toLowerCase()
+const maxFor = (name) => (AUDIO_EXT.includes(extOfName(name)) ? MAX_AUDIO_UPLOAD : MAX_UPLOAD)
 
 /** Tải tối đa 10 tệp một lần bằng multipart/form-data (trường "file"); API báo riêng từng tệp: uploaded / rejected. */
 async function httpUploadForm({ path: p, query, token, files, confirmMasked, fields }) {
@@ -91,28 +100,28 @@ async function httpUploadForm({ path: p, query, token, files, confirmMasked, fie
     if (!ALLOWED.includes(ext)) return { status: 415, ok: false, json: { RM: `Loại tệp .${ext} không được phép`, RD: null } }
     const buf = Buffer.from(f.bytes)
     if (buf.length === 0) return { status: 400, ok: false, json: { RM: 'Tệp rỗng', RD: null } }
-    if (buf.length > MAX_UPLOAD) return { status: 413, ok: false, json: { RM: 'Tệp vượt quá 10 MB', RD: null } }
+    if (buf.length > maxFor(f.name)) return { status: 413, ok: false, json: { RM: AUDIO_EXT.includes(ext) ? 'File ghi âm vượt quá 25 MB' : 'Tệp vượt quá 10 MB', RD: null } }
     form.append('file', new Blob([buf], { type: MIME[ext] || 'application/octet-stream' }), f.name)
   }
   if (confirmMasked) form.append('confirm_masked', 'true')
   for (const [k, v] of Object.entries(fields || {})) if (v !== undefined && v !== null && v !== '') form.append(k, String(v))
-  const res = await doFetch(buildUrl(p, query), { method: 'POST', headers: { Accept: 'application/json', ...authHeaders(token) }, body: form }, 300000)
+  const res = await doFetch(buildUrl(p, query), { method: 'POST', headers: { Accept: 'application/json', ...authHeaders(token) }, body: form }, 900000)
   let json = null
   try { json = await res.json() } catch { /* ignore */ }
   return { status: res.status, ok: res.ok, json }
 }
 
 /** Hộp thoại chọn nhiều tệp; đọc nội dung ngay trong tiến trình chính. */
-async function filePick({ imagesOnly }) {
-  const exts = imagesOnly ? ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'] : ALLOWED
+async function filePick({ imagesOnly, audioOnly }) {
+  const exts = imagesOnly ? IMAGE_EXT : audioOnly ? AUDIO_EXT : ALLOWED
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWin, {
     properties: ['openFile', 'multiSelections'],
-    filters: [{ name: imagesOnly ? 'Ảnh' : 'Tệp cho phép (tối đa 10 MB)', extensions: exts }],
+    filters: [{ name: imagesOnly ? 'Ảnh' : audioOnly ? 'File ghi âm (tối đa 25 MB)' : 'Tệp cho phép (tối đa 10 MB, ghi âm 25 MB)', extensions: exts }],
   })
   if (canceled) return []
   return filePaths.slice(0, 20).map((f) => {
     const size = fs.statSync(f).size
-    return { name: path.basename(f), size, bytes: size <= MAX_UPLOAD ? new Uint8Array(fs.readFileSync(f)) : null }
+    return { name: path.basename(f), size, bytes: size <= maxFor(f) ? new Uint8Array(fs.readFileSync(f)) : null }
   })
 }
 
@@ -125,10 +134,10 @@ async function httpBlob({ path: p, token }) {
     return { ok: false, status: res.status, error: msg }
   }
   const buf = Buffer.from(await res.arrayBuffer())
-  if (buf.length > MAX_UPLOAD) return { ok: false, status: 413, error: 'Tệp quá lớn để xem trước' }
   const cd = res.headers.get('content-disposition') || ''
   const m = /filename\*=UTF-8''([^;]+)/i.exec(cd) || /filename="?([^";]+)"?/i.exec(cd)
   const name = m ? decodeURIComponent(m[1]) : ''
+  if (buf.length > maxFor(name)) return { ok: false, status: 413, error: 'Tệp quá lớn để xem trước' }
   let mime = (res.headers.get('content-type') || '').split(';')[0]
   if (!mime || mime === 'application/octet-stream') mime = MIME[name.split('.').pop().toLowerCase()] || 'application/octet-stream'
   return { ok: true, mime, name, base64: buf.toString('base64'), size: buf.length }

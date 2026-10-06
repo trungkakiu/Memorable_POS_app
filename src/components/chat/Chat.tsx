@@ -9,7 +9,8 @@ import { bytes as fmtBytes, dt, FILE_ICON, FRESH_LABEL, KNOWLEDGE_LABEL, TOOL_LA
 import { KIND_LABEL, extOf, kindOf } from '../../lib/preview'
 import { can } from '../../lib/permissions'
 import { useAuth } from '../../store/auth'
-import { AskMode, ChatFile, MODE_FEATURE, MODE_HINT, MODE_LABEL, Msg, getChatBytes, useChat } from '../../store/chat'
+import { AskMode, ChatFile, MODE_FEATURE, MODE_HINT, MODE_LABEL, Msg, WEB_SCOPE_LABEL, WebScope, getChatBytes, useChat } from '../../store/chat'
+import { WebBlock, WebText } from '../WebAnswer'
 import { toast } from '../../store/ui'
 import { AttachImage, AttachStrip, LocalThumb } from '../Attachments'
 import { FileSource, PreviewModal } from '../FileViewer'
@@ -40,6 +41,7 @@ function ChatFileChip({ msgId, index, f, onOpen }: { msgId: number; index: numbe
 
 export function Messages({ msgs, busy, onOpenItem, onPick, onAsk, compact }: { msgs: Msg[]; busy: boolean; onOpenItem: (id: number) => void; onPick: (q: string) => void; onAsk: (q: string, mode: AskMode) => void; compact?: boolean }) {
   const end = useRef<HTMLDivElement>(null)
+  const feats = useChat((s) => s.status?.features)
   const [view, setView] = useState<FileSource | null>(null)
   useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [msgs.length, busy])
   const { pathname } = useLocation()
@@ -81,7 +83,7 @@ export function Messages({ msgs, busy, onOpenItem, onPick, onAsk, compact }: { m
                   {m.ans?.insufficient_info && <Pill tone="warn" sm><AlertTriangle size={11} />Không đủ thông tin trong kho tri thức</Pill>}
                 </div>
                 {m.ans?.mode === 'hybrid' && <div className="text-[10.5px] font-bold uppercase text-muted mb-1 tracking-wide">Từ tài liệu của nhóm</div>}
-                <Md citeIds={[...(m.ans?.sources || []).map((s) => s.id), ...(m.ans?.sourceIds || [])]}>{m.text}</Md>
+                {m.ans?.web ? <WebText text={m.text} w={m.ans.web} /> : <Md citeIds={[...(m.ans?.sources || []).map((s) => s.id), ...(m.ans?.sourceIds || [])]}>{m.text}</Md>}
                 {m.ans?.caveats && <div className="text-xs text-amber-800 mt-2 pt-2 border-t border-line flex gap-1"><b className="shrink-0">Lưu ý:</b><div className="min-w-0 flex-1"><Md citeIds={(m.ans.sources || []).map((s) => s.id)}>{m.ans.caveats}</Md></div></div>}
                 {m.ans?.fileAsk && <FileAskBlock info={m.ans.fileAsk} onOpen={onOpenItem} />}
                 {m.ans?.conflicts && m.ans.conflicts.length > 0 && <div className="mt-3"><ConflictList conflicts={m.ans.conflicts} onOpen={onOpenItem} /></div>}
@@ -105,6 +107,9 @@ export function Messages({ msgs, busy, onOpenItem, onPick, onAsk, compact }: { m
                 {m.ans?.warning && <div className="mt-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-2 flex gap-1.5"><AlertTriangle size={13} className="shrink-0 mt-0.5" />{m.ans.warning}</div>}
                 {m.ans?.suggests_documents && m.question && (
                   <button className="btn outline sm mt-2" onClick={() => onAsk(m.question!, 'documents')}>Câu hỏi này cần thông tin nội bộ — hỏi lại trong tài liệu</button>)}
+                {m.ans?.insufficient_info && m.ans.mode !== 'web' && m.question && (!feats || feats.includes('web_search')) && (
+                  <button className="btn outline sm mt-2" onClick={() => onAsk(m.question!, 'web')}>Tìm trên Internet (ưu tiên nguồn chính thống, có xác minh)</button>)}
+                {m.ans?.web && <WebBlock w={m.ans.web} onAsk={(q) => onAsk(q, 'web')} onRate={(h) => void useChat.getState().rateWeb(m.id, h)} onOpenLearned={(id) => void useChat.getState().openLearned(id)} onRefresh={m.question ? () => onAsk(m.question!, 'web') : undefined} />}
               </div>)}
             {m.ans && m.ans.sources.length > 0 && (
               <div className="flex flex-col gap-2">
@@ -136,7 +141,7 @@ export function Messages({ msgs, busy, onOpenItem, onPick, onAsk, compact }: { m
 
 /** Chọn nói chuyện với trợ lý chung hay một Agent cá nhân hóa của mình / của đồng nghiệp. */
 export function AgentBar() {
-  const { agents, agentId, selectAgent, loadAgents, newConversation, status, msgs } = useChat()
+  const { agents, agentId, selectAgent, loadAgents, newConversation, status, msgs, askConvId } = useChat()
   const role = useAuth((s) => s.user?.role)
   const nav = useNavigate()
   useEffect(() => { void loadAgents() }, []) // eslint-disable-line
@@ -149,7 +154,7 @@ export function AgentBar() {
         <option value="">Trợ lý chung (hỏi đáp tài liệu)</option>
         {agents.map((a) => <option key={a.id} value={a.id}>{a.is_mine ? '' : '👥 '}{a.name}</option>)}
       </select>
-      {cur && <button className="btn ghost sm icon" title="Bắt đầu hội thoại mới với Agent" onClick={newConversation}><Plus size={14} /></button>}
+      {(cur || askConvId) && <button className="btn ghost sm icon" title={cur ? 'Bắt đầu hội thoại mới với Agent' : `Bắt đầu hội thoại mới (đang ở hội thoại #${askConvId}; trợ lý nhớ các câu trước trong hội thoại này)`} onClick={newConversation}><Plus size={14} /></button>}
       {cur && <button className="btn ghost sm icon" title="Trang Agent đầy đủ" onClick={() => nav(`/agents/${cur.id}/chat`)}><ExternalLink size={14} /></button>}
       <button className="btn ghost sm icon" title="Quản lý Agent" onClick={() => nav('/agents')}><Settings2 size={14} /></button>
       <span className="hidden">{msgs.length}</span>
@@ -157,7 +162,7 @@ export function AgentBar() {
 }
 
 export function ModeSwitch() {
-  const { mode, setMode, status, policy, setPolicy, deep, setDeep } = useChat()
+  const { mode, setMode, status, policy, setPolicy, deep, setDeep, webScope, setWebScope } = useChat()
   const feats = status?.features
   const agent = useChat((s) => s.agents.find((a) => a.id === s.agentId))
   if (agent) return <div className="px-3 pt-2.5 pb-1 bg-white border-t border-line text-[11px] text-muted leading-snug"><b className="text-brand-700">{agent.name}</b> · {KNOWLEDGE_LABEL[agent.knowledge_mode]} · {agent.skills.length} skill — tự tra cứu tài liệu, đọc tệp và xem ảnh/PDF theo quyền của bạn.</div>
@@ -171,7 +176,9 @@ export function ModeSwitch() {
         })}
       </div>
       <div className="text-[11px] text-muted mt-1.5 leading-snug">{MODE_HINT[mode]}</div>
-      {mode !== 'general' && <div className="flex items-center gap-2 mt-2"><span className="text-[11px] font-bold uppercase text-muted shrink-0">Nguồn dùng</span><PolicySelect value={policy} onChange={setPolicy} />
+      {mode === 'web' && <div className="flex items-center gap-2 mt-2"><span className="text-[11px] font-bold uppercase text-muted shrink-0">Phạm vi tìm</span>
+        <select className="select !py-1 !text-xs" value={webScope} onChange={(e) => setWebScope(e.target.value as WebScope)}>{(Object.keys(WEB_SCOPE_LABEL) as WebScope[]).map((s) => <option key={s} value={s}>{WEB_SCOPE_LABEL[s]}</option>)}</select></div>}
+      {mode !== 'general' && mode !== 'web' && <div className="flex items-center gap-2 mt-2"><span className="text-[11px] font-bold uppercase text-muted shrink-0">Nguồn dùng</span><PolicySelect value={policy} onChange={setPolicy} />
         <label className="check text-[11px] shrink-0" title="depth=deep: mở rộng qua thẻ liên quan, xét nhiều tài liệu hơn"><input type="checkbox" checked={deep} onChange={(e) => setDeep(e.target.checked)} />Tìm sâu</label></div>}
     </div>)
 }
@@ -200,7 +207,7 @@ export function useChatDrop() {
 export const DropOverlay = ({ show }: { show: boolean }) => !show ? null : (
   <div className="absolute inset-0 z-20 bg-brand-600/90 text-white grid place-items-center text-center pointer-events-none border-4 border-dashed border-white/70 rounded-[10px]">
     <div><UploadCloud size={44} className="mx-auto" strokeWidth={1.5} /><div className="font-extrabold text-lg mt-2">Thả tệp / ảnh để lưu vào kho tri thức</div>
-      <div className="text-sm opacity-90 mt-1">pdf, docx, xlsx, pptx, png, jpg, txt, md, csv · tối đa 10 MB</div></div></div>)
+      <div className="text-sm opacity-90 mt-1">pdf, docx, xlsx, pptx, ảnh (png, jpg, jfif, webp, heic…), txt, md, csv · tối đa 10 MB</div></div></div>)
 
 function DraftTray() {
   const { draft, removeDraft, target, setTarget, vision, setVision, status } = useChat()

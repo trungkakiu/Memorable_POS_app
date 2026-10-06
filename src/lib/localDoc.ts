@@ -1,6 +1,6 @@
 // Đọc tệp ngay trên máy người dùng: trích chữ (Word, Excel, PowerPoint, PDF, ảnh bằng OCR, văn bản…),
 // chia đoạn, chọn các đoạn liên quan tới câu hỏi và che dữ liệu nhạy cảm — chỉ phần trích mới được gửi cho AI.
-import type { LocalFile } from './api'
+import { AUDIO_EXT, DOWNLOAD_ONLY_IMAGE, IMAGE_EXT, IMAGE_MIME, type LocalFile } from './api'
 import { extOf, parsePptx, parseXlsx } from './preview'
 import { ocrImage } from './ocr'
 
@@ -12,7 +12,8 @@ export type Progress = (p: { stage: string; pct?: number }) => void
 
 const MAX_CHARS = 600_000
 const TEXT_EXT = ['txt', 'md', 'csv', 'tsv', 'log', 'json', 'xml', 'yaml', 'yml']
-const IMG_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp']
+// Ảnh đọc chữ được ngay trên máy (trình duyệt giải mã được); TIFF/HEIC cần máy chủ chuyển định dạng
+const IMG_EXT = IMAGE_EXT.filter((e) => !DOWNLOAD_ONLY_IMAGE.includes(e))
 const decode = (b: Uint8Array) => new TextDecoder('utf-8').decode(b).replace(/^﻿/, '')
 const cap = (s: string) => (s.length > MAX_CHARS ? { t: s.slice(0, MAX_CHARS), cut: true } : { t: s, cut: false })
 
@@ -75,9 +76,9 @@ function rtfText(raw: string) {
 
 /** Trích chữ từ tệp trên máy. Ném Error tiếng Việt khi không đọc được. */
 export async function readLocalFile(f: LocalFile, onProgress?: Progress): Promise<LocalDoc> {
-  if (!f.bytes) throw new Error('Không đọc được nội dung tệp (quá 10 MB?)')
+  if (!f.bytes) throw new Error('Không đọc được nội dung tệp (quá dung lượng cho phép?)')
   const kind = kindOfLocal(f.name); const e = extOf(f.name)
-  if (kind === 'unsupported') throw new Error(['doc', 'xls', 'ppt'].includes(e) ? 'Tệp Office bản cũ (doc/xls/ppt) chưa đọc được — hãy lưu lại thành docx, xlsx, pptx hoặc pdf.' : e === 'zip' ? 'Chưa đọc được tệp nén — hãy giải nén rồi chọn từng tệp.' : `Loại tệp .${e} chưa hỗ trợ.`)
+  if (kind === 'unsupported') throw new Error(AUDIO_EXT.includes(e) ? 'Đây là file ghi âm — máy này không tự nghe được. Hãy dùng “Chép lời ghi âm” (ở thanh bên trái) để AI chuyển thành chữ, rồi hỏi về nội dung.' : DOWNLOAD_ONLY_IMAGE.includes(e) ? `Ảnh .${e.toUpperCase()} (thường từ máy scan hoặc iPhone) chưa đọc được ngay trên máy — hãy chọn cách “Nhờ trợ lý đọc và đối chiếu”, máy chủ sẽ tự chuyển định dạng.` : ['doc', 'xls', 'ppt'].includes(e) ?'Tệp Office bản cũ (doc/xls/ppt) chưa đọc được — hãy lưu lại thành docx, xlsx, pptx hoặc pdf.' : e === 'zip' ? 'Chưa đọc được tệp nén — hãy giải nén rồi chọn từng tệp.' : `Loại tệp .${e} chưa hỗ trợ.`)
   const base = { name: f.name, size: f.size, kind }
   onProgress?.({ stage: 'Đang đọc tệp…' })
   if (kind === 'text') { const { t, cut } = cap(decode(f.bytes)); return { ...base, method: 'Đọc văn bản', text: t, pages: null, chars: t.length, truncated: cut } }
@@ -109,8 +110,17 @@ export async function readLocalFile(f: LocalFile, onProgress?: Progress): Promis
   }
   // ảnh: OCR trên máy
   onProgress?.({ stage: 'Đang tải bộ đọc chữ trong ảnh…', pct: 0 })
-  const blob = new Blob([f.bytes as BlobPart], { type: `image/${e === 'jpg' ? 'jpeg' : e}` })
-  const r = await ocrImage(blob, (p) => onProgress?.({ stage: 'Đang đọc chữ trong ảnh…', pct: p }))
+  const blob = new Blob([f.bytes as BlobPart], { type: IMAGE_MIME[e] || 'application/octet-stream' })
+  // Bộ đọc chữ chỉ nhận PNG/JPEG/BMP/GIF/WebP: các định dạng khác (AVIF…) được trình duyệt giải mã rồi vẽ lại thành PNG
+  let src: Blob | HTMLCanvasElement = blob
+  if (!['png', 'jpg', 'jpeg', 'jfif', 'jpe', 'pjpeg', 'pjp', 'bmp', 'gif', 'webp'].includes(e)) {
+    try {
+      const bmp = await createImageBitmap(blob)
+      const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height
+      c.getContext('2d')!.drawImage(bmp, 0, 0); bmp.close(); src = c
+    } catch { throw new Error(`Không mở được ảnh .${e} trên máy này — hãy chọn cách “Nhờ trợ lý đọc và đối chiếu”.`) }
+  }
+  const r = await ocrImage(src, (p) => onProgress?.({ stage: 'Đang đọc chữ trong ảnh…', pct: p }))
   const { t, cut } = cap(r.text)
   return { ...base, method: 'OCR trên máy', text: t, pages: null, chars: t.length, truncated: cut, ocrConfidence: r.confidence }
 }

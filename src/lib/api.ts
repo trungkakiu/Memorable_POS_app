@@ -5,7 +5,7 @@ interface Desk {
   request: (a: { method?: string; path: string; query?: object; body?: unknown; token?: string | null }) => Promise<Reply<{ status: number; ok: boolean; json: { RD: unknown; RC: number; RM: string } | null; text?: string }>>
   download: (a: { path: string; query?: object; token?: string | null; filename?: string; filters?: { name: string; extensions: string[] }[] }) => Promise<Reply<{ ok: boolean; canceled?: boolean; filePath?: string; error?: string }>>
   uploadForm: (a: { path: string; query?: object; token?: string | null; files: { name: string; bytes: Uint8Array }[]; confirmMasked?: boolean; fields?: Record<string, string | number | boolean | undefined> }) => Promise<Reply<{ status: number; ok: boolean; json: { RD: unknown; RM: string } | null }>>
-  pickFiles: (a: { imagesOnly?: boolean }) => Promise<Reply<{ name: string; size: number; bytes: Uint8Array | null }[]>>
+  pickFiles: (a: { imagesOnly?: boolean; audioOnly?: boolean }) => Promise<Reply<{ name: string; size: number; bytes: Uint8Array | null }[]>>
   openExternal: (a: { name: string; base64: string }) => Promise<Reply<boolean>>
   blob: (a: { path: string; token?: string | null }) => Promise<Reply<{ ok: boolean; status?: number; error?: string; mime?: string; name?: string; base64?: string; size?: number }>>
   ping: () => Promise<Reply<{ online: boolean; ms: number; message?: string }>>
@@ -77,31 +77,56 @@ export async function download(path: string, query?: Record<string, unknown>, fi
 }
 
 export interface LocalFile { name: string; size: number; bytes: Uint8Array | null; preview?: string }
-export const ALLOWED_EXT = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'txt', 'md', 'csv', 'tsv', 'log', 'json', 'xml', 'yaml', 'yml', 'zip']
+/** Mọi loại ảnh máy chủ nhận (đuôi -> kiểu). jfif/jpe/pjpeg/pjp là JPEG đổi đuôi (Windows hay lưu ảnh tải từ web thành .jfif). */
+export const IMAGE_MIME: Record<string, string> = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', jfif: 'image/jpeg', jpe: 'image/jpeg', pjpeg: 'image/jpeg', pjp: 'image/jpeg',
+  gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', avif: 'image/avif', tif: 'image/tiff', tiff: 'image/tiff', heic: 'image/heic', heif: 'image/heif',
+}
+export const IMAGE_EXT = Object.keys(IMAGE_MIME)
+/** Ảnh trình duyệt/ứng dụng không hiển thị được (TIFF, HEIC của iPhone): chỉ tải về; AI vẫn đọc được vì máy chủ tự chuyển sang JPEG. */
+export const DOWNLOAD_ONLY_IMAGE = ['tif', 'tiff', 'heic', 'heif']
+/** File ghi âm máy chủ nhận (đuôi -> kiểu): chỉ tải về / nghe lại; AI chép lời thành chữ (POST /ai/transcribe, hỏi bằng tệp, nhập tri thức). */
+export const AUDIO_MIME: Record<string, string> = {
+  mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg',
+  webm: 'audio/webm', flac: 'audio/flac', amr: 'audio/amr', wma: 'audio/x-ms-wma', '3gp': 'audio/3gpp',
+}
+export const AUDIO_EXT = Object.keys(AUDIO_MIME)
+export const ALLOWED_EXT = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf', ...IMAGE_EXT, ...AUDIO_EXT, 'txt', 'md', 'csv', 'tsv', 'log', 'json', 'xml', 'yaml', 'yml', 'zip']
 export const MAX_UPLOAD = 10 * 1024 * 1024
+/** File ghi âm được lớn hơn (cuộc họp dài): 25 MB, đúng giới hạn của máy chủ */
+export const MAX_AUDIO_UPLOAD = 25 * 1024 * 1024
 export const MAX_FILES_PER_REQUEST = 10
-export const isImageName = (n: string) => /\.(png|jpe?g|gif|webp|bmp)$/i.test(n)
-/** Ảnh/PDF mà AI nhìn được (POST /ai/analyze, /attachments/{id}/ai-extract). */
-export const isAiVisionName = (n: string) => /\.(png|jpe?g|gif|webp|pdf)$/i.test(n)
+const extLower = (n: string) => (n.split('.').pop() || '').toLowerCase()
+/** Ảnh xem trực tiếp được trong ứng dụng (ảnh thu nhỏ, phóng to, chèn vào nội dung). */
+export const isImageName = (n: string) => n.includes('.') && Boolean(IMAGE_MIME[extLower(n)]) && !DOWNLOAD_ONLY_IMAGE.includes(extLower(n))
+/** Mọi tệp ảnh, kể cả loại chỉ tải về. */
+export const isAnyImageName = (n: string) => n.includes('.') && Boolean(IMAGE_MIME[extLower(n)])
+/** Ảnh/PDF mà AI nhìn được (POST /ai/analyze, /attachments/{id}/ai-extract, /ai/ask-file, /ai/draft-item). */
+export const isAiVisionName = (n: string) => isAnyImageName(n) || extLower(n) === 'pdf'
 export const isTextName = (n: string) => /\.(txt|md|csv|tsv|log|json|xml|ya?ml)$/i.test(n)
+/** File ghi âm (AI chép lời được) */
+export const isAudioName = (n: string) => n.includes('.') && Boolean(AUDIO_MIME[extLower(n)])
+/** Dung lượng tối đa được gửi cho một tệp */
+export const maxBytesFor = (n: string) => (isAudioName(n) ? MAX_AUDIO_UPLOAD : MAX_UPLOAD)
 
 /** Kiểm tra tệp phía máy khách trước khi gửi; trả về thông báo lỗi hoặc null. */
 export function checkFile(f: { name: string; size: number }): string | null {
   const ext = f.name.split('.').pop()?.toLowerCase() || ''
   if (!ALLOWED_EXT.includes(ext)) return `Loại .${ext} không được phép`
   if (f.size === 0) return 'Tệp rỗng'
-  if (f.size > MAX_UPLOAD) return 'Vượt quá 10 MB'
+  if (f.size > maxBytesFor(f.name)) return isAudioName(f.name) ? 'File ghi âm vượt quá 25 MB' : 'Vượt quá 10 MB'
   return null
 }
 
-export async function pickLocalFiles(imagesOnly = false): Promise<LocalFile[]> {
-  const r = await desk().pickFiles({ imagesOnly })
+/** Mở hộp chọn tệp. `true`/'image': chỉ ảnh; 'audio': chỉ file ghi âm. */
+export async function pickLocalFiles(only: boolean | 'image' | 'audio' = false): Promise<LocalFile[]> {
+  const r = await desk().pickFiles({ imagesOnly: only === true || only === 'image', audioOnly: only === 'audio' })
   if (!r.ok) throw new ApiError(r.error || 'Không mở được hộp thoại chọn tệp', 0)
   return r.data || []
 }
 /** Chuyển File (kéo-thả / dán) thành LocalFile. */
 export async function fromBrowserFile(f: File): Promise<LocalFile> {
-  const bytes = f.size <= MAX_UPLOAD ? new Uint8Array(await f.arrayBuffer()) : null
+  const bytes = f.size <= maxBytesFor(f.name || '') ? new Uint8Array(await f.arrayBuffer()) : null
   return { name: f.name || `anh-${Date.now()}.png`, size: f.size, bytes }
 }
 
@@ -193,8 +218,21 @@ export function useGet<T = any>(path: string | null, query?: Record<string, unkn
 /** Hỏi bằng tệp: gửi thẳng tối đa 5 tệp (ảnh/PDF/Word/Excel…) kèm câu hỏi; máy chủ đọc, đối chiếu kho rồi trả lời. Tệp không được lưu. */
 export async function askWithFiles<T>(files: LocalFile[], fields: { question?: string; mode?: string; source_policy?: string; item_ids?: string }): Promise<T> {
   const valid = files.filter((f) => f.bytes && !checkFile(f)).slice(0, 5)
-  if (!valid.length) throw new ApiError('Không có tệp hợp lệ để gửi (tối đa 10 MB mỗi tệp, đúng loại cho phép)', 422)
+  if (!valid.length) throw new ApiError('Không có tệp hợp lệ để gửi (tối đa 10 MB mỗi tệp, ghi âm 25 MB, đúng loại cho phép)', 422)
   const r = await desk().uploadForm({ path: '/ai/ask-file', token, files: valid.map((f) => ({ name: f.name, bytes: f.bytes! })), fields })
+  if (!r.ok || !r.data) throw new ApiError(r.error || 'Không gửi được tệp', 0)
+  const d = r.data
+  if (d.status === 401) onUnauthorized?.()
+  const body = d.json as { RD: unknown; RM: string } | null
+  if (!d.ok) { const rd = (body?.RD || null) as { errors?: unknown; skipped?: unknown } | null; throw new ApiError(body?.RM || `Lỗi HTTP ${d.status}`, d.status, rd?.errors ?? rd?.skipped) }
+  return body?.RD as T
+}
+
+/** Gửi tệp (multipart) kèm trường văn bản tới một API AI bất kỳ, trả RD; lỗi HTTP thành ApiError (kèm RD.errors/skipped). */
+export async function postFiles<T>(path: string, files: LocalFile[], fields: Record<string, string | number | boolean | undefined>, max = 5): Promise<T> {
+  const valid = files.filter((f) => f.bytes && !checkFile(f)).slice(0, max)
+  if (!valid.length) throw new ApiError('Không có tệp hợp lệ để gửi (tối đa 10 MB mỗi tệp, ghi âm 25 MB, đúng loại cho phép)', 422)
+  const r = await desk().uploadForm({ path, token, files: valid.map((f) => ({ name: f.name, bytes: f.bytes! })), fields })
   if (!r.ok || !r.data) throw new ApiError(r.error || 'Không gửi được tệp', 0)
   const d = r.data
   if (d.status === 401) onUnauthorized?.()

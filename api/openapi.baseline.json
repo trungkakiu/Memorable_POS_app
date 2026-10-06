@@ -938,7 +938,7 @@
       "name": "status",
       "in": "query",
       "required": false,
-      "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`.",
+      "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
       "schema": {
        "type": "string",
        "enum": [
@@ -3784,7 +3784,7 @@
          "note": {
           "type": "string",
           "maxLength": 300,
-          "description": "Ghi chú trong lúc làm."
+          "description": "Ghi chú (với nguồn Internet: lý do xếp hạng hoặc chặn)."
          }
         },
         "required": [
@@ -4081,7 +4081,7 @@
       }
      }
     },
-    "description": "**API tải tài liệu, ảnh và các loại tệp lên một mục.** Có hai cách gửi:\n\n**Cách 1 - Form (`multipart/form-data`, nên dùng):** trường `file`, chọn được **nhiều tệp (tối đa 10)**. Dùng được ngay trong **Swagger UI** (có nút Choose File) và **Postman** (Body → form-data, key `file`, kiểu File). Tùy chọn trường `confirm_masked=true`. Kết quả báo riêng từng tệp được nhận (`uploaded`) hoặc bị từ chối (`rejected`).\n\n**Cách 2 - Thân thô:** `Content-Type: application/octet-stream`, header `X-Filename` (mã hóa bằng `encodeURIComponent`), thân là nội dung file; một tệp mỗi lần. Phù hợp khi gọi từ mã.\n\n**Loại tệp được phép** (hệ thống kiểm tra **nội dung thật** của tệp, không tin đuôi file; tệp đổi đuôi hoặc giả mạo bị từ chối):\n\n| Nhóm | Đuôi | AI/tìm kiếm đọc được chữ |\n|---|---|---|\n| Ảnh (xem trực tiếp được) | png, jpg, jpeg, gif, webp, bmp | Không tự đọc; **nhờ AI đọc** bằng `POST /attachments/{id}/ai-extract` (png, jpg, webp, gif) |\n| Tài liệu | pdf | Không tự đọc; **nhờ AI đọc** bằng `POST /attachments/{id}/ai-extract` |\n| Tài liệu | doc, xls, ppt (bản cũ) | Không (hãy chuyển sang docx, xlsx, pptx hoặc pdf) |\n| Tài liệu | docx, xlsx, pptx, odt, ods, odp, rtf | **Có** |\n| Văn bản | txt, md, csv, tsv, log, json, xml, yaml, yml | **Có** |\n| Nén | zip (chỉ lưu và tải về, không giải nén) | Không |\n\nKhông cho phép html, svg, js, exe, bat, sh và mọi tệp chạy được. Tối đa **10 MB mỗi tệp** (đổi bằng `MAX_UPLOAD_MB`). Văn bản trích từ tệp được quét bí mật như nội dung thường: mục R3, prompt hoặc mục hạn chế bị chặn nếu có bí mật. Tệp trùng nội dung đã có trong mục bị báo 409; trùng ở mục khác chỉ cảnh báo (`duplicate_of`). Mã băm SHA-256 được lưu để kiểm tra toàn vẹn.\n\n**Ví dụ curl:**\n\n```\n# Form, nhiều tệp\ncurl -X POST http://localhost:3001/items/12/attachments -H \"Authorization: Bearer $TOKEN\" -F \"file=@bao-cao.docx\" -F \"file=@so-do.png\"\n\n# Thân thô, một tệp\ncurl -X POST http://localhost:3001/items/12/attachments -H \"Authorization: Bearer $TOKEN\" -H \"Content-Type: application/octet-stream\" -H \"X-Filename: bao-cao.docx\" --data-binary @bao-cao.docx\n```\n\nẢnh tải lên có thể nhúng vào nội dung Markdown bằng đường dẫn `/attachments/{id}/view`.\n\n**Ai gọi được:** `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Là chủ sở hữu mục (hoặc admin).\n- Mã mục lấy từ `POST /items` hoặc `GET /items`.\n\n**Lỗi thường gặp:**\n- `400`: Thân rỗng, thiếu `X-Filename` (thân thô), hoặc không có tệp nào trong form\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `409`: Tệp này đã đính kèm vào mục (thân thô) hoặc không có tệp nào được nhận (form)\n- `413`: Tệp quá lớn, hoặc quá 10 tệp trong một lần\n- `415`: Loại tệp không được phép, nội dung không khớp đuôi file, hoặc văn bản không phải UTF-8 hợp lệ\n- `422`: Văn bản trong tệp chứa bí mật hoặc dữ liệu cá nhân không được phép\n\n**Cách gửi:** thân yêu cầu là nội dung file thô, `Content-Type: application/octet-stream`, header `X-Filename` = `encodeURIComponent(tên file)`. Thêm `?confirm_masked=true` nếu file text có bí mật đã che.\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/items/12/attachments\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/octet-stream\" \\\n  -H \"X-Filename: huong-dan.pdf\" \\\n  --data-binary @huong-dan.pdf\n```",
+    "description": "**API tải tài liệu, ảnh và các loại tệp lên một mục.** Có hai cách gửi:\n\n**Cách 1 - Form (`multipart/form-data`, nên dùng):** trường `file`, chọn được **nhiều tệp (tối đa 10)**. Dùng được ngay trong **Swagger UI** (có nút Choose File) và **Postman** (Body → form-data, key `file`, kiểu File). Tùy chọn trường `confirm_masked=true`. Kết quả báo riêng từng tệp được nhận (`uploaded`) hoặc bị từ chối (`rejected`).\n\n**Cách 2 - Thân thô:** `Content-Type: application/octet-stream`, header `X-Filename` (mã hóa bằng `encodeURIComponent`), thân là nội dung file; một tệp mỗi lần. Phù hợp khi gọi từ mã.\n\n**Loại tệp được phép** (hệ thống kiểm tra **nội dung thật** của tệp, không tin đuôi file; tệp đổi đuôi hoặc giả mạo bị từ chối):\n\n| Nhóm | Đuôi | AI/tìm kiếm đọc được chữ |\n|---|---|---|\n| Ảnh (xem trực tiếp được) | png, jpg, jpeg, jfif, jpe, pjpeg, pjp, gif, webp, bmp, avif, tif, tiff, heic, heif | Không tự đọc; **nhờ AI đọc** bằng `POST /attachments/{id}/ai-extract` (mọi loại ảnh; tiff, avif, heic, bmp được máy chủ tự chuyển sang JPEG trước khi gửi AI, tệp gốc giữ nguyên) |\n| Tài liệu | pdf | Không tự đọc; **nhờ AI đọc** bằng `POST /attachments/{id}/ai-extract` |\n| Âm thanh, ghi âm (chỉ tải về) | mp3, m4a, aac, wav, ogg, oga, opus, webm, flac, amr, wma, 3gp | Không tự đọc; **AI chép lời** khi ghi nhớ tệp hoặc bằng `POST /attachments/{id}/ai-extract` (cắt đoạn ở khoảng lặng, có mốc thời gian) |\n| Tài liệu | doc, xls, ppt (bản cũ) | Không (hãy chuyển sang docx, xlsx, pptx hoặc pdf) |\n| Tài liệu | docx, xlsx, pptx, odt, ods, odp, rtf | **Có** |\n| Văn bản | txt, md, csv, tsv, log, json, xml, yaml, yml | **Có** |\n| Nén | zip (chỉ lưu và tải về, không giải nén) | Không |\n\nKhông cho phép html, svg, js, exe, bat, sh và mọi tệp chạy được. Tối đa **25 MB mỗi tệp** (đổi bằng `MAX_UPLOAD_MB`). Văn bản trích từ tệp được quét bí mật như nội dung thường: mục R3, prompt hoặc mục hạn chế bị chặn nếu có bí mật. Tệp trùng nội dung đã có trong mục bị báo 409; trùng ở mục khác chỉ cảnh báo (`duplicate_of`). Mã băm SHA-256 được lưu để kiểm tra toàn vẹn.\n\n**Ví dụ curl:**\n\n```\n# Form, nhiều tệp\ncurl -X POST http://localhost:3001/items/12/attachments -H \"Authorization: Bearer $TOKEN\" -F \"file=@bao-cao.docx\" -F \"file=@so-do.png\"\n\n# Thân thô, một tệp\ncurl -X POST http://localhost:3001/items/12/attachments -H \"Authorization: Bearer $TOKEN\" -H \"Content-Type: application/octet-stream\" -H \"X-Filename: bao-cao.docx\" --data-binary @bao-cao.docx\n```\n\nẢnh tải lên có thể nhúng vào nội dung Markdown bằng đường dẫn `/attachments/{id}/view`.\n\n**Ai gọi được:** `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Là chủ sở hữu mục (hoặc admin).\n- Mã mục lấy từ `POST /items` hoặc `GET /items`.\n\n**Lỗi thường gặp:**\n- `400`: Thân rỗng, thiếu `X-Filename` (thân thô), hoặc không có tệp nào trong form\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `409`: Tệp này đã đính kèm vào mục (thân thô) hoặc không có tệp nào được nhận (form)\n- `413`: Tệp quá lớn, hoặc quá 10 tệp trong một lần\n- `415`: Loại tệp không được phép, nội dung không khớp đuôi file, hoặc văn bản không phải UTF-8 hợp lệ\n- `422`: Văn bản trong tệp chứa bí mật hoặc dữ liệu cá nhân không được phép\n\n**Cách gửi:** thân yêu cầu là nội dung file thô, `Content-Type: application/octet-stream`, header `X-Filename` = `encodeURIComponent(tên file)`. Thêm `?confirm_masked=true` nếu file text có bí mật đã che.\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/items/12/attachments\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/octet-stream\" \\\n  -H \"X-Filename: huong-dan.pdf\" \\\n  --data-binary @huong-dan.pdf\n```",
     "requestBody": {
      "required": true,
      "content": {
@@ -4099,7 +4099,7 @@
            "format": "binary"
           },
           "maxItems": 10,
-          "description": "Tệp cần tải lên (chọn được nhiều tệp, tối đa 10, mỗi tệp tối đa 10 MB)."
+          "description": "Tệp cần tải lên (chọn được nhiều tệp, tối đa 10, mỗi tệp tối đa 25 MB)."
          },
          "confirm_masked": {
           "type": "string",
@@ -4840,7 +4840,7 @@
       }
      }
     },
-    "description": "Xem **ảnh** trực tiếp (png, jpg, jpeg, gif, webp, bmp) để nhúng vào nội dung Markdown: `![sơ đồ](/attachments/5/view)`. Các loại tệp khác trả 415, hãy dùng `/download`. Kiểm tra quyền xem mục và toàn vẹn như `/download`. Phản hồi có `ETag` (mã băm) và cho trình duyệt lưu đệm riêng 5 phút. Vì API cần token nên giao diện web phải tải ảnh bằng `fetch` kèm header `Authorization` rồi hiển thị bằng blob, thẻ `<img src>` trần sẽ không gửi được token.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Cần có trước:**\n- Mã tệp lấy từ `GET /items/{id}/attachments` (cột `viewable_inline` là `true`).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `404`: Không có tệp hoặc không có quyền xem\n- `415`: Tệp không phải ảnh\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/attachments/12/view\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -o ket-qua\n```",
+    "description": "Xem **ảnh** trực tiếp (png, jpg, jpeg, jfif, jpe, pjpeg, pjp, gif, webp, bmp, avif; tiff và heic trình duyệt không hiển thị được nên dùng `/download`) để nhúng vào nội dung Markdown: `![sơ đồ](/attachments/5/view)`. Các loại tệp khác trả 415, hãy dùng `/download`. Kiểm tra quyền xem mục và toàn vẹn như `/download`. Phản hồi có `ETag` (mã băm) và cho trình duyệt lưu đệm riêng 5 phút. Vì API cần token nên giao diện web phải tải ảnh bằng `fetch` kèm header `Authorization` rồi hiển thị bằng blob, thẻ `<img src>` trần sẽ không gửi được token.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Cần có trước:**\n- Mã tệp lấy từ `GET /items/{id}/attachments` (cột `viewable_inline` là `true`).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `404`: Không có tệp hoặc không có quyền xem\n- `415`: Tệp không phải ảnh\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/attachments/12/view\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -o ket-qua\n```",
     "security": [
      {
       "bearerAuth": []
@@ -5195,7 +5195,7 @@
          "note": {
           "type": "string",
           "maxLength": 300,
-          "description": "Ghi chú trong lúc làm."
+          "description": "Ghi chú (với nguồn Internet: lý do xếp hạng hoặc chặn)."
          },
          "confirm_masked": {
           "type": "boolean",
@@ -5671,7 +5671,7 @@
          "note": {
           "type": "string",
           "maxLength": 500,
-          "description": "Ghi chú trong lúc làm."
+          "description": "Ghi chú (với nguồn Internet: lý do xếp hạng hoặc chặn)."
          }
         },
         "required": [
@@ -5850,7 +5850,7 @@
       }
      }
     },
-    "description": "**AI đọc chữ trong ảnh hoặc PDF rồi lưu lại** làm văn bản của tệp (OCR). Sau đó chữ này được dùng cho **tìm kiếm** (`GET /search`) và cho **hỏi đáp AI** (`POST /ai/ask`, Agent) như văn bản của mọi tệp khác, và `text_source` của tệp là `ai`. Phần có sơ đồ hoặc ảnh chụp được AI mô tả thêm ở mục `[Mô tả hình ảnh]`. Chữ do AI đọc có thể sai, hãy đối chiếu chi tiết quan trọng với tệp gốc. Từ nay API này chạy **cả đường ống đọc và ghi nhớ** và chờ kết quả: AI đọc hai lượt (đọc rồi soát lại), tài liệu dài được đọc tiếp cho đến hết, ra Markdown chuẩn (`GET /attachments/{id}/markdown`), chia đoạn, tóm lược, tạo vector. Đoạn chứa bí mật được lưu nhưng bị chặn khỏi AI. Chữ AI đọc ở hạng \"chưa kiểm duyệt\" cho đến khi có người kiểm chứng (`POST /attachments/{id}/review-text`). Tệp mới tải lên đã được đọc tự động ở nền, nên thường không cần gọi API này. Chạy lại được để đọc lại. Tệp mà hệ thống đã tự đọc được (docx, xlsx, txt...) không cần và không cho đọc bằng AI (409). Tốn chi phí AI.\n\n**Ai gọi được:** `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật.\n- Là chủ sở hữu mục (hoặc admin).\n- Tệp là ảnh (png, jpg, webp, gif) hoặc PDF; mục không phải mức hạn chế.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Không phải chủ sở hữu mục\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `409`: Hệ thống đã tự đọc được văn bản của tệp này\n- `415`: Loại tệp AI chưa đọc được\n- `422`: Không có chữ để đọc, hoặc mục hạn chế\n- `429`: Hết hạn mức\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/attachments/12/ai-extract\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"confirm_masked\":false}'\n```",
+    "description": "**AI đọc chữ trong ảnh hoặc PDF rồi lưu lại** làm văn bản của tệp (OCR). Sau đó chữ này được dùng cho **tìm kiếm** (`GET /search`) và cho **hỏi đáp AI** (`POST /ai/ask`, Agent) như văn bản của mọi tệp khác, và `text_source` của tệp là `ai`. Phần có sơ đồ hoặc ảnh chụp được AI mô tả thêm ở mục `[Mô tả hình ảnh]`. Chữ do AI đọc có thể sai, hãy đối chiếu chi tiết quan trọng với tệp gốc. Từ nay API này chạy **cả đường ống đọc và ghi nhớ** và chờ kết quả: AI đọc hai lượt (đọc rồi soát lại), tài liệu dài được đọc tiếp cho đến hết, ra Markdown chuẩn (`GET /attachments/{id}/markdown`), chia đoạn, tóm lược, tạo vector. Đoạn chứa bí mật được lưu nhưng bị chặn khỏi AI. Chữ AI đọc ở hạng \"chưa kiểm duyệt\" cho đến khi có người kiểm chứng (`POST /attachments/{id}/review-text`). Tệp mới tải lên đã được đọc tự động ở nền, nên thường không cần gọi API này. Chạy lại được để đọc lại. Tệp mà hệ thống đã tự đọc được (docx, xlsx, txt...) không cần và không cho đọc bằng AI (409). Tốn chi phí AI.\n\n**Ai gọi được:** `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật.\n- Là chủ sở hữu mục (hoặc admin).\n- Tệp là ảnh (png, jpg/jfif, webp, gif, bmp, tiff, avif, heic) hoặc PDF; mục không phải mức hạn chế.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Không phải chủ sở hữu mục\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `409`: Hệ thống đã tự đọc được văn bản của tệp này\n- `415`: Loại tệp AI chưa đọc được\n- `422`: Không có chữ để đọc, hoặc mục hạn chế\n- `429`: Hết hạn mức\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/attachments/12/ai-extract\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"confirm_masked\":false}'\n```",
     "requestBody": {
      "required": false,
      "content": {
@@ -6377,7 +6377,7 @@
          "note": {
           "type": "string",
           "maxLength": 2000,
-          "description": "Ghi chú trong lúc làm."
+          "description": "Ghi chú (với nguồn Internet: lý do xếp hạng hoặc chặn)."
          },
          "finish": {
           "type": "boolean",
@@ -6927,7 +6927,7 @@
       "name": "status",
       "in": "query",
       "required": false,
-      "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`.",
+      "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
       "schema": {
        "type": "string",
        "enum": [
@@ -7314,7 +7314,7 @@
       "name": "status",
       "in": "query",
       "required": false,
-      "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`.",
+      "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
       "schema": {
        "type": "string",
        "enum": [
@@ -11779,6 +11779,1870 @@
     ]
    }
   },
+  "/ai/web/ask": {
+   "post": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "TÌM TRÊN INTERNET: hỏi đáp có tìm web, ưu tiên nguồn chính thống, ghi nguồn và xác minh từng nguồn",
+    "operationId": "post_ai_web_ask",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "mode": "web",
+          "answer": "Hiện nay, **mức lương cơ sở là 2.530.000 đồng/tháng**, áp dụng từ ngày 01/7/2026 theo Nghị định 161/2026/NĐ-CP. [1]\n\n- Trước đó là 2.340.000 đồng/tháng. [2]",
+          "insufficient_info": false,
+          "citations": [
+           {
+            "n": 1,
+            "url": "https://congbao.chinhphu.vn/van-ban/nghi-dinh-161-2026-nd-cp.htm",
+            "title": "Nghị định 161/2026/NĐ-CP quy định mức lương cơ sở",
+            "host": "congbao.chinhphu.vn",
+            "tier": "official",
+            "tier_label": "Nguồn chính thống",
+            "source_name": "Cổng Thông tin điện tử Chính phủ, Công báo, Văn bản",
+            "category": "government",
+            "rule": "registry",
+            "link": "ok",
+            "http_status": 200
+           }
+          ],
+          "consulted_count": 28,
+          "queries": [
+           "site:chinhphu.vn mức lương cơ sở hiện nay 2026"
+          ],
+          "searches": 2,
+          "scope": "balanced",
+          "scope_used": "official",
+          "fallback_used": false,
+          "verification": {
+           "score": 88,
+           "level": "high",
+           "official": 2,
+           "trusted": 0,
+           "unverified": 0,
+           "blocked": 0,
+           "sites": 2,
+           "links_ok": 2,
+           "links_bad": 0,
+           "coverage": 0.67,
+           "notes": [
+            "2/2 nguồn là trang chính thống.",
+            "Thông tin được 2 trang khác nhau xác nhận."
+           ]
+          },
+          "suggestions": [
+           "Lương tối thiểu vùng hiện nay là bao nhiêu?",
+           "Những khoản phụ cấp nào tăng theo lương cơ sở?"
+          ],
+          "checked_at": "2026-10-06T08:30:00.000Z",
+          "model": "gpt-5.4-2026-03-05",
+          "cost_usd": 0.04,
+          "result_id": "6f1c2a90-3c1e-4c2b-9c55-6a0d3e2b7f11",
+          "similar": []
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Câu hỏi quá ngắn, chứa bí mật/dữ liệu cá nhân, hoặc tham số sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Câu hỏi quá ngắn, chứa bí mật/dữ liệu cá nhân, hoặc tham số sai"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Hết hạn mức",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 429,
+         "RM": "Hết hạn mức"
+        }
+       }
+      }
+     },
+     "502": {
+      "description": "Nhà cung cấp AI lỗi",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 502,
+         "RM": "Nhà cung cấp AI lỗi"
+        }
+       }
+      }
+     },
+     "503": {
+      "description": "AI chưa bật hoặc tính năng web_search bị tắt",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 503,
+         "RM": "AI chưa bật hoặc tính năng web_search bị tắt"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Hỏi đáp có tìm trên Internet**, dùng khi câu hỏi nằm ngoài tài liệu của công ty (quy định nhà nước, thủ tục, số liệu, hướng dẫn kỹ thuật...). **Chỉ câu hỏi** (và tối đa 3 lượt hỏi đáp Internet trước đó trong `context`) được gửi cho AI: không có tài liệu nội bộ nào.\n\n**Phạm vi tìm** (`scope`, mặc định theo cài đặt `ai_web_scope_default`, thường là `balanced`):\n\n| `scope` | Cách tìm |\n|---|---|\n| `official` | Chỉ các trang **chính thống** trong danh mục (`GET /ai/web/sources`). Không có thông tin thì `insufficient_info: true` |\n| `balanced` | Tìm trang chính thống **trước**; không có thông tin mới mở rộng ra toàn Internet (`fallback_used: true`) |\n| `open` | Toàn Internet, vẫn dặn AI ưu tiên nguồn chính thống |\n\nTrang có hạng `blocked` không bao giờ được dùng.\n\n**Xác minh nguồn** (`verification`): mỗi nguồn trong `citations` được (1) **phân hạng** theo danh mục và đuôi tên miền (`.gov.vn`, `.int`, `.edu`... tự coi là chính thống): `official`, `trusted`, `unverified`, `blocked`; (2) **kiểm tra liên kết có mở được** (`link`: `ok`, `restricted` = trang chặn kiểm tra tự động, `broken`, `unreachable`); (3) đếm số **trang độc lập** cùng xác nhận; (4) đo phần câu trả lời **có trích dẫn**. Gộp thành `score` 0-100 và `level` (`high` cần không có liên kết hỏng và ít nhất 2 trang độc lập hoặc toàn nguồn chính thống), kèm `notes` bằng lời thường.\n\nTrong `answer`, trích dẫn được đánh số `[1]`, `[2]` khớp với `citations[].n`. `suggestions` là 2-3 câu hỏi tiếp theo gợi ý. `similar` là các câu trả lời đã học có câu hỏi gần nghĩa.\n\n**Học ngầm:** câu trả lời đạt mức `high` và có nguồn chính thống được AI khái quát câu hỏi (bỏ thông tin riêng) rồi lưu làm gợi ý trong thời gian gần (xem `GET /ai/web/learned`). Câu hỏi gốc không được lưu. Tắt bằng `ai_web_auto_learn=false`.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật (`GET /ai/status`), tính năng `web_search` không bị tắt.\n- Vai trò `reader` trở lên (không gồm sponsor).\n- Câu hỏi không chứa mật khẩu, khóa hay dữ liệu cá nhân.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Câu hỏi quá ngắn, chứa bí mật/dữ liệu cá nhân, hoặc tham số sai\n- `429`: Hết hạn mức\n- `502`: Nhà cung cấp AI lỗi\n- `503`: AI chưa bật hoặc tính năng web_search bị tắt\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/web/ask\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"question\":\"Mức lương cơ sở hiện nay là bao nhiêu?\",\"scope\":\"balanced\"}'\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "question": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 1000,
+          "description": "Câu hỏi bằng ngôn ngữ tự nhiên. Câu mở đầu từ 5 đến 500 ký tự; khi có `conversation_id`, câu nối tiếp được phép rất ngắn (ví dụ \"Hà Nội\", \"có\", \"còn bước 3?\") và tối đa 2000 ký tự. Không được chứa mật khẩu, khóa hay số điện thoại."
+         },
+         "scope": {
+          "type": "string",
+          "enum": [
+           "official",
+           "balanced",
+           "open"
+          ],
+          "description": "Phạm vi danh sách: `mine` (của tôi), `team` (do đồng nghiệp chia sẻ), `all` (cả hai, mặc định). Với tìm trên Internet (`POST /ai/web/ask`): `official` (chỉ trang chính thống), `balanced` (chính thống trước, thiếu thì mở rộng), `open` (toàn Internet trừ trang bị chặn)."
+         },
+         "context": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "question": {
+             "type": "string",
+             "maxLength": 1000,
+             "description": "Câu hỏi của lượt trước."
+            },
+            "answer": {
+             "type": "string",
+             "maxLength": 6000,
+             "description": "Câu trả lời của lượt trước (nên cắt còn khoảng 1500 ký tự)."
+            }
+           },
+           "required": [
+            "question",
+            "answer"
+           ],
+           "description": "Tối đa 3 lượt hỏi đáp Internet ngay trước đó (mỗi lượt gồm `question` và `answer`) để AI hiểu câu hỏi nối tiếp. Chỉ gửi lượt Internet, không gửi nội dung tài liệu nội bộ."
+          },
+          "maxItems": 3,
+          "description": "Tối đa 3 lượt hỏi đáp Internet ngay trước đó (mỗi lượt gồm `question` và `answer`) để AI hiểu câu hỏi nối tiếp. Chỉ gửi lượt Internet, không gửi nội dung tài liệu nội bộ."
+         }
+        },
+        "required": [
+         "question"
+        ]
+       },
+       "examples": {
+        "Ưu tiên chính thống": {
+         "summary": "Ưu tiên chính thống",
+         "value": {
+          "question": "Mức lương cơ sở hiện nay là bao nhiêu?",
+          "scope": "balanced"
+         }
+        },
+        "Câu nối tiếp": {
+         "summary": "Câu nối tiếp",
+         "value": {
+          "question": "Còn lương tối thiểu vùng?",
+          "context": [
+           {
+            "question": "Mức lương cơ sở hiện nay là bao nhiêu?",
+            "answer": "Mức lương cơ sở là 2.530.000 đồng/tháng từ 01/7/2026. [1]"
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/ai/web/feedback": {
+   "post": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Đánh giá câu trả lời Internet (hữu ích hay không): câu trả lời tốt được học lại để gợi ý",
+    "operationId": "post_ai_web_feedback",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "ok": true,
+          "learned": true,
+          "learned_id": 4,
+          "status": "active"
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Kết quả đã quá 3 giờ, hãy hỏi lại",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Kết quả đã quá 3 giờ, hãy hỏi lại"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Thiếu `result_id` và `learned_id`",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Thiếu result_id và learned_id"
+        }
+       }
+      }
+     }
+    },
+    "description": "Đánh giá một câu trả lời Internet vừa nhận (`result_id` lấy từ `POST /ai/web/ask`, có hiệu lực 3 giờ) hoặc một câu trả lời đã học (`learned_id`).\n\n- `helpful: true`: câu trả lời được học lại để gợi ý (chấp nhận mức xác minh `medium` trở lên), tăng lượt hữu ích.\n- `helpful: false`: tăng lượt không hữu ích; khi lượt không hữu ích đạt `ai_web_hide_after_unhelpful` (mặc định 2) và nhiều hơn lượt hữu ích thì câu trả lời đã học **tự ẩn**.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Kết quả đã quá 3 giờ, hãy hỏi lại\n- `422`: Thiếu `result_id` và `learned_id`\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/web/feedback\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"result_id\":\"6f1c2a90-3c1e-4c2b-9c55-6a0d3e2b7f11\",\"helpful\":true}'\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "result_id": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Mã kết quả tìm Internet trả về từ `POST /ai/web/ask` (có hiệu lực 3 giờ)."
+         },
+         "learned_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Mã câu trả lời đã học (từ `GET /ai/web/suggestions` hoặc `similar` của `POST /ai/web/ask`)."
+         },
+         "helpful": {
+          "type": "boolean",
+          "description": "`true` nếu kết quả tìm kiếm hữu ích, `false` nếu không."
+         }
+        },
+        "required": [
+         "helpful"
+        ]
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "result_id": "6f1c2a90-3c1e-4c2b-9c55-6a0d3e2b7f11",
+          "helpful": true
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/ai/web/suggestions": {
+   "get": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Gợi ý câu hỏi tương tự đã có câu trả lời Internet kiểm chứng (khi đang gõ, không tốn AI)",
+    "operationId": "get_ai_web_suggestions",
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "required": true,
+      "description": "Từ khóa tìm kiếm. Gõ tiếng Việt có hoặc không dấu đều được, hoặc mã lỗi nguyên văn như `ERR_504`.",
+      "schema": {
+       "type": "string",
+       "minLength": 2,
+       "maxLength": 300
+      },
+      "example": "luong co so"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": [
+          {
+           "id": 4,
+           "question": "Mức lương cơ sở hiện nay là bao nhiêu và áp dụng từ khi nào?",
+           "topic": "Lương cơ sở",
+           "type_label": "Số liệu, mức giá",
+           "level": "high",
+           "learned_at": "2026-10-06T08:30:00.000Z",
+           "score": 1
+          }
+         ],
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Gợi ý khi người dùng **đang gõ** câu hỏi: các câu trả lời Internet đã học (còn hạn, chưa bị ẩn) có câu hỏi khớp từ khóa. So khớp không dấu, không gọi AI nên dùng được cho từng lần gõ. Mở chi tiết bằng `GET /ai/web/learned/{id}`.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/ai/web/suggestions?q=luong%20co%20so\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/ai/web/learned": {
+   "get": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Danh sách câu trả lời Internet hệ thống đã học (quản trị)",
+    "operationId": "get_ai_web_learned",
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "all",
+        "active",
+        "hidden",
+        "expired"
+       ],
+       "default": "all"
+      },
+      "example": "active"
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "description": "Từ khóa tìm kiếm. Gõ tiếng Việt có hoặc không dấu đều được, hoặc mã lỗi nguyên văn như `ERR_504`.",
+      "schema": {
+       "type": "string",
+       "maxLength": 200
+      }
+     },
+     {
+      "name": "page",
+      "in": "query",
+      "required": false,
+      "description": "Số trang, bắt đầu từ 1.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "default": 1
+      },
+      "example": 1
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "description": "Số dòng mỗi trang (1 đến 100, mặc định 20).",
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 100,
+       "default": 20
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "rows": [
+           {
+            "id": 4,
+            "question": "Mức lương cơ sở hiện nay là bao nhiêu và áp dụng từ khi nào?",
+            "topic": "Lương cơ sở",
+            "question_type": "so_lieu",
+            "type_label": "Số liệu, mức giá",
+            "answer": "Mức lương cơ sở là **2.530.000 đồng/tháng** từ 01/7/2026 theo Nghị định 161/2026/NĐ-CP. [1]",
+            "sources": [
+             {
+              "n": 1,
+              "url": "https://congbao.chinhphu.vn/van-ban/nghi-dinh-161-2026-nd-cp.htm",
+              "title": "Nghị định 161/2026/NĐ-CP quy định mức lương cơ sở",
+              "host": "congbao.chinhphu.vn",
+              "tier": "official",
+              "tier_label": "Nguồn chính thống",
+              "source_name": "Cổng Thông tin điện tử Chính phủ, Công báo, Văn bản",
+              "category": "government",
+              "rule": "registry",
+              "link": "ok",
+              "http_status": 200
+             }
+            ],
+            "verification": {
+             "score": 88,
+             "level": "high",
+             "official": 2,
+             "trusted": 0,
+             "unverified": 0,
+             "blocked": 0,
+             "sites": 2,
+             "links_ok": 2,
+             "links_bad": 0,
+             "coverage": 0.67,
+             "notes": [
+              "2/2 nguồn là trang chính thống.",
+              "Thông tin được 2 trang khác nhau xác nhận."
+             ]
+            },
+            "learned_at": "2026-10-06T08:30:00.000Z",
+            "expires_at": "2026-11-05T08:30:00.000Z",
+            "hits": 3,
+            "helpful": 2
+           }
+          ],
+          "total": 1,
+          "page": 1,
+          "limit": 20,
+          "pages": 1
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Danh sách câu trả lời Internet hệ thống đã học, để quản trị rà soát. `status`: `active` (còn hạn, đang gợi ý), `hidden` (bị ẩn), `expired` (hết hạn), `all`. `q` tìm trong câu hỏi và chủ đề (không dấu).\n\nMỗi dòng có `learned_from` (`auto`: tự học vì nguồn tốt, `feedback`: người dùng bấm hữu ích), `times_learned` (số lần được học lại), lượt dùng, lượt hữu ích và không hữu ích.\n\n**Ai gọi được:** `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `moderator` hoặc `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/ai/web/learned?status=active&page=1\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/ai/web/learned/{id}": {
+   "get": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Mở một câu trả lời Internet đã học (kèm nguồn và mức xác minh)",
+    "operationId": "get_ai_web_learned_id",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 4,
+          "question": "Mức lương cơ sở hiện nay là bao nhiêu và áp dụng từ khi nào?",
+          "topic": "Lương cơ sở",
+          "question_type": "so_lieu",
+          "type_label": "Số liệu, mức giá",
+          "answer": "Mức lương cơ sở là **2.530.000 đồng/tháng** từ 01/7/2026 theo Nghị định 161/2026/NĐ-CP. [1]",
+          "sources": [
+           {
+            "n": 1,
+            "url": "https://congbao.chinhphu.vn/van-ban/nghi-dinh-161-2026-nd-cp.htm",
+            "title": "Nghị định 161/2026/NĐ-CP quy định mức lương cơ sở",
+            "host": "congbao.chinhphu.vn",
+            "tier": "official",
+            "tier_label": "Nguồn chính thống",
+            "source_name": "Cổng Thông tin điện tử Chính phủ, Công báo, Văn bản",
+            "category": "government",
+            "rule": "registry",
+            "link": "ok",
+            "http_status": 200
+           }
+          ],
+          "verification": {
+           "score": 88,
+           "level": "high",
+           "official": 2,
+           "trusted": 0,
+           "unverified": 0,
+           "blocked": 0,
+           "sites": 2,
+           "links_ok": 2,
+           "links_bad": 0,
+           "coverage": 0.67,
+           "notes": [
+            "2/2 nguồn là trang chính thống.",
+            "Thông tin được 2 trang khác nhau xác nhận."
+           ]
+          },
+          "learned_at": "2026-10-06T08:30:00.000Z",
+          "expires_at": "2026-11-05T08:30:00.000Z",
+          "hits": 3,
+          "helpful": 2
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có, đã hết hạn hoặc đã bị ẩn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có, đã hết hạn hoặc đã bị ẩn"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Mở một câu trả lời đã học (còn hạn và chưa bị ẩn): câu hỏi đã khái quát, câu trả lời, nguồn và kết quả xác minh lúc học. Tăng lượt dùng. Thông tin có thể đã cũ: xem `learned_at`, nên hỏi lại bằng `POST /ai/web/ask` nếu cần số liệu mới nhất.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có, đã hết hạn hoặc đã bị ẩn\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/ai/web/learned/12\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "patch": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Ẩn, hiện lại hoặc gia hạn một câu trả lời đã học",
+    "operationId": "patch_ai_web_learned_id",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 4,
+          "status": "hidden",
+          "expires_at": "2026-11-05T08:30:00.000Z"
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có câu trả lời này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có câu trả lời này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Ẩn (`status: hidden`) hoặc hiện lại (`active`) một câu trả lời đã học, và/hoặc gia hạn thêm `extend_days` ngày tính từ bây giờ.\n\n**Ai gọi được:** `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `moderator` hoặc `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có câu trả lời này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PATCH \"http://localhost:3001/ai/web/learned/12\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"status\":\"hidden\"}'\n```",
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "status": {
+          "type": "string",
+          "enum": [
+           "active",
+           "hidden"
+          ],
+          "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
+         },
+         "extend_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 90,
+          "description": "Gia hạn thêm số ngày này tính từ bây giờ (1 đến 90)."
+         }
+        }
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "status": "hidden"
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "delete": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Xóa hẳn một câu trả lời đã học",
+    "operationId": "delete_ai_web_learned_id",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 4
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có câu trả lời này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có câu trả lời này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Xóa hẳn một câu trả lời đã học. Muốn tạm ngừng gợi ý thì dùng `PATCH` với `status: hidden`.\n\n**Ai gọi được:** `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `moderator` hoặc `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có câu trả lời này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X DELETE \"http://localhost:3001/ai/web/learned/12\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/ai/web/sources": {
+   "get": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Danh mục nguồn chính thống trên Internet (chính thống, đáng tin, bị chặn)",
+    "operationId": "get_ai_web_sources",
+    "parameters": [
+     {
+      "name": "tier",
+      "in": "query",
+      "required": false,
+      "description": "Lọc theo hạng tin cậy: `official` (chính thống), `reviewed` (đã kiểm duyệt), `unreviewed` (chưa kiểm duyệt: mục R1 tự xuất bản hoặc chữ AI đọc chưa kiểm chứng), `stale` (quá hạn rà soát). Với nguồn Internet (`/ai/web/sources`): `official` (chính thống), `trusted` (đáng tin), `blocked` (bị chặn).",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "official",
+        "trusted",
+        "blocked"
+       ]
+      },
+      "example": "official"
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "description": "Từ khóa tìm kiếm. Gõ tiếng Việt có hoặc không dấu đều được, hoặc mã lỗi nguyên văn như `ERR_504`.",
+      "schema": {
+       "type": "string",
+       "maxLength": 100
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "rows": [
+           {
+            "id": 2,
+            "domain": "chinhphu.vn",
+            "name": "Cổng Thông tin điện tử Chính phủ, Công báo, Văn bản",
+            "tier": "official",
+            "tier_label": "Nguồn chính thống",
+            "category": "government",
+            "note": null,
+            "active": true,
+            "cited_count": 14,
+            "last_cited_at": "2026-10-06T08:30:00.000Z",
+            "created_by": null,
+            "created_at": "2026-10-06T08:00:00.000Z",
+            "updated_at": "2026-10-06T08:00:00.000Z"
+           }
+          ],
+          "suffix_rules": [
+           {
+            "suffix": "gov.vn",
+            "name": "Cơ quan nhà nước Việt Nam"
+           }
+          ],
+          "tiers": [
+           "official",
+           "trusted",
+           "blocked"
+          ],
+          "categories": [
+           "government",
+           "law",
+           "tax_finance",
+           "statistics",
+           "health",
+           "education",
+           "standards",
+           "international",
+           "tech_docs",
+           "news",
+           "reference",
+           "community",
+           "other"
+          ]
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Danh mục nguồn trên Internet dùng khi AI tìm kiếm. Lần đầu dùng, danh mục được nạp sẵn các nguồn mặc định: cơ quan nhà nước Việt Nam (`gov.vn` khớp mọi bộ ngành, `chinhphu.vn`, `vbpl.vn`, Tổng cục Thuế, BHXH...), tổ chức quốc tế và tiêu chuẩn (WHO, ISO, W3C, NIST...), tài liệu chính hãng (Microsoft, Apple, AWS, Node.js...), trang tra cứu và báo lớn (hạng `trusted`).\n\n| `tier` | Ý nghĩa |\n|---|---|\n| `official` | Chính thống: được tìm trước, tối đa 100 tên miền dùng làm bộ lọc |\n| `trusted` | Đáng tin: dùng được, nên đối chiếu nguồn chính thống |\n| `blocked` | Không bao giờ dùng làm nguồn |\n\nTên miền khớp cả tên miền con (`chinhphu.vn` khớp `vanban.chinhphu.vn`). `suffix_rules` là các đuôi tên miền tự coi là chính thống dù chưa có trong danh mục. `cited_count` là số lần nguồn được trích dẫn.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/ai/web/sources?tier=official\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Thêm một nguồn vào danh mục",
+    "operationId": "post_ai_web_sources",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 71,
+          "domain": "mpi.gov.vn",
+          "name": "Bộ Kế hoạch và Đầu tư",
+          "tier": "official",
+          "tier_label": "Nguồn chính thống",
+          "category": "government",
+          "note": null,
+          "active": true,
+          "cited_count": 0,
+          "last_cited_at": "2026-10-06T08:30:00.000Z",
+          "created_by": null,
+          "created_at": "2026-10-06T08:00:00.000Z",
+          "updated_at": "2026-10-06T08:00:00.000Z"
+         },
+         "RC": 201,
+         "RM": "Source added"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Tên miền đã có trong danh mục",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 409,
+         "RM": "Tên miền đã có trong danh mục"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Tên miền không hợp lệ",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Tên miền không hợp lệ"
+        }
+       }
+      }
+     }
+    },
+    "description": "Thêm một nguồn. `domain` nhập dạng `ten-mien.vn` (có `https://`, `www.` hay đường dẫn cũng được, hệ thống tự bỏ). Nguồn `official` được tìm trước khi AI tìm web; `blocked` bị loại khỏi mọi tìm kiếm.\n\n**Ai gọi được:** `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `moderator` hoặc `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `409`: Tên miền đã có trong danh mục\n- `422`: Tên miền không hợp lệ\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/web/sources\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"domain\":\"mpi.gov.vn\",\"name\":\"Bộ Kế hoạch và Đầu tư\",\"tier\":\"official\",\"category\":\"government\"}'\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "domain": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200,
+          "description": "Tên miền, ví dụ `chinhphu.vn` (khớp cả tên miền con như `vanban.chinhphu.vn`). Có thể dán cả đường dẫn, hệ thống tự lấy tên miền."
+         },
+         "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 150,
+          "description": "Tên."
+         },
+         "tier": {
+          "type": "string",
+          "enum": [
+           "official",
+           "trusted",
+           "blocked"
+          ],
+          "description": "Lọc theo hạng tin cậy: `official` (chính thống), `reviewed` (đã kiểm duyệt), `unreviewed` (chưa kiểm duyệt: mục R1 tự xuất bản hoặc chữ AI đọc chưa kiểm chứng), `stale` (quá hạn rà soát). Với nguồn Internet (`/ai/web/sources`): `official` (chính thống), `trusted` (đáng tin), `blocked` (bị chặn)."
+         },
+         "category": {
+          "type": "string",
+          "enum": [
+           "government",
+           "law",
+           "tax_finance",
+           "statistics",
+           "health",
+           "education",
+           "standards",
+           "international",
+           "tech_docs",
+           "news",
+           "reference",
+           "community",
+           "other"
+          ],
+          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`."
+         },
+         "note": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Ghi chú (với nguồn Internet: lý do xếp hạng hoặc chặn)."
+         },
+         "active": {
+          "type": "boolean",
+          "description": "`false` để tạm tắt (không dùng nhưng không xóa)."
+         }
+        },
+        "required": [
+         "domain",
+         "name",
+         "tier"
+        ]
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "domain": "mpi.gov.vn",
+          "name": "Bộ Kế hoạch và Đầu tư",
+          "tier": "official",
+          "category": "government"
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/ai/web/sources/classify": {
+   "get": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Kiểm tra một đường dẫn thuộc hạng nguồn nào",
+    "operationId": "get_ai_web_sources_classify",
+    "parameters": [
+     {
+      "name": "url",
+      "in": "query",
+      "required": true,
+      "description": "Địa chỉ trang web (hoặc tên miền) cần kiểm tra.",
+      "schema": {
+       "type": "string",
+       "minLength": 3,
+       "maxLength": 2000
+      },
+      "example": "https://vanban.chinhphu.vn/?docid=218107"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "host": "vanban.chinhphu.vn",
+          "tier": "official",
+          "tier_label": "Nguồn chính thống",
+          "name": "Cổng Thông tin điện tử Chính phủ, Công báo, Văn bản",
+          "category": "government",
+          "rule": "registry",
+          "source_id": 2
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Không phải địa chỉ web",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Không phải địa chỉ web"
+        }
+       }
+      }
+     }
+    },
+    "description": "Cho biết một đường dẫn (hoặc tên miền) thuộc hạng nguồn nào và vì sao: `rule` = `registry` (có trong danh mục), `suffix` (theo đuôi tên miền như `.gov.vn`), `none` (chưa xác minh).\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Không phải địa chỉ web\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/ai/web/sources/classify?url=https%3A%2F%2Fvanban.chinhphu.vn%2F%3Fdocid%3D218107\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/ai/web/sources/restore-defaults": {
+   "post": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Thêm lại các nguồn mặc định còn thiếu (không đè nguồn đã sửa)",
+    "operationId": "post_ai_web_sources_restore_defaults",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "added": 3
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     }
+    },
+    "description": "Thêm lại các nguồn mặc định còn thiếu (ví dụ sau khi lỡ xóa). Nguồn đang có, kể cả nguồn mặc định đã bị sửa hạng, được giữ nguyên.\n\n**Ai gọi được:** `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `moderator` hoặc `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/web/sources/restore-defaults\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/ai/web/sources/{id}": {
+   "patch": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Sửa một nguồn (hạng, tên, nhóm, bật/tắt)",
+    "operationId": "patch_ai_web_sources_id",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 2,
+          "domain": "chinhphu.vn",
+          "name": "Cổng Thông tin điện tử Chính phủ, Công báo, Văn bản",
+          "tier": "blocked",
+          "tier_label": "Nguồn bị chặn",
+          "category": "government",
+          "note": null,
+          "active": true,
+          "cited_count": 14,
+          "last_cited_at": "2026-10-06T08:30:00.000Z",
+          "created_by": null,
+          "created_at": "2026-10-06T08:00:00.000Z",
+          "updated_at": "2026-10-06T08:00:00.000Z"
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có nguồn này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có nguồn này"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Tên miền mới đã có trong danh mục",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 409,
+         "RM": "Tên miền mới đã có trong danh mục"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Tên miền không hợp lệ",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Tên miền không hợp lệ"
+        }
+       }
+      }
+     }
+    },
+    "description": "Sửa một nguồn: đổi hạng (`official`, `trusted`, `blocked`), tên, nhóm, ghi chú, hoặc tạm tắt (`active: false`) mà không xóa.\n\n**Ai gọi được:** `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `moderator` hoặc `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có nguồn này\n- `409`: Tên miền mới đã có trong danh mục\n- `422`: Tên miền không hợp lệ\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PATCH \"http://localhost:3001/ai/web/sources/12\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"tier\":\"blocked\",\"note\":\"Trang tổng hợp lại tin, hay sai số liệu\"}'\n```",
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "domain": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200,
+          "description": "Tên miền, ví dụ `chinhphu.vn` (khớp cả tên miền con như `vanban.chinhphu.vn`). Có thể dán cả đường dẫn, hệ thống tự lấy tên miền."
+         },
+         "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 150,
+          "description": "Tên."
+         },
+         "tier": {
+          "type": "string",
+          "enum": [
+           "official",
+           "trusted",
+           "blocked"
+          ],
+          "description": "Lọc theo hạng tin cậy: `official` (chính thống), `reviewed` (đã kiểm duyệt), `unreviewed` (chưa kiểm duyệt: mục R1 tự xuất bản hoặc chữ AI đọc chưa kiểm chứng), `stale` (quá hạn rà soát). Với nguồn Internet (`/ai/web/sources`): `official` (chính thống), `trusted` (đáng tin), `blocked` (bị chặn)."
+         },
+         "category": {
+          "type": "string",
+          "enum": [
+           "government",
+           "law",
+           "tax_finance",
+           "statistics",
+           "health",
+           "education",
+           "standards",
+           "international",
+           "tech_docs",
+           "news",
+           "reference",
+           "community",
+           "other"
+          ],
+          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`."
+         },
+         "note": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Ghi chú (với nguồn Internet: lý do xếp hạng hoặc chặn)."
+         },
+         "active": {
+          "type": "boolean",
+          "description": "`false` để tạm tắt (không dùng nhưng không xóa)."
+         }
+        }
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "tier": "blocked",
+          "note": "Trang tổng hợp lại tin, hay sai số liệu"
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "delete": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Xóa một nguồn khỏi danh mục",
+    "operationId": "delete_ai_web_sources_id",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 2
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có nguồn này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có nguồn này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Xóa một nguồn khỏi danh mục. Muốn chặn hẳn một trang thì đổi hạng thành `blocked` thay vì xóa.\n\n**Ai gọi được:** `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `moderator` hoặc `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có nguồn này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X DELETE \"http://localhost:3001/ai/web/sources/12\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
   "/ai/status": {
    "get": {
     "tags": [
@@ -11928,7 +13792,7 @@
     "tags": [
      "ai"
     ],
-    "summary": "AI-03: Hỏi đáp có trích nguồn",
+    "summary": "AI-03: Hỏi đáp có trích nguồn, nhiều lượt và nhớ lịch sử",
     "operationId": "post_ai_ask",
     "parameters": [],
     "responses": {
@@ -11941,9 +13805,18 @@
         },
         "example": {
          "RD": {
+          "conversation_id": 31,
+          "standalone_question": null,
+          "memory": {
+           "history_messages": 0,
+           "summary_used": false,
+           "recalled": [],
+           "earlier_conversations": []
+          },
           "mode": "documents",
           "answer": "1. Kiểm tra trạng thái nhà cung cấp.\n2. Khởi động lại worker payment-worker.\n3. Theo dõi hàng đợi 5 phút.",
           "insufficient_info": false,
+          "partial": false,
           "grounded": true,
           "caveats": "",
           "conflicts": [],
@@ -12074,7 +13947,7 @@
       }
      }
     },
-    "description": "Hỏi đáp bằng AI, có **3 chế độ** (trường `mode`):\n\n| `mode` | Trả lời dựa trên | Gửi gì cho AI | Dùng khi |\n|---|---|---|---|\n| `documents` (mặc định) | **Chỉ tài liệu đã duyệt** của nhóm, luôn kèm nguồn | Câu hỏi + các **đoạn** phù hợp nhất (tìm theo nghĩa và từ khóa), từ nội dung bài và mọi tệp đính kèm đã được đọc (Word, Excel, PowerPoint, PDF, ảnh...), mỗi đoạn kèm nguồn | Hỏi về quy trình, hướng dẫn, quy định của nhóm |\n| `general` | **Ngoài tài liệu**: kiến thức chung của AI | **Chỉ câu hỏi**, không tài liệu nội bộ nào | Hỏi kiến thức chung (khái niệm, cách dùng công cụ, giải thích lỗi phổ biến) |\n| `hybrid` | Tài liệu trước; phần thiếu được bổ sung bằng kiến thức chung, **tách riêng và gắn nhãn** | Như `documents` | Tài liệu trả lời được một phần |\n\n- `documents`: nếu kho không có thông tin trả `insufficient_info: true`, không bịa. `grounded: true` nghĩa là câu trả lời có nguồn hợp lệ.\n- `general`: `grounded` luôn `false`, kèm `warning` nhắc **không dựa trên tài liệu của nhóm**, có thể sai hoặc lỗi thời, cần kiểm chứng. AI được dặn không nêu thông tin riêng của công ty; nếu câu hỏi cần thông tin đó thì `suggests_documents: true` để bạn hỏi lại bằng chế độ `documents`.\n- `hybrid`: `answer` là phần từ tài liệu (có `sources`), `general_knowledge` là phần kiến thức chung (có `warning`). Hai phần không lẫn vào nhau.\n\nMục hạn chế (`restricted`) và bản nháp **không bao giờ** được gửi cho AI ở mọi chế độ. Câu hỏi chứa mật khẩu, khóa hoặc số điện thoại bị chặn. Quản trị tắt riêng từng chế độ bằng cài đặt `ai_feature_ask`, `ai_feature_ask_general`, `ai_feature_ask_hybrid`.\n\n**Tệp đính kèm:** AI chỉ đọc được văn bản của tệp **txt, md, csv**. Tệp PDF, DOCX, XLSX, PPTX và ảnh được lưu nhưng AI **chưa đọc được** nội dung.\n\n**Tìm sâu và rộng qua thẻ.** AI còn đi sang các tài liệu **chung thẻ** với kết quả tìm được (kể cả nhóm khác): các đoạn đó được đánh dấu \"liên quan qua thẻ chung\", AI dùng làm bối cảnh bổ sung và nói rõ khi một ý chỉ dựa vào chúng. `depth: \"deep\"` đi hai bước; `tag_id` giới hạn trong một thẻ. `sources[].tags` và `retrieval.tags_used` cho biết thẻ nào đã nối các tài liệu.\n\n**Đối chiếu nhiều tài liệu và kiểm soát nguồn.** Khi câu hỏi liên quan nhiều tài liệu, AI tổng hợp và trích dẫn từng tài liệu đã dùng (`cross_document: true`). Nếu các tài liệu nói khác nhau, AI **không chọn lặng lẽ** mà báo ở `conflicts` (chủ đề, giá trị khác nhau, mã mục), rồi ưu tiên nguồn hạng cao hơn, cùng hạng thì nguồn mới hơn. Mỗi nguồn có `tier`: `official` (chính thống) > `reviewed` (đã kiểm duyệt) > `unreviewed` (chưa kiểm duyệt, kể cả chữ AI đọc từ ảnh/PDF chưa ai kiểm chứng) > `stale` (quá hạn). `source_policy` giới hạn AI chỉ dùng `official` hoặc `reviewed`; tài liệu khớp nhưng bị loại được đếm ở `retrieval.excluded_by_policy`. `sources[].passages` cho biết đoạn nào (tệp, trang, mục) đã dùng. `item_ids` giới hạn câu trả lời trong vài tài liệu chỉ định.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật (`GET /ai/status` trả `ready: true`).\n- Vai trò `reader` trở lên (không gồm sponsor).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Câu hỏi chứa bí mật hoặc dữ liệu cá nhân, hoặc nhà cung cấp AI từ chối\n- `429`: Hết hạn mức ngày của bạn hoặc hết ngân sách tháng\n- `503`: AI chưa được bật, chưa cấu hình, hoặc quản trị đã tắt chế độ này (xem `GET /ai/status`)\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/ask\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"question\":\"Giao dịch báo ERR_504 thì xử lý thế nào?\",\"mode\":\"documents\"}'\n```",
+    "description": "Hỏi đáp bằng AI, có **3 chế độ** (trường `mode`):\n\n| `mode` | Trả lời dựa trên | Gửi gì cho AI | Dùng khi |\n|---|---|---|---|\n| `documents` (mặc định) | **Chỉ tài liệu đã duyệt** của nhóm, luôn kèm nguồn | Câu hỏi + các **đoạn** phù hợp nhất (tìm theo nghĩa và từ khóa), từ nội dung bài và mọi tệp đính kèm đã được đọc (Word, Excel, PowerPoint, PDF, ảnh...), mỗi đoạn kèm nguồn | Hỏi về quy trình, hướng dẫn, quy định của nhóm |\n| `general` | **Ngoài tài liệu**: kiến thức chung của AI | **Chỉ câu hỏi**, không tài liệu nội bộ nào | Hỏi kiến thức chung (khái niệm, cách dùng công cụ, giải thích lỗi phổ biến) |\n| `hybrid` | Tài liệu trước; phần thiếu được bổ sung bằng kiến thức chung, **tách riêng và gắn nhãn** | Như `documents` | Tài liệu trả lời được một phần |\n\n- `documents`: nếu kho không có thông tin trả `insufficient_info: true`, không bịa. `grounded: true` nghĩa là câu trả lời có nguồn hợp lệ. Khi kho chỉ trả lời được **một phần** câu hỏi, `insufficient_info: true` đi kèm `partial: true`, phần có căn cứ vẫn được trả cùng `sources` và trích dẫn hợp lệ (message `Partial answer: ...`); chỉ khi không có trích dẫn nào hợp lệ thì nguồn mới bị giữ lại.\n- `general`: `grounded` luôn `false`, kèm `warning` nhắc **không dựa trên tài liệu của nhóm**, có thể sai hoặc lỗi thời, cần kiểm chứng. AI được dặn không nêu thông tin riêng của công ty; nếu câu hỏi cần thông tin đó thì `suggests_documents: true` để bạn hỏi lại bằng chế độ `documents`.\n- `hybrid`: `answer` là phần từ tài liệu (có `sources`), `general_knowledge` là phần kiến thức chung (có `warning`). Hai phần không lẫn vào nhau.\n\nMục hạn chế (`restricted`) và bản nháp **không bao giờ** được gửi cho AI ở mọi chế độ. Câu hỏi chứa mật khẩu, khóa hoặc số điện thoại bị chặn. Quản trị tắt riêng từng chế độ bằng cài đặt `ai_feature_ask`, `ai_feature_ask_general`, `ai_feature_ask_hybrid`.\n\n**Tệp đính kèm:** AI chỉ đọc được văn bản của tệp **txt, md, csv**. Tệp PDF, DOCX, XLSX, PPTX và ảnh được lưu nhưng AI **chưa đọc được** nội dung.\n\n**Hội thoại nhiều lượt: trợ lý nhớ lịch sử.** Mỗi lần hỏi được lưu thành một hội thoại và trả `conversation_id`; gửi lại `conversation_id` đó ở lần hỏi sau để nói tiếp. Hệ thống nạp **40 tin gần nhất nguyên văn** cùng **tóm tắt cuốn chiếu** của phần cũ hơn và **ký ức dài hạn** từ các cuộc trò chuyện trước, nên khi AI hỏi lại một chi tiết (ví dụ \"Anh ở khu vực nào?\") và bạn trả lời \"Hà Nội\", AI hiểu đó là câu trả lời cho câu hỏi ban đầu. Câu nối tiếp ngắn được viết lại thành câu đủ ý trước khi tìm tài liệu (`standalone_question` cho biết AI đã hiểu gì). Ở chế độ `general` chỉ các lượt trước cũng ở chế độ `general` được gửi đi: nội dung tài liệu nội bộ, tóm tắt và ký ức **không** rời khỏi hệ thống. Đặt `save: false` để hỏi một lần không lưu. Xem danh sách bằng `GET /ai/conversations`, chi tiết và xóa bằng `GET`/`DELETE /agents/conversations/{id}`. Trợ lý không có Internet nên không tra được dữ liệu trực tiếp như thời tiết hay giá cả; nó nói rõ điều đó thay vì giả vờ.\n\n**Tìm sâu và rộng qua thẻ.** AI còn đi sang các tài liệu **chung thẻ** với kết quả tìm được (kể cả nhóm khác): các đoạn đó được đánh dấu \"liên quan qua thẻ chung\", AI dùng làm bối cảnh bổ sung và nói rõ khi một ý chỉ dựa vào chúng. `depth: \"deep\"` đi hai bước; `tag_id` giới hạn trong một thẻ. `sources[].tags` và `retrieval.tags_used` cho biết thẻ nào đã nối các tài liệu.\n\n**Đối chiếu nhiều tài liệu và kiểm soát nguồn.** Khi câu hỏi liên quan nhiều tài liệu, AI tổng hợp và trích dẫn từng tài liệu đã dùng (`cross_document: true`). Nếu các tài liệu nói khác nhau, AI **không chọn lặng lẽ** mà báo ở `conflicts` (chủ đề, giá trị khác nhau, mã mục), rồi ưu tiên nguồn hạng cao hơn, cùng hạng thì nguồn mới hơn. Mỗi nguồn có `tier`: `official` (chính thống) > `reviewed` (đã kiểm duyệt) > `unreviewed` (chưa kiểm duyệt, kể cả chữ AI đọc từ ảnh/PDF chưa ai kiểm chứng) > `stale` (quá hạn). `source_policy` giới hạn AI chỉ dùng `official` hoặc `reviewed`; tài liệu khớp nhưng bị loại được đếm ở `retrieval.excluded_by_policy`. `sources[].passages` cho biết đoạn nào (tệp, trang, mục) đã dùng. `item_ids` giới hạn câu trả lời trong vài tài liệu chỉ định.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật (`GET /ai/status` trả `ready: true`).\n- Vai trò `reader` trở lên (không gồm sponsor).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Câu hỏi chứa bí mật hoặc dữ liệu cá nhân, hoặc nhà cung cấp AI từ chối\n- `429`: Hết hạn mức ngày của bạn hoặc hết ngân sách tháng\n- `503`: AI chưa được bật, chưa cấu hình, hoặc quản trị đã tắt chế độ này (xem `GET /ai/status`)\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/ask\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"question\":\"Giao dịch báo ERR_504 thì xử lý thế nào?\",\"mode\":\"documents\"}'\n```",
     "requestBody": {
      "required": true,
      "content": {
@@ -12084,9 +13957,18 @@
         "properties": {
          "question": {
           "type": "string",
-          "minLength": 5,
-          "maxLength": 500,
-          "description": "Câu hỏi bằng ngôn ngữ tự nhiên (5 đến 500 ký tự). Không được chứa mật khẩu, khóa hay số điện thoại."
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "Câu hỏi bằng ngôn ngữ tự nhiên. Câu mở đầu từ 5 đến 500 ký tự; khi có `conversation_id`, câu nối tiếp được phép rất ngắn (ví dụ \"Hà Nội\", \"có\", \"còn bước 3?\") và tối đa 2000 ký tự. Không được chứa mật khẩu, khóa hay số điện thoại."
+         },
+         "conversation_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Mã hội thoại để nói tiếp (bỏ trống để bắt đầu hội thoại mới). Lấy từ `conversation_id` của lần chat hoặc hỏi đáp trước. Với `POST /ai/ask` đó là hội thoại hỏi đáp của chính bạn (xem `GET /ai/conversations`)."
+         },
+         "save": {
+          "type": "boolean",
+          "description": "Có lưu lượt hỏi đáp vào lịch sử để nói tiếp và để AI ghi nhớ không (mặc định `true`). Đặt `false` để hỏi một lần, không lưu."
          },
          "mode": {
           "type": "string",
@@ -12172,11 +14054,102 @@
           "mode": "documents",
           "depth": "deep"
          }
+        },
+        "Nói tiếp hội thoại (câu ngắn)": {
+         "summary": "Nói tiếp hội thoại (câu ngắn)",
+         "value": {
+          "question": "Hà Nội",
+          "mode": "general",
+          "conversation_id": 31
+         }
+        },
+        "Hỏi một lần, không lưu": {
+         "summary": "Hỏi một lần, không lưu",
+         "value": {
+          "question": "Lỗi HTTP 504 Gateway Timeout nghĩa là gì?",
+          "mode": "general",
+          "save": false
+         }
         }
        }
       }
      }
     },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/ai/conversations": {
+   "get": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "Danh sách các cuộc hỏi đáp của chính mình",
+    "operationId": "get_ai_conversations",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": [
+          {
+           "id": 31,
+           "title": "Hôm nay thời tiết thế nào?",
+           "topics": [
+            "thời tiết"
+           ],
+           "summary": null,
+           "created_at": "2026-10-07T03:10:00.000Z",
+           "updated_at": "2026-10-07T03:12:00.000Z",
+           "messages": 4
+          }
+         ],
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     }
+    },
+    "description": "Các cuộc hỏi đáp (`POST /ai/ask`) của **chính bạn**, mới nhất trước, tối đa 50. Chỉ chủ hội thoại thấy được. Xem toàn bộ tin nhắn bằng `GET /agents/conversations/{id}`, xóa bằng `DELETE /agents/conversations/{id}`, tìm lại theo nội dung bằng `GET /agents/conversations/search`. Hội thoại tự xóa sau thời hạn lưu (mặc định 30 ngày).\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên (không gồm sponsor).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/ai/conversations\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
     "security": [
      {
       "bearerAuth": []
@@ -12575,7 +14548,7 @@
       }
      }
     },
-    "description": "**Hỏi bằng tệp.** Gửi thẳng **ảnh chụp lỗi, biểu mẫu, hợp đồng, báo cáo, PDF, Word, Excel, PowerPoint...** (tối đa 5 tệp), kèm câu hỏi hoặc **không cần câu hỏi** (hệ thống tự hiểu bạn cần gì từ nội dung tệp). Không cần đính kèm vào mục nào trước.\n\nHệ thống làm lần lượt:\n\n1. **Đọc**: Word, Excel, PowerPoint, CSV, văn bản tự đọc; ảnh và PDF do AI OCR sang Markdown chuẩn.\n2. **Hiểu**: tóm tắt từng tệp, nêu bạn đang cần gì (`need`), tự sinh 3-6 truy vấn (`search_queries`) chứa đúng mã lỗi, số hiệu, tên, số liệu trong tệp.\n3. **Đối chiếu kho**: mỗi truy vấn tìm theo nghĩa + từ khóa trong kho tri thức (theo quyền xem và `source_policy`), gộp kết quả, AI chấm lại, chọn đa dạng tài liệu.\n4. **Trả lời từ tài liệu của nhóm** (có nguồn: tệp, trang, mục, hạng tin cậy). Tệp của bạn chỉ là **tình huống cần giải**, không bao giờ được coi là nguồn đúng. Chỗ **tệp lệch so với tài liệu chính thức** (số tiền, ngày, bước, phiên bản...) được liệt kê ở `discrepancies`; chỗ các tài liệu mâu thuẫn nhau ở `conflicts`.\n\nChế độ `documents` (mặc định) chỉ dùng tài liệu của nhóm; `hybrid` cho phép thêm phần kiến thức chung, tách riêng và có cảnh báo. Không tìm thấy tài liệu phù hợp thì `insufficient_info: true` kèm `related` và gợi ý, không bịa.\n\n**Riêng tư:** tệp chỉ được đọc để trả lời câu hỏi này, **không lưu vào kho**. Muốn lưu thì tải lên một mục (`POST /items/{id}/attachments`). Tệp chứa bí mật (mật khẩu, khóa...) bị bỏ qua và ghi ở `skipped`. Ảnh/PDF được gửi cho nhà cung cấp AI để đọc. Tốn chi phí AI (đọc tệp + phân tích + trả lời); đặt `ai_ask_file_double_check=true` để AI đọc ảnh/PDF hai lượt cho chính xác hơn (chậm hơn).\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật (`GET /ai/status`).\n- Vai trò `reader` trở lên (không gồm sponsor).\n- Tệp đúng loại cho phép (xem `POST /items/{id}/attachments`), mỗi tệp tối đa 10 MB.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `413`: Quá 5 tệp, hoặc tệp quá lớn\n- `415`: Loại tệp không được phép\n- `422`: Không tệp nào dùng được (xem RD.skipped), câu hỏi chứa bí mật, hoặc tham số sai\n- `429`: Hết hạn mức\n- `503`: AI chưa bật\n\n**Cách gửi:** `multipart/form-data`, trường `file` (lặp lại để gửi tối đa 5 tệp) cùng các trường tùy chọn bên dưới; dùng được ngay trong Swagger UI (nút Choose File) và Postman (Body → form-data). Hoặc gửi **một tệp** dạng thân thô (`Content-Type: application/octet-stream`, header `X-Filename`) và đặt `question`, `mode`, `source_policy`, `item_ids` ở tham số truy vấn (`?question=...`).\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/ask-file\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -F \"file=@anh-loi-thanh-toan.png\" \\\n  -F \"question=Màn hình này báo lỗi gì và xử lý thế nào?\" \\\n  -F \"mode=documents\"\n```",
+    "description": "**Hỏi bằng tệp.** Gửi thẳng **ảnh chụp lỗi, biểu mẫu, hợp đồng, báo cáo, PDF, Word, Excel, PowerPoint...** (tối đa 5 tệp), kèm câu hỏi hoặc **không cần câu hỏi** (hệ thống tự hiểu bạn cần gì từ nội dung tệp). Không cần đính kèm vào mục nào trước.\n\nHệ thống làm lần lượt:\n\n1. **Đọc**: Word, Excel, PowerPoint, CSV, văn bản tự đọc; ảnh và PDF do AI OCR sang Markdown chuẩn; **file ghi âm** (mp3, m4a, wav, webm...) do AI chép lời (xem `POST /ai/transcribe`).\n2. **Hiểu**: tóm tắt từng tệp, nêu bạn đang cần gì (`need`), tự sinh 3-6 truy vấn (`search_queries`) chứa đúng mã lỗi, số hiệu, tên, số liệu trong tệp.\n3. **Đối chiếu kho**: mỗi truy vấn tìm theo nghĩa + từ khóa trong kho tri thức (theo quyền xem và `source_policy`), gộp kết quả, AI chấm lại, chọn đa dạng tài liệu.\n4. **Trả lời từ tài liệu của nhóm** (có nguồn: tệp, trang, mục, hạng tin cậy). Tệp của bạn chỉ là **tình huống cần giải**, không bao giờ được coi là nguồn đúng. Chỗ **tệp lệch so với tài liệu chính thức** (số tiền, ngày, bước, phiên bản...) được liệt kê ở `discrepancies`; chỗ các tài liệu mâu thuẫn nhau ở `conflicts`.\n\nChế độ `documents` (mặc định) chỉ dùng tài liệu của nhóm; `hybrid` cho phép thêm phần kiến thức chung, tách riêng và có cảnh báo. Không tìm thấy tài liệu phù hợp thì `insufficient_info: true` kèm `related` và gợi ý, không bịa.\n\n**Riêng tư:** tệp chỉ được đọc để trả lời câu hỏi này, **không lưu vào kho**. Muốn lưu thì tải lên một mục (`POST /items/{id}/attachments`). Tệp chứa bí mật (mật khẩu, khóa...) bị bỏ qua và ghi ở `skipped`. Ảnh/PDF được gửi cho nhà cung cấp AI để đọc. Tốn chi phí AI (đọc tệp + phân tích + trả lời); đặt `ai_ask_file_double_check=true` để AI đọc ảnh/PDF hai lượt cho chính xác hơn (chậm hơn).\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật (`GET /ai/status`).\n- Vai trò `reader` trở lên (không gồm sponsor).\n- Tệp đúng loại cho phép (xem `POST /items/{id}/attachments`), mỗi tệp tối đa 25 MB.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `413`: Quá 5 tệp, hoặc tệp quá lớn\n- `415`: Loại tệp không được phép\n- `422`: Không tệp nào dùng được (xem RD.skipped), câu hỏi chứa bí mật, hoặc tham số sai\n- `429`: Hết hạn mức\n- `503`: AI chưa bật\n\n**Cách gửi:** `multipart/form-data`, trường `file` (lặp lại để gửi tối đa 5 tệp) cùng các trường tùy chọn bên dưới; dùng được ngay trong Swagger UI (nút Choose File) và Postman (Body → form-data). Hoặc gửi **một tệp** dạng thân thô (`Content-Type: application/octet-stream`, header `X-Filename`) và đặt `question`, `mode`, `source_policy`, `item_ids` ở tham số truy vấn (`?question=...`).\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/ask-file\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -F \"file=@anh-loi-thanh-toan.png\" \\\n  -F \"question=Màn hình này báo lỗi gì và xử lý thế nào?\" \\\n  -F \"mode=documents\"\n```",
     "requestBody": {
      "required": true,
      "content": {
@@ -12593,7 +14566,7 @@
            "format": "binary"
           },
           "maxItems": 5,
-          "description": "Ảnh/PDF/Word/Excel/PowerPoint... cần hỏi (tối đa 5 tệp, mỗi tệp tối đa 10 MB)."
+          "description": "Ảnh/PDF/Word/Excel/PowerPoint... cần hỏi (tối đa 5 tệp, mỗi tệp tối đa 25 MB)."
          },
          "question": {
           "type": "string",
@@ -12628,6 +14601,838 @@
         "type": "string",
         "format": "binary",
         "description": "Nội dung file thô (một tệp), kèm header X-Filename."
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/ai/transcribe": {
+   "post": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "CHÉP LỜI GHI ÂM: gửi file ghi âm (mp3, m4a, wav, webm...), AI chép thành chữ có mốc thời gian (không lưu gì)",
+    "operationId": "post_ai_transcribe",
+    "parameters": [
+     {
+      "name": "X-Filename",
+      "in": "header",
+      "required": false,
+      "description": "Chỉ cần khi gửi thân thô (octet-stream): tên file mã hóa bằng encodeURIComponent. Không cần với form-data.",
+      "schema": {
+       "type": "string"
+      },
+      "example": "huong-dan.pdf"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "filename": "hop-giao-ban.m4a",
+          "duration_sec": 512.4,
+          "language": "vi",
+          "text": "Biên bản họp ngày 12 tháng 9: Kho Hà Nội chuyển mã kho thành KHO-4471. Anh Minh phụ trách kiểm kê, hạn chót là thứ Sáu.\n\nNgân sách quý 4 là 250 triệu đồng.",
+          "markdown": "> **Bản ghi âm:** hop-giao-ban.m4a · dài 08:32 · AI chép lời, có thể nghe nhầm tên riêng và con số.\n\n### 00:00 – 04:07\n\nBiên bản họp ngày 12 tháng 9: ...\n\n### 04:07 – 08:32\n\nNgân sách quý 4 là 250 triệu đồng.",
+          "segments": [
+           {
+            "index": 1,
+            "start": 0,
+            "end": 247.3,
+            "text": "Biên bản họp ngày 12 tháng 9: ..."
+           },
+           {
+            "index": 2,
+            "start": 247.3,
+            "end": 512.4,
+            "text": "Ngân sách quý 4 là 250 triệu đồng."
+           }
+          ],
+          "uncertain": [
+           {
+            "at": "00:00",
+            "heard": "KHO-4471",
+            "alternatives": [
+             "KHO-4417"
+            ],
+            "reason": "Hai mô hình chép lời nghe khác nhau",
+            "text": "KHO-4471 / KHO-4417"
+           }
+          ],
+          "gain_db": 0,
+          "model": "gpt-transcribe",
+          "models": [
+           "gpt-transcribe",
+           "gpt-4o-transcribe"
+          ],
+          "cost_usd": 0.59,
+          "notes": [],
+          "note": "Text written by AI from the recording; names and numbers may be misheard. Nothing was stored."
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Không có tệp nào",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 400,
+         "RM": "Không có tệp nào"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "413": {
+      "description": "Tệp quá 25 MB, hoặc bản ghi dài quá giới hạn phút",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 413,
+         "RM": "Tệp quá 25 MB, hoặc bản ghi dài quá giới hạn phút"
+        }
+       }
+      }
+     },
+     "415": {
+      "description": "Không phải file ghi âm, hoặc âm thanh hỏng không đọc được",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 415,
+         "RM": "Không phải file ghi âm, hoặc âm thanh hỏng không đọc được"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Gửi nhiều hơn một tệp, tham số sai, gợi ý chứa bí mật, hoặc AI không chép được bản ghi",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Gửi nhiều hơn một tệp, tham số sai, gợi ý chứa bí mật, hoặc AI không chép được bản ghi"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Hết hạn mức",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 429,
+         "RM": "Hết hạn mức"
+        }
+       }
+      }
+     },
+     "503": {
+      "description": "AI chưa bật hoặc tính năng transcribe bị tắt",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 503,
+         "RM": "AI chưa bật hoặc tính năng transcribe bị tắt"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Chép lời file ghi âm bằng AI.** Gửi một file ghi âm (cuộc họp, cuộc gọi, bài giảng, ghi chú giọng nói), nhận lại toàn bộ lời nói dạng chữ, có dấu câu và **mốc thời gian** theo từng đoạn. Không lưu gì.\n\nHệ thống làm lần lượt:\n\n1. **Đọc âm thanh**: nhận mp3, m4a, aac, wav, ogg, oga, opus, webm, flac, amr, wma, 3gp (kiểm tra nội dung thật của tệp, tối đa 25 MB). Máy chủ tự giải mã và đo độ dài; bản ghi dài hơn `ai_transcribe_max_minutes` (mặc định 60 phút) bị từ chối (413).\n2. **Chuẩn hóa độ to và cắt đoạn thông minh**: đo độ to của cả tệp; **tệp nói nhỏ, thu xa micro hay ghi âm yếu được khuếch đại tự động** (tối đa 40 dB, có chặn méo) trước khi phân tích, nên giọng nhỏ không bị coi là im lặng (`gain_db` cho biết đã khuếch đại bao nhiêu). Sau đó chia thành các đoạn khoảng 4 phút, **cắt đúng ở khoảng lặng** (không cắt giữa câu) và đổi sang WAV không nén mono 16 kHz. Đoạn im lặng thật sự được bỏ qua (không tốn tiền, không bị AI \"bịa\" chữ), nhưng không bao giờ bỏ cả tệp; tệp hoàn toàn không có âm thanh bị từ chối (422).\n3. **Chép lời bằng hai mô hình rồi đối chiếu**: các đoạn được gửi song song cho mô hình chính (`AI_MODEL_TRANSCRIBE`, mặc định `gpt-transcribe`) và mô hình đối chiếu (`AI_MODEL_TRANSCRIBE_CHECK`, mặc định `gpt-4o-transcribe`), kèm gợi ý giữ nguyên tên riêng, mã số, con số và các thuật ngữ bạn gửi ở `hints`. Chỗ hai bản khác nhau, AI ghép bản đúng nhất theo ngữ cảnh. **Tên riêng, mã số, con số mà hai bên không thống nhất được** nằm ở `uncertain` (kèm mốc thời gian và các cách nghe khác) và cuối `markdown` mục \"Cần nghe lại để kiểm chứng\". Chi phí cao hơn (khoảng 0,04 USD cho 30 giây theo ước tính hiện tại), đổi lại chính xác hơn; đặt `ai_transcribe_double_check=false` để chỉ dùng một mô hình.\n4. **Ghép kết quả**: `text` là toàn bộ lời chép; `segments` là từng đoạn (`start`, `end` tính bằng giây); `markdown` là bản trình bày sẵn có tiêu đề mốc thời gian, dùng để lưu thành ghi chú hoặc đưa vào `POST /ai/draft-item/text`.\n\nFile ghi âm còn dùng được ở: **hỏi bằng tệp** (`POST /ai/ask-file`), **nhập tri thức thông minh** (`POST /ai/draft-item`, AI sắp xếp nội dung cuộc họp thành quyết định, bước làm, người phụ trách) và **tệp đính kèm** (tự chép lời rồi ghi nhớ để tìm kiếm; chạy lại bằng `POST /attachments/{id}/ai-extract`).\n\nChữ do AI nghe có thể **nhầm tên riêng và con số**: hãy nghe lại chỗ quan trọng. Tắt tính năng bằng cài đặt `ai_feature_transcribe=false`.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật (`GET /ai/status`), tính năng `transcribe` không bị tắt.\n- Vai trò `reader` trở lên (không gồm sponsor).\n- Một file ghi âm mỗi lần, tối đa 25 MB.\n\n**Lỗi thường gặp:**\n- `400`: Không có tệp nào\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `413`: Tệp quá 25 MB, hoặc bản ghi dài quá giới hạn phút\n- `415`: Không phải file ghi âm, hoặc âm thanh hỏng không đọc được\n- `422`: Gửi nhiều hơn một tệp, tham số sai, gợi ý chứa bí mật, hoặc AI không chép được bản ghi\n- `429`: Hết hạn mức\n- `503`: AI chưa bật hoặc tính năng transcribe bị tắt\n\n**Cách gửi:** `multipart/form-data`, trường `file` (một file ghi âm) cùng các trường tùy chọn bên dưới. Hoặc gửi file dạng thân thô (`Content-Type: application/octet-stream`, header `X-Filename`) và đặt các trường ở tham số truy vấn.\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/transcribe\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -F \"file=@hop-giao-ban.m4a\" \\\n  -F \"language=vi\" \\\n  -F \"hints=KHO-4471, kiểm kê\"\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "file"
+        ],
+        "properties": {
+         "file": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "format": "binary"
+          },
+          "maxItems": 1,
+          "description": "File ghi âm cần chép lời (mp3, m4a, aac, wav, ogg, opus, webm, flac, amr, wma, 3gp)."
+         },
+         "language": {
+          "type": "string",
+          "enum": [
+           "auto",
+           "vi",
+           "en"
+          ],
+          "description": "Ngôn ngữ nói trong bản ghi: `vi` (tiếng Việt), `en` (tiếng Anh) hoặc `auto` (AI tự nhận biết). Bỏ trống thì dùng cài đặt `ai_transcribe_language` (mặc định `vi`)."
+         },
+         "hints": {
+          "type": "string",
+          "description": "Tên riêng, mã số, thuật ngữ có trong bản ghi để AI nghe đúng hơn (tối đa 300 ký tự), ví dụ \"KHO-4471, anh Minh, kiểm kê\"."
+         }
+        }
+       }
+      },
+      "application/octet-stream": {
+       "schema": {
+        "type": "string",
+        "format": "binary",
+        "description": "Nội dung file thô (một tệp), kèm header X-Filename."
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/ai/draft-item": {
+   "post": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "NHẬP TRI THỨC THÔNG MINH: gửi tệp, AI đọc và soạn sẵn bản nháp mục đầy đủ trường (loại, tiêu đề, nội dung, mảng, thẻ, rủi ro, ngày, bước/biến) kèm độ tin cậy và mục trùng",
+    "operationId": "post_ai_draft_item",
+    "parameters": [
+     {
+      "name": "X-Filename",
+      "in": "header",
+      "required": false,
+      "description": "Chỉ cần khi gửi thân thô (octet-stream): tên file mã hóa bằng encodeURIComponent. Không cần với form-data.",
+      "schema": {
+       "type": "string"
+      },
+      "example": "huong-dan.pdf"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "drafts": [
+           {
+            "index": 1,
+            "source_files": [
+             1
+            ],
+            "type": "runbook",
+            "type_reason": "Tài liệu mô tả các bước xử lý khi cổng thanh toán báo lỗi.",
+            "title": "Cổng thanh toán: xử lý lỗi timeout ERR_504",
+            "summary": "Các bước xử lý khi giao dịch báo ERR_504 sau 30 giây.",
+            "content": "## Dấu hiệu\n\nGiao dịch báo **ERR_504** sau 30 giây.\n\n## Các bước\n\n1. Kiểm tra trạng thái nhà cung cấp.\n2. Khởi động lại payment-worker.",
+            "space_id": 1,
+            "tags": [
+             {
+              "id": 2,
+              "name": "Thanh toán",
+              "kind": "topic"
+             }
+            ],
+            "new_tags": [
+             {
+              "name": "Cổng thanh toán",
+              "kind": "topic"
+             }
+            ],
+            "risk_level": "R3",
+            "risk_reason": "Runbook cho hệ thống thanh toán lõi.",
+            "sensitivity_level": "internal",
+            "sensitivity_reason": "Hướng dẫn nội bộ, không có dữ liệu cá nhân.",
+            "effective_date": "2026-10-01",
+            "next_review_date": null,
+            "runbook": {
+             "symptom": "Giao dịch báo ERR_504 sau 30 giây",
+             "affected_system": "payment-worker",
+             "severity_level": "high",
+             "prerequisites": "Quyền SSH vào máy chủ thanh toán",
+             "steps": [
+              {
+               "action": "Kiểm tra trạng thái nhà cung cấp",
+               "expected": "Trang trạng thái báo bình thường",
+               "dangerous": false
+              },
+              {
+               "action": "Khởi động lại payment-worker",
+               "expected": "Hàng đợi giảm về 0 trong 5 phút",
+               "dangerous": true
+              }
+             ],
+             "verification": "Hàng đợi về 0",
+             "rollback": "",
+             "contact_info": "oncall@congty.vn"
+            },
+            "confidence": {
+             "type": {
+              "score": 0.95,
+              "evidence": "Các bước xử lý"
+             },
+             "title": {
+              "score": 0.8,
+              "evidence": "Lỗi ERR_504 cổng thanh toán"
+             },
+             "effective_date": {
+              "score": 0.9,
+              "evidence": "Áp dụng từ 01/10/2026"
+             }
+            },
+            "uncertain": [
+             "Mã lỗi trong ảnh có thể là ERR_504 hoặc ERR_5O4"
+            ],
+            "missing": [
+             "Chưa có bước hoàn tác (rollback)"
+            ],
+            "missing_required": [],
+            "secret_warning": false,
+            "similar": [
+             {
+              "id": 12,
+              "title": "Cổng thanh toán: lỗi timeout ERR_504",
+              "status": "approved",
+              "tier": "official",
+              "tier_label": "Nguồn chính thống",
+              "reason": "content",
+              "score": 0.83,
+              "excerpt": "Khởi động lại worker payment-worker rồi theo dõi hàng đợi 5 phút."
+             }
+            ]
+           }
+          ],
+          "split_reason": "",
+          "language": "vi",
+          "files": [
+           {
+            "filename": "quy-trinh-504.pdf",
+            "kind": "document",
+            "filetype": "pdf",
+            "size": 183422,
+            "method": "ai_ocr",
+            "pages": 2,
+            "chars": 1840,
+            "uncertain": 1,
+            "preview": "## Xử lý lỗi ERR_504 ..."
+           }
+          ],
+          "skipped": [],
+          "spaces_available": 3,
+          "note": "Bản nháp do AI soạn từ nguồn của bạn, chưa lưu vào kho. Hãy xem lại các trường có độ tin cậy thấp rồi tạo mục (POST /items) và đính kèm tệp gốc làm bằng chứng.",
+          "model": "gpt-5.4-2026-03-05",
+          "cost_usd": 0.061
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "413": {
+      "description": "Quá 5 tệp, hoặc tệp quá lớn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 413,
+         "RM": "Quá 5 tệp, hoặc tệp quá lớn"
+        }
+       }
+      }
+     },
+     "415": {
+      "description": "Loại tệp không được phép",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 415,
+         "RM": "Loại tệp không được phép"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Không tệp nào dùng được (xem RD.skipped), hoặc tham số sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Không tệp nào dùng được (xem RD.skipped), hoặc tham số sai"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Hết hạn mức",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 429,
+         "RM": "Hết hạn mức"
+        }
+       }
+      }
+     },
+     "503": {
+      "description": "AI chưa bật hoặc tính năng smart_import bị tắt",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 503,
+         "RM": "AI chưa bật hoặc tính năng smart_import bị tắt"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Nhập tri thức thông minh từ tệp.** Gửi tối đa 5 tệp (quy trình, quy chế, biên bản, ảnh chụp, hướng dẫn, prompt...), AI soạn sẵn **bản nháp mục đầy đủ trường** để bạn chỉ cần xem lại và xác nhận.\n\nHệ thống làm lần lượt:\n\n1. **Đọc**: Word, Excel, PowerPoint, CSV, văn bản tự đọc; ảnh và PDF do AI đọc chữ sang Markdown; **file ghi âm** (cuộc họp, cuộc gọi, bài giảng) do AI chép lời rồi sắp xếp thành tri thức (quyết định, bước làm, người phụ trách). Tệp có bí mật bị bỏ qua (xem `skipped`).\n2. **Phân loại**: chọn loại mục (`document`, `article`, `runbook`, `prompt`) rồi điền **mọi trường** của loại đó: tiêu đề, tóm tắt, nội dung Markdown, mảng, thẻ có sẵn và thẻ mới đề xuất, mức rủi ro, độ nhạy cảm, ngày hiệu lực/rà soát (chỉ khi nguồn ghi rõ), các bước runbook, biến prompt.\n3. **Độ tin cậy có căn cứ**: `confidence` cho từng trường (0-1) kèm đoạn trích căn cứ; `uncertain` (chỗ đọc chưa chắc), `missing` (thông tin người duyệt sẽ cần mà nguồn thiếu).\n4. **Tách chủ đề**: tài liệu gồm nhiều chủ đề độc lập thành nhiều bản nháp (tối đa 5, tắt bằng `allow_split=false`).\n5. **Kiểm tra lại đầu ra AI**: chỉ nhận mảng và thẻ có thật, ngày đúng định dạng, bước/biến hợp lệ; `missing_required` báo trường bắt buộc còn thiếu; `secret_warning` khi nội dung có bí mật.\n6. **Phát hiện trùng**: `similar` gồm mục có tiêu đề tương tự (kể cả nháp) và mục có nội dung gần nghĩa trong kho.\n\n**Không lưu gì**: muốn lưu thì gửi bản nháp đã xem lại lên `POST /items` (thêm `tags`, `change_note`), rồi đính kèm tệp gốc bằng `POST /items/{id}/attachments` để làm bằng chứng nguồn. Thẻ mới (`new_tags`) cần người có quyền tạo trước bằng `POST /tags`.\n\n**Ai gọi được:** `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật (`GET /ai/status`), tính năng `smart_import` không bị tắt.\n- Vai trò `contributor`, `moderator` hoặc `admin`.\n- Tệp đúng loại cho phép (xem `POST /items/{id}/attachments`).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `413`: Quá 5 tệp, hoặc tệp quá lớn\n- `415`: Loại tệp không được phép\n- `422`: Không tệp nào dùng được (xem RD.skipped), hoặc tham số sai\n- `429`: Hết hạn mức\n- `503`: AI chưa bật hoặc tính năng smart_import bị tắt\n\n**Cách gửi:** `multipart/form-data`, trường `file` (lặp lại để gửi tối đa 5 tệp) cùng các trường tùy chọn bên dưới. Hoặc gửi **một tệp** dạng thân thô (`Content-Type: application/octet-stream`, header `X-Filename`) và đặt các trường ở tham số truy vấn.\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/draft-item\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -F \"file=@quy-trinh-504.pdf\" \\\n  -F \"type=runbook\" \\\n  -F \"allow_split=true\"\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "file"
+        ],
+        "properties": {
+         "file": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "format": "binary"
+          },
+          "maxItems": 5,
+          "description": "Tệp nguồn để AI đọc và soạn bản nháp (tối đa 5 tệp)."
+         },
+         "type": {
+          "type": "string",
+          "enum": [
+           "document",
+           "article",
+           "prompt",
+           "runbook"
+          ],
+          "description": "Loại mục mong muốn (AI vẫn đổi nếu nội dung rõ ràng là loại khác). Bỏ trống để AI tự phân loại."
+         },
+         "space_id": {
+          "type": "integer",
+          "description": "Mảng ưu tiên. Bỏ trống để AI tự chọn theo nội dung."
+         },
+         "instructions": {
+          "type": "string",
+          "description": "Dặn thêm cho AI (tối đa 300 ký tự), ví dụ \"chỉ lấy phần quy trình, bỏ phụ lục\"."
+         },
+         "allow_split": {
+          "type": "boolean",
+          "description": "`true` (mặc định): tách các chủ đề độc lập thành nhiều bản nháp. `false`: luôn một bản nháp."
+         }
+        }
+       }
+      },
+      "application/octet-stream": {
+       "schema": {
+        "type": "string",
+        "format": "binary",
+        "description": "Nội dung file thô (một tệp), kèm header X-Filename."
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/ai/draft-item/text": {
+   "post": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "NHẬP TRI THỨC THÔNG MINH từ văn bản dán vào: AI soạn sẵn bản nháp mục đầy đủ trường, chưa lưu",
+    "operationId": "post_ai_draft_item_text",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "drafts": [
+           {
+            "index": 1,
+            "source_files": [
+             1
+            ],
+            "type": "runbook",
+            "type_reason": "Tài liệu mô tả các bước xử lý khi cổng thanh toán báo lỗi.",
+            "title": "Cổng thanh toán: xử lý lỗi timeout ERR_504",
+            "summary": "Các bước xử lý khi giao dịch báo ERR_504 sau 30 giây.",
+            "content": "## Dấu hiệu\n\nGiao dịch báo **ERR_504** sau 30 giây.\n\n## Các bước\n\n1. Kiểm tra trạng thái nhà cung cấp.\n2. Khởi động lại payment-worker.",
+            "space_id": 1,
+            "tags": [
+             {
+              "id": 2,
+              "name": "Thanh toán",
+              "kind": "topic"
+             }
+            ],
+            "new_tags": [
+             {
+              "name": "Cổng thanh toán",
+              "kind": "topic"
+             }
+            ],
+            "risk_level": "R3",
+            "risk_reason": "Runbook cho hệ thống thanh toán lõi.",
+            "sensitivity_level": "internal",
+            "sensitivity_reason": "Hướng dẫn nội bộ, không có dữ liệu cá nhân.",
+            "effective_date": "2026-10-01",
+            "next_review_date": null,
+            "runbook": {
+             "symptom": "Giao dịch báo ERR_504 sau 30 giây",
+             "affected_system": "payment-worker",
+             "severity_level": "high",
+             "prerequisites": "Quyền SSH vào máy chủ thanh toán",
+             "steps": [
+              {
+               "action": "Kiểm tra trạng thái nhà cung cấp",
+               "expected": "Trang trạng thái báo bình thường",
+               "dangerous": false
+              },
+              {
+               "action": "Khởi động lại payment-worker",
+               "expected": "Hàng đợi giảm về 0 trong 5 phút",
+               "dangerous": true
+              }
+             ],
+             "verification": "Hàng đợi về 0",
+             "rollback": "",
+             "contact_info": "oncall@congty.vn"
+            },
+            "confidence": {
+             "type": {
+              "score": 0.95,
+              "evidence": "Các bước xử lý"
+             },
+             "title": {
+              "score": 0.8,
+              "evidence": "Lỗi ERR_504 cổng thanh toán"
+             },
+             "effective_date": {
+              "score": 0.9,
+              "evidence": "Áp dụng từ 01/10/2026"
+             }
+            },
+            "uncertain": [
+             "Mã lỗi trong ảnh có thể là ERR_504 hoặc ERR_5O4"
+            ],
+            "missing": [
+             "Chưa có bước hoàn tác (rollback)"
+            ],
+            "missing_required": [],
+            "secret_warning": false,
+            "similar": [
+             {
+              "id": 12,
+              "title": "Cổng thanh toán: lỗi timeout ERR_504",
+              "status": "approved",
+              "tier": "official",
+              "tier_label": "Nguồn chính thống",
+              "reason": "content",
+              "score": 0.83,
+              "excerpt": "Khởi động lại worker payment-worker rồi theo dõi hàng đợi 5 phút."
+             }
+            ]
+           }
+          ],
+          "split_reason": "",
+          "language": "vi",
+          "files": [
+           {
+            "filename": "quy-trinh-504.pdf",
+            "kind": "document",
+            "filetype": "pdf",
+            "size": 183422,
+            "method": "ai_ocr",
+            "pages": 2,
+            "chars": 1840,
+            "uncertain": 1,
+            "preview": "## Xử lý lỗi ERR_504 ..."
+           }
+          ],
+          "skipped": [],
+          "spaces_available": 3,
+          "note": "Bản nháp do AI soạn từ nguồn của bạn, chưa lưu vào kho. Hãy xem lại các trường có độ tin cậy thấp rồi tạo mục (POST /items) và đính kèm tệp gốc làm bằng chứng.",
+          "model": "gpt-5.4-2026-03-05",
+          "cost_usd": 0.061
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Văn bản quá ngắn/quá dài, chứa bí mật hoặc dữ liệu cá nhân, hoặc AI không soạn được bản nháp",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Văn bản quá ngắn/quá dài, chứa bí mật hoặc dữ liệu cá nhân, hoặc AI không soạn được bản nháp"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Hết hạn mức",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 429,
+         "RM": "Hết hạn mức"
+        }
+       }
+      }
+     },
+     "503": {
+      "description": "AI chưa bật hoặc tính năng smart_import bị tắt",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 503,
+         "RM": "AI chưa bật hoặc tính năng smart_import bị tắt"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Nhập tri thức thông minh từ văn bản dán vào** (email, tin nhắn, ghi chú cuộc họp, nội dung copy từ trang khác; 20 đến 100.000 ký tự). Kết quả giống `POST /ai/draft-item`.\n\nHệ thống làm lần lượt:\n\n1. **Đọc**: Word, Excel, PowerPoint, CSV, văn bản tự đọc; ảnh và PDF do AI đọc chữ sang Markdown; **file ghi âm** (cuộc họp, cuộc gọi, bài giảng) do AI chép lời rồi sắp xếp thành tri thức (quyết định, bước làm, người phụ trách). Tệp có bí mật bị bỏ qua (xem `skipped`).\n2. **Phân loại**: chọn loại mục (`document`, `article`, `runbook`, `prompt`) rồi điền **mọi trường** của loại đó: tiêu đề, tóm tắt, nội dung Markdown, mảng, thẻ có sẵn và thẻ mới đề xuất, mức rủi ro, độ nhạy cảm, ngày hiệu lực/rà soát (chỉ khi nguồn ghi rõ), các bước runbook, biến prompt.\n3. **Độ tin cậy có căn cứ**: `confidence` cho từng trường (0-1) kèm đoạn trích căn cứ; `uncertain` (chỗ đọc chưa chắc), `missing` (thông tin người duyệt sẽ cần mà nguồn thiếu).\n4. **Tách chủ đề**: tài liệu gồm nhiều chủ đề độc lập thành nhiều bản nháp (tối đa 5, tắt bằng `allow_split=false`).\n5. **Kiểm tra lại đầu ra AI**: chỉ nhận mảng và thẻ có thật, ngày đúng định dạng, bước/biến hợp lệ; `missing_required` báo trường bắt buộc còn thiếu; `secret_warning` khi nội dung có bí mật.\n6. **Phát hiện trùng**: `similar` gồm mục có tiêu đề tương tự (kể cả nháp) và mục có nội dung gần nghĩa trong kho.\n\n**Không lưu gì**: muốn lưu thì gửi bản nháp đã xem lại lên `POST /items` (thêm `tags`, `change_note`), rồi đính kèm tệp gốc bằng `POST /items/{id}/attachments` để làm bằng chứng nguồn. Thẻ mới (`new_tags`) cần người có quyền tạo trước bằng `POST /tags`.\n\nVăn bản chứa mật khẩu, khóa hay dữ liệu cá nhân bị từ chối (422) trước khi gửi AI.\n\n**Ai gọi được:** `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật (`GET /ai/status`), tính năng `smart_import` không bị tắt.\n- Vai trò `contributor`, `moderator` hoặc `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Văn bản quá ngắn/quá dài, chứa bí mật hoặc dữ liệu cá nhân, hoặc AI không soạn được bản nháp\n- `429`: Hết hạn mức\n- `503`: AI chưa bật hoặc tính năng smart_import bị tắt\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/draft-item/text\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"text\":\"Biên bản họp 03/10: Từ ngày 01/11/2026 hạn mức chi một lần tối đa 5 triệu đồng; trên mức này cần trưởng bộ phận duyệt...\",\"type\":\"document\",\"allow_split\":true}'\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "text": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 100000,
+          "description": "Nội dung văn bản. Với ký ức (`PUT /agents/memory/{id}`): một câu tự đủ nghĩa (8 đến 300 ký tự). Với nhập tri thức (`POST /ai/draft-item/text`): văn bản nguồn cần AI soạn thành mục (20 đến 100.000 ký tự). Không được chứa mật khẩu, khóa; email và số điện thoại sẽ bị che hoặc từ chối."
+         },
+         "type": {
+          "type": "string",
+          "enum": [
+           "document",
+           "article",
+           "prompt",
+           "runbook"
+          ],
+          "description": "Loại nội dung: `document` (tài liệu), `article` (bài viết tri thức), `prompt` (câu lệnh cho AI), `runbook` (quy trình xử lý lỗi)."
+         },
+         "space_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Mã mảng (nhóm nội dung). Xem danh sách bằng `GET /spaces`."
+         },
+         "instructions": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Dặn thêm cho AI khi soạn bản nháp (tối đa 500 ký tự khi gửi JSON, 300 ký tự khi gửi tệp), ví dụ \"chỉ lấy phần quy trình, bỏ phụ lục\"."
+         },
+         "allow_split": {
+          "type": "boolean",
+          "default": true,
+          "description": "`true` (mặc định): nếu nguồn gồm nhiều chủ đề độc lập thì AI tách thành nhiều bản nháp (tối đa 5). `false`: luôn một bản nháp."
+         }
+        },
+        "required": [
+         "text"
+        ]
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "text": "Biên bản họp 03/10: Từ ngày 01/11/2026 hạn mức chi một lần tối đa 5 triệu đồng; trên mức này cần trưởng bộ phận duyệt...",
+          "type": "document",
+          "allow_split": true
+         }
+        }
        }
       }
      }
@@ -12793,7 +15598,7 @@
       }
      }
     },
-    "description": "Hỏi AI về nội dung một **ảnh** (png, jpg, webp, gif) hoặc **PDF** đã đính kèm vào mục: AI nhìn trực tiếp vào tệp (đọc chữ, bảng, biểu đồ, sơ đồ, ảnh chụp màn hình) rồi trả lời. Không lưu gì. Nếu muốn lưu chữ để tìm kiếm về sau, dùng `POST /attachments/{id}/ai-extract`. Tệp của mục **hạn chế** không bao giờ được gửi cho AI. Tệp phải qua kiểm tra toàn vẹn. Bỏ trống `question` thì AI mô tả và tóm tắt tệp. Tệp doc, xls, ppt cũ, bmp, zip chưa đọc được (trả 415 kèm gợi ý chuyển đổi).\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật.\n- Bạn xem được mục chứa tệp.\n- Mã tệp lấy từ `GET /items/{id}/attachments` (cột `ai_readable` là `true`).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có tệp hoặc không có quyền xem\n- `415`: Loại tệp AI chưa đọc được (kèm gợi ý chuyển đổi)\n- `422`: Tệp của mục hạn chế, hoặc câu hỏi chứa bí mật\n- `429`: Hết hạn mức\n- `500`: Tệp lưu trên máy chủ không khớp mã băm (bị hỏng)\n- `503`: AI chưa bật\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/analyze\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"attachment_id\":5,\"question\":\"Sơ đồ này mô tả luồng xử lý nào và có những bước nào?\"}'\n```",
+    "description": "Hỏi AI về nội dung một **ảnh** (png, jpg/jfif, webp, gif, bmp, tiff, avif, heic) hoặc **PDF** đã đính kèm vào mục: AI nhìn trực tiếp vào tệp (đọc chữ, bảng, biểu đồ, sơ đồ, ảnh chụp màn hình) rồi trả lời. Không lưu gì. Nếu muốn lưu chữ để tìm kiếm về sau, dùng `POST /attachments/{id}/ai-extract`. Tệp của mục **hạn chế** không bao giờ được gửi cho AI. Tệp phải qua kiểm tra toàn vẹn. Bỏ trống `question` thì AI mô tả và tóm tắt tệp. Tệp doc, xls, ppt cũ, bmp, zip chưa đọc được (trả 415 kèm gợi ý chuyển đổi).\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật.\n- Bạn xem được mục chứa tệp.\n- Mã tệp lấy từ `GET /items/{id}/attachments` (cột `ai_readable` là `true`).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có tệp hoặc không có quyền xem\n- `415`: Loại tệp AI chưa đọc được (kèm gợi ý chuyển đổi)\n- `422`: Tệp của mục hạn chế, hoặc câu hỏi chứa bí mật\n- `429`: Hết hạn mức\n- `500`: Tệp lưu trên máy chủ không khớp mã băm (bị hỏng)\n- `503`: AI chưa bật\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/analyze\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"attachment_id\":5,\"question\":\"Sơ đồ này mô tả luồng xử lý nào và có những bước nào?\"}'\n```",
     "requestBody": {
      "required": true,
      "content": {
@@ -12804,13 +15609,13 @@
          "attachment_id": {
           "type": "integer",
           "minimum": 1,
-          "description": "Mã tệp đính kèm (lấy từ `GET /items/{id}/attachments`). Chỉ ảnh (png, jpg, webp, gif) và PDF mới cho AI đọc được."
+          "description": "Mã tệp đính kèm (lấy từ `GET /items/{id}/attachments`). Chỉ ảnh (png, jpg/jfif, webp, gif, bmp, tiff, avif, heic) và PDF mới cho AI đọc được."
          },
          "question": {
           "type": "string",
           "minLength": 3,
           "maxLength": 500,
-          "description": "Câu hỏi bằng ngôn ngữ tự nhiên (5 đến 500 ký tự). Không được chứa mật khẩu, khóa hay số điện thoại."
+          "description": "Câu hỏi bằng ngôn ngữ tự nhiên. Câu mở đầu từ 5 đến 500 ký tự; khi có `conversation_id`, câu nối tiếp được phép rất ngắn (ví dụ \"Hà Nội\", \"có\", \"còn bước 3?\") và tối đa 2000 ký tự. Không được chứa mật khẩu, khóa hay số điện thoại."
          }
         },
         "required": [
@@ -13125,7 +15930,7 @@
       "name": "category",
       "in": "query",
       "required": false,
-      "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ).",
+      "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`.",
       "schema": {
        "type": "string",
        "enum": [
@@ -13370,7 +16175,7 @@
            "quality",
            "task"
           ],
-          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ)."
+          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`."
          },
          "description": {
           "type": "string",
@@ -13551,7 +16356,7 @@
            "quality",
            "task"
           ],
-          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ)."
+          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`."
          },
          "description": {
           "type": "string",
@@ -14341,7 +17146,7 @@
           "type": "string",
           "minLength": 8,
           "maxLength": 300,
-          "description": "Nội dung ký ức: một câu tự đủ nghĩa (8 đến 300 ký tự). Không được chứa mật khẩu, khóa; email và số điện thoại sẽ bị che."
+          "description": "Nội dung văn bản. Với ký ức (`PUT /agents/memory/{id}`): một câu tự đủ nghĩa (8 đến 300 ký tự). Với nhập tri thức (`POST /ai/draft-item/text`): văn bản nguồn cần AI soạn thành mục (20 đến 100.000 ký tự). Không được chứa mật khẩu, khóa; email và số điện thoại sẽ bị che hoặc từ chối."
          },
          "importance": {
           "type": "integer",
@@ -15033,7 +17838,7 @@
       "name": "scope",
       "in": "query",
       "required": false,
-      "description": "Phạm vi danh sách: `mine` (của tôi), `team` (do đồng nghiệp chia sẻ), `all` (cả hai, mặc định).",
+      "description": "Phạm vi danh sách: `mine` (của tôi), `team` (do đồng nghiệp chia sẻ), `all` (cả hai, mặc định). Với tìm trên Internet (`POST /ai/web/ask`): `official` (chỉ trang chính thống), `balanced` (chính thống trước, thiếu thì mở rộng), `open` (toàn Internet trừ trang bị chặn).",
       "schema": {
        "type": "string",
        "enum": [
@@ -16315,7 +19120,7 @@
          "conversation_id": {
           "type": "integer",
           "minimum": 1,
-          "description": "Mã hội thoại để nói tiếp (bỏ trống để bắt đầu hội thoại mới). Lấy từ `conversation_id` của lần chat trước."
+          "description": "Mã hội thoại để nói tiếp (bỏ trống để bắt đầu hội thoại mới). Lấy từ `conversation_id` của lần chat hoặc hỏi đáp trước. Với `POST /ai/ask` đó là hội thoại hỏi đáp của chính bạn (xem `GET /ai/conversations`)."
          }
         },
         "required": [
@@ -16329,6 +19134,276 @@
           "message": "Giao dịch báo ERR_504 thì xử lý thế nào?"
          }
         }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/agents/{id}/chat-file": {
+   "post": {
+    "tags": [
+     "agents"
+    ],
+    "summary": "Chat với Agent kèm tệp: file ghi âm (tự chép lời), ảnh, PDF, Word, Excel...",
+    "operationId": "post_agents_id_chat_file",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     },
+     {
+      "name": "X-Filename",
+      "in": "header",
+      "required": false,
+      "description": "Chỉ cần khi gửi thân thô (octet-stream): tên file mã hóa bằng encodeURIComponent. Không cần với form-data.",
+      "schema": {
+       "type": "string"
+      },
+      "example": "huong-dan.pdf"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "conversation_id": 22,
+          "answer": "Anh Hùng phụ trách kho Long An; hạn chót nộp báo cáo đối soát là 17 giờ ngày 28 tháng 10. Lưu ý: mã dự án trong bản ghi (KPA92 hoặc KP92) hai mô hình nghe khác nhau, anh nên nghe lại đoạn 00:00 để chắc chắn.",
+          "mode": "documents",
+          "grounded": false,
+          "sources": [],
+          "consulted": [],
+          "tools_used": [],
+          "steps": 0,
+          "warnings": [],
+          "model": "gpt-5.4-2026-03-05",
+          "cost_usd": 0.19,
+          "files": [
+           {
+            "filename": "hop-giao-ban.m4a",
+            "kind": "audio",
+            "filetype": "m4a",
+            "size": 512000,
+            "method": "ai_transcribe",
+            "pages": null,
+            "chars": 560,
+            "uncertain": 0,
+            "duration_sec": 31.7
+           }
+          ],
+          "skipped": []
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Không có tệp nào",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 400,
+         "RM": "Không có tệp nào"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có Agent này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có Agent này"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Agent đang tắt, hoặc hội thoại đã đầy",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 409,
+         "RM": "Agent đang tắt, hoặc hội thoại đã đầy"
+        }
+       }
+      }
+     },
+     "413": {
+      "description": "Quá 5 tệp, hoặc tệp quá lớn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 413,
+         "RM": "Quá 5 tệp, hoặc tệp quá lớn"
+        }
+       }
+      }
+     },
+     "415": {
+      "description": "Loại tệp không được phép",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 415,
+         "RM": "Loại tệp không được phép"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Không tệp nào dùng được (xem skipped), tin nhắn chứa bí mật hoặc quá dài",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Không tệp nào dùng được (xem skipped), tin nhắn chứa bí mật hoặc quá dài"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Hết hạn mức",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 429,
+         "RM": "Hết hạn mức"
+        }
+       }
+      }
+     },
+     "503": {
+      "description": "AI chưa bật",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 503,
+         "RM": "AI chưa bật"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Chat với Agent kèm tệp.** Gửi **file ghi âm** (cuộc họp, cuộc gọi, ghi chú giọng nói), ảnh, PDF, Word, Excel, PowerPoint... (tối đa 5 tệp, mỗi tệp tối đa 25 MB) cùng câu hỏi hoặc **không cần câu hỏi** (Agent tự tóm tắt nội dung, quyết định, việc cần làm). Hệ thống đọc tệp trước (file ghi âm được **chép lời bằng hai mô hình rồi đối chiếu**, ảnh/PDF được AI OCR), rồi Agent trả lời như một lượt chat bình thường: tự tra cứu tài liệu của nhóm để đối chiếu, nêu nguồn `[doc:ID]`, và nhắc kiểm chứng tên riêng, mã số, con số do AI nghe hoặc đọc (kể cả các chỗ ở mục \"Cần nghe lại\").\n\nNội dung đã đọc được lưu trong lịch sử hội thoại (tin nhắn của bạn kèm `meta.files`), nên **các câu hỏi nối tiếp (`conversation_id`) vẫn thấy lời chép** mà không cần gửi lại tệp. Tệp gốc **không được lưu** vào kho (muốn lưu thì đính kèm vào một mục). Tệp chứa bí mật bị bỏ qua và ghi ở `skipped`; không tệp nào dùng được thì 422. Phản hồi giống `POST /agents/{id}/chat`, thêm `files` (tệp đã đọc: cách đọc, độ dài, số chỗ chưa chắc) và `skipped`. Chi phí gồm cả đọc tệp.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật (`GET /ai/status`).\n- Bạn dùng được Agent (của bạn hoặc chia sẻ cho nhóm).\n- Tệp đúng loại cho phép (xem `POST /items/{id}/attachments`), mỗi tệp tối đa 25 MB.\n\n**Lỗi thường gặp:**\n- `400`: Không có tệp nào\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có Agent này\n- `409`: Agent đang tắt, hoặc hội thoại đã đầy\n- `413`: Quá 5 tệp, hoặc tệp quá lớn\n- `415`: Loại tệp không được phép\n- `422`: Không tệp nào dùng được (xem skipped), tin nhắn chứa bí mật hoặc quá dài\n- `429`: Hết hạn mức\n- `503`: AI chưa bật\n\n**Cách gửi:** `multipart/form-data`, trường `file` (lặp lại để gửi tối đa 5 tệp) cùng các trường tùy chọn bên dưới; dùng được ngay trong Swagger UI (nút Choose File) và Postman (Body → form-data). Hoặc gửi **một tệp** dạng thân thô (`Content-Type: application/octet-stream`, header `X-Filename`) và đặt `message`, `conversation_id` ở tham số truy vấn.\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/agents/12/chat-file\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -F \"file=@hop-giao-ban.m4a\" \\\n  -F \"message=Ai phụ trách kho Long An và hạn chót là khi nào?\"\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "file"
+        ],
+        "properties": {
+         "file": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "format": "binary"
+          },
+          "maxItems": 5,
+          "description": "File ghi âm, ảnh, PDF, Word, Excel, PowerPoint... để Agent xem (tối đa 5 tệp, mỗi tệp tối đa 25 MB)."
+         },
+         "message": {
+          "type": "string",
+          "description": "Câu hỏi hoặc yêu cầu về các tệp (tối đa 2000 ký tự). Bỏ trống thì Agent tóm tắt nội dung chính, quyết định, việc cần làm và đối chiếu với tài liệu của nhóm."
+         },
+         "conversation_id": {
+          "type": "integer",
+          "description": "Mã hội thoại để nói tiếp (bỏ trống để bắt đầu hội thoại mới)."
+         }
+        }
+       }
+      },
+      "application/octet-stream": {
+       "schema": {
+        "type": "string",
+        "format": "binary",
+        "description": "Nội dung file thô (một tệp), kèm header X-Filename."
        }
       }
      }
@@ -16718,7 +19793,7 @@
       "name": "tier",
       "in": "query",
       "required": false,
-      "description": "Lọc theo hạng tin cậy: `official` (chính thống), `reviewed` (đã kiểm duyệt), `unreviewed` (chưa kiểm duyệt: mục R1 tự xuất bản hoặc chữ AI đọc chưa kiểm chứng), `stale` (quá hạn rà soát).",
+      "description": "Lọc theo hạng tin cậy: `official` (chính thống), `reviewed` (đã kiểm duyệt), `unreviewed` (chưa kiểm duyệt: mục R1 tự xuất bản hoặc chữ AI đọc chưa kiểm chứng), `stale` (quá hạn rà soát). Với nguồn Internet (`/ai/web/sources`): `official` (chính thống), `trusted` (đáng tin), `blocked` (bị chặn).",
       "schema": {
        "type": "string",
        "enum": [
@@ -17273,7 +20348,7 @@
           "type": "string",
           "minLength": 3,
           "maxLength": 500,
-          "description": "Câu hỏi bằng ngôn ngữ tự nhiên (5 đến 500 ký tự). Không được chứa mật khẩu, khóa hay số điện thoại."
+          "description": "Câu hỏi bằng ngôn ngữ tự nhiên. Câu mở đầu từ 5 đến 500 ký tự; khi có `conversation_id`, câu nối tiếp được phép rất ngắn (ví dụ \"Hà Nội\", \"có\", \"còn bước 3?\") và tối đa 2000 ký tự. Không được chứa mật khẩu, khóa hay số điện thoại."
          }
         },
         "required": [
@@ -17704,7 +20779,7 @@
            "active",
            "locked"
           ],
-          "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`."
+          "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
          },
          "name": {
           "type": "string",
@@ -17902,7 +20977,7 @@
       }
      }
     },
-    "description": "Đặt giá trị một cài đặt, có hiệu lực ngay. Các cài đặt đang dùng:\n\n| key | Ý nghĩa |\n|---|---|\n| `ai_enabled` | `true`/`false`: bật tắt toàn bộ AI |\n| `ai_data_policy_approved` | `true` khi công ty đã duyệt việc gửi nội dung ra nhà cung cấp AI |\n| `ai_monthly_budget_usd` | Ngân sách AI mỗi tháng (USD) |\n| `ai_daily_calls_per_user` | Số **lần gọi mô hình** tối đa mỗi người mỗi ngày (mặc định 150; một lượt chat với Agent có thể gọi 2 đến 5 lần) |\n| `ai_agents_per_user` | Số Agent tối đa mỗi người (mặc định 10) |\n| `ai_agent_turn_max_usd` | Chi phí tối đa của một lượt chat với Agent, USD (mặc định 0.5; quá mức thì Agent phải trả lời luôn) |\n| `ai_conversation_retention_days` | Số ngày lưu hội thoại với Agent (mặc định 30; `0` = giữ mãi) |\n| `ai_ask_file_double_check` | `true` để AI đọc ảnh/PDF hai lượt khi hỏi bằng tệp (`POST /ai/ask-file`); mặc định `false` cho nhanh |\n| `ai_auto_tag` | `false` để tắt việc AI tự gắn nhãn tài liệu (mặc định bật) |\n| `ai_auto_create_tags` | `false` để AI chỉ dùng thẻ có sẵn, không tự tạo thẻ mới (mặc định bật) |\n| `ai_max_new_tags_per_item` | Số thẻ mới AI được tạo cho mỗi mục (mặc định 3) |\n| `ai_max_tags_per_item` | Tổng số thẻ tối đa của một mục, tính cả thẻ người gắn (mặc định 8) |\n| `ai_rag_tag_expansion` | `false` để tắt mở rộng tìm kiếm qua thẻ chung (mặc định bật) |\n| `ai_memory_enabled` | `false` để tắt trí nhớ dài hạn của mọi Agent (mặc định bật) |\n| `ai_memory_max_per_user` | Số ký ức tối đa mỗi người (mặc định 500; quá thì xóa ký ức ít quan trọng và cũ nhất, không xóa ký ức ghim) |\n| `ai_memory_retention_days` | Số ngày giữ ký ức lâu không dùng (mặc định 365; `0` = giữ mãi; ký ức ghim không bị xóa) |\n| `ai_auto_ingest` | `false` để tắt việc tự đọc và ghi nhớ tệp mới tải lên (mặc định bật) |\n| `ai_ocr_double_check` | `false` để bỏ lượt soát lại lần hai khi AI đọc ảnh/PDF (mặc định bật: chính xác hơn, tốn gấp đôi) |\n| `ai_rag_expansion` | `false` để tắt mở rộng câu hỏi khi hỏi đáp (mặc định bật) |\n| `ai_rag_rerank` | `false` để tắt bước AI chấm lại độ phù hợp của các đoạn (mặc định bật) |\n| `ai_source_policy_default` | Chính sách nguồn mặc định khi người hỏi không chọn: `all` (mặc định), `reviewed` hoặc `official` |\n| `ai_feature_ask`, `ai_feature_ask_general`, `ai_feature_ask_hybrid`, `ai_feature_suggest`, `ai_feature_duplicates`, `ai_feature_prompt_test`, `ai_feature_vision`, `ai_feature_vision_extract`, `ai_feature_agent`, `ai_feature_auto_tag`, `ai_feature_chat_memory`, `ai_feature_ask_file`, `ai_feature_ask_file_read`, `ai_feature_ingest_ocr`, `ai_feature_ingest_enrich`, `ai_feature_conflict_scan`, `ai_feature_embed`, `ai_feature_embed_query`, `ai_feature_rag_expand`, `ai_feature_rag_rerank`, `ai_feature_compare` | `false` để tắt riêng từng tính năng (ví dụ tắt `ai_feature_ask_general` nếu không muốn cho hỏi ngoài tài liệu) |\n| `secret_allowlist` | Mảng JSON các giá trị được bỏ qua khi quét bí mật |\n\n**Ai gọi được:** `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PUT \"http://localhost:3001/admin/settings/ai_enabled\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"value\":\"true\",\"description\":\"Bật AI\"}'\n```",
+    "description": "Đặt giá trị một cài đặt, có hiệu lực ngay. Các cài đặt đang dùng:\n\n| key | Ý nghĩa |\n|---|---|\n| `ai_enabled` | `true`/`false`: bật tắt toàn bộ AI |\n| `ai_transcribe_double_check` | `false` để chép lời chỉ bằng một mô hình (mặc định bật: hai mô hình rồi đối chiếu) |\n| `ai_ask_effort` | Mức suy luận của hỏi đáp: `low`, `medium`, `high` (mặc định `high`) |\n| `ai_ask_rewrite` | `false` để tắt bước viết lại câu hỏi nối tiếp (mặc định bật) |\n| `ai_agent_final_pass` | `false` để tắt lượt trả lời cuối có suy luận của Agent sau khi tra cứu (mặc định bật) |\n| `ai_agent_final_effort` | Mức suy luận của Agent: `low`, `medium`, `high` (mặc định `high`) |\n| `ai_data_policy_approved` | `true` khi công ty đã duyệt việc gửi nội dung ra nhà cung cấp AI |\n| `ai_monthly_budget_usd` | Ngân sách AI mỗi tháng (USD) |\n| `ai_daily_calls_per_user` | Số **lần gọi mô hình** tối đa mỗi người mỗi ngày (mặc định 150; một lượt chat với Agent có thể gọi 2 đến 5 lần) |\n| `ai_agents_per_user` | Số Agent tối đa mỗi người (mặc định 10) |\n| `ai_agent_turn_max_usd` | Chi phí tối đa của một lượt chat với Agent, USD (mặc định 0.5; quá mức thì Agent phải trả lời luôn) |\n| `ai_conversation_retention_days` | Số ngày lưu hội thoại với Agent (mặc định 30; `0` = giữ mãi) |\n| `ai_ask_file_double_check` | `true` để AI đọc ảnh/PDF hai lượt khi hỏi bằng tệp (`POST /ai/ask-file`); mặc định `false` cho nhanh |\n| `ai_auto_tag` | `false` để tắt việc AI tự gắn nhãn tài liệu (mặc định bật) |\n| `ai_auto_create_tags` | `false` để AI chỉ dùng thẻ có sẵn, không tự tạo thẻ mới (mặc định bật) |\n| `ai_max_new_tags_per_item` | Số thẻ mới AI được tạo cho mỗi mục (mặc định 3) |\n| `ai_max_tags_per_item` | Tổng số thẻ tối đa của một mục, tính cả thẻ người gắn (mặc định 8) |\n| `ai_rag_tag_expansion` | `false` để tắt mở rộng tìm kiếm qua thẻ chung (mặc định bật) |\n| `ai_memory_enabled` | `false` để tắt trí nhớ dài hạn của mọi Agent (mặc định bật) |\n| `ai_memory_max_per_user` | Số ký ức tối đa mỗi người (mặc định 500; quá thì xóa ký ức ít quan trọng và cũ nhất, không xóa ký ức ghim) |\n| `ai_memory_retention_days` | Số ngày giữ ký ức lâu không dùng (mặc định 365; `0` = giữ mãi; ký ức ghim không bị xóa) |\n| `ai_auto_ingest` | `false` để tắt việc tự đọc và ghi nhớ tệp mới tải lên (mặc định bật) |\n| `ai_web_scope_default` | Phạm vi mặc định khi tìm trên Internet: `balanced` (mặc định), `official`, `open` |\n| `ai_web_auto_learn` | `false` để tắt việc tự học câu trả lời Internet có nguồn tốt |\n| `ai_web_learn_min_level` | Mức xác minh tối thiểu để tự học: `high` (mặc định) hoặc `medium` |\n| `ai_web_learned_days` | Số ngày tối đa một câu trả lời đã học được dùng để gợi ý (mặc định 30) |\n| `ai_web_hide_after_unhelpful` | Số lượt \"không hữu ích\" để tự ẩn câu trả lời đã học (mặc định 2) |\n| `ai_transcribe_max_minutes` | Độ dài tối đa của một file ghi âm được chép lời, phút (mặc định 60) |\n| `ai_transcribe_language` | Ngôn ngữ mặc định khi chép lời: `vi` (mặc định), `en` hoặc `auto` (AI tự nhận biết) |\n| `ai_ocr_double_check` | `false` để bỏ lượt soát lại lần hai khi AI đọc ảnh/PDF (mặc định bật: chính xác hơn, tốn gấp đôi) |\n| `ai_rag_expansion` | `false` để tắt mở rộng câu hỏi khi hỏi đáp (mặc định bật) |\n| `ai_rag_rerank` | `false` để tắt bước AI chấm lại độ phù hợp của các đoạn (mặc định bật) |\n| `ai_source_policy_default` | Chính sách nguồn mặc định khi người hỏi không chọn: `all` (mặc định), `reviewed` hoặc `official` |\n| `ai_feature_ask`, `ai_feature_ask_general`, `ai_feature_ask_hybrid`, `ai_feature_suggest`, `ai_feature_duplicates`, `ai_feature_prompt_test`, `ai_feature_vision`, `ai_feature_vision_extract`, `ai_feature_agent`, `ai_feature_auto_tag`, `ai_feature_chat_memory`, `ai_feature_ask_file`, `ai_feature_ask_file_read`, `ai_feature_ingest_ocr`, `ai_feature_ingest_enrich`, `ai_feature_conflict_scan`, `ai_feature_embed`, `ai_feature_embed_query`, `ai_feature_rag_expand`, `ai_feature_rag_rerank`, `ai_feature_compare`, `ai_feature_smart_import`, `ai_feature_transcribe`, `ai_feature_web_search`, `ai_feature_web_learn` | `false` để tắt riêng từng tính năng (ví dụ tắt `ai_feature_ask_general` nếu không muốn cho hỏi ngoài tài liệu) |\n| `secret_allowlist` | Mảng JSON các giá trị được bỏ qua khi quét bí mật |\n\n**Ai gọi được:** `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PUT \"http://localhost:3001/admin/settings/ai_enabled\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"value\":\"true\",\"description\":\"Bật AI\"}'\n```",
     "requestBody": {
      "required": true,
      "content": {
@@ -18189,7 +21264,7 @@
            "all"
           ],
           "default": "pending",
-          "description": "Phạm vi danh sách: `mine` (của tôi), `team` (do đồng nghiệp chia sẻ), `all` (cả hai, mặc định)."
+          "description": "Phạm vi danh sách: `mine` (của tôi), `team` (do đồng nghiệp chia sẻ), `all` (cả hai, mặc định). Với tìm trên Internet (`POST /ai/web/ask`): `official` (chỉ trang chính thống), `balanced` (chính thống trước, thiếu thì mở rộng), `open` (toàn Internet trừ trang bị chặn)."
          }
         }
        },

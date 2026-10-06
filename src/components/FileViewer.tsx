@@ -67,6 +67,13 @@ function Body({ p, name, height, ext }: { p: Preview; name: string; height: numb
             <img src={p.url} alt={name} className={clsx('rounded-md shadow', zoom ? 'max-w-none' : 'max-w-full max-h-full object-contain')} style={zoom ? undefined : { maxHeight: typeof height === 'number' ? height - 24 : undefined }} />
           </div>
         </div>)
+    case 'audio':
+      return (
+        <div className="rounded-lg border border-line-soft bg-brand-50 p-5 flex flex-col gap-3">
+          <div className="flex items-center gap-3 font-bold"><span className="text-2xl" aria-hidden>🎧</span>{name}</div>
+          <audio src={p.url} controls preload="metadata" className="w-full" />
+          <div className="text-xs text-muted">Muốn có chữ của bản ghi? Dùng “Chép lời ghi âm” hoặc nút “AI chép lời” của tệp.</div>
+        </div>)
     case 'pdf':
       return (
         <div className="relative rounded-lg border border-line-soft overflow-hidden bg-slate-100" style={{ height }}>

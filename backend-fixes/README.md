@@ -5,6 +5,8 @@ Bộ test backend hiện tại: **444/444 đạt**. Sau khi áp bản vá dướ
 
 ## 1. Trích dẫn nguồn không thống nhất + lộ thuật ngữ kỹ thuật — `0001-trich-dan-va-loi-van.patch`
 
+> **Trạng thái: ĐÃ ÁP DỤNG vào backend ngày 06/10/2026** (cùng đợt thêm Nhập tri thức thông minh; toàn bộ test backend 466/466 đạt).
+
 **Hiện tượng (người đọc thấy):**
 - `/ai/ask`, `/ai/ask-file`, `/knowledge/compare` trả trích dẫn dạng `[44]`, trong khi Agent dùng `[doc:44]`. Giao diện không biết `[44]` là nguồn hay số thường.
 - Phần lưu ý/so sánh có chữ "tier unreviewed", "approved", "OCR"… vì prompt dùng nhãn tiếng Anh và không dặn AI viết cho người không rành kỹ thuật.
@@ -47,3 +49,12 @@ Chế độ "Chỉ đọc trên máy" dùng Agent riêng ("Trợ lý đọc tệ
 Giao diện mới: tạo Agent với `use_memory=false`, xóa ký ức cũ của Agent đó, xóa hội thoại khi người dùng bỏ tệp/rời trang và dọn hội thoại sót mỗi phiên. Backend đã tôn trọng `use_memory=false` đúng.
 
 Lưu ý: với Agent `use_memory=false`, backend vẫn tóm tắt hội thoại ở nền (`processConversation` → `AiConversation.summary`) vì bản tóm tắt còn dùng làm ngữ cảnh cho hội thoại dài — đúng thiết kế. Giao diện xóa hội thoại nên bản tóm tắt cũng bị xóa theo. Nếu muốn tiết kiệm chi phí AI, có thể cân nhắc chỉ tóm tắt khi hội thoại vượt số tin nhắn giữ trong lịch sử.
+
+## 5. Đã thêm vào backend: Nhập tri thức thông minh (06/10/2026)
+
+- `POST /ai/draft-item` (tệp, multipart, tối đa 5) và `POST /ai/draft-item/text` (văn bản dán, JSON) — quyền `item:write`, giới hạn AI như các API AI khác, cờ tính năng `ai_feature_smart_import`.
+- Mã: `src/services/knowledge/smartImport.js`, controller `ai.controller.js` (`draftItem`, `draftItemText`), route `routes/workspace.js`, schema `aiDraftItemText`, tài liệu `docs/summaries.js`, `docs/details.js`, `docs/fields.js`.
+- Không lưu gì: trả bản nháp đầy đủ trường + độ tin cậy/căn cứ từng trường + mục trùng; giao diện tạo mục qua `POST /items` sau khi người dùng xem lại.
+- An toàn: tệp có bí mật bị bỏ qua; văn bản có bí mật bị từ chối trước khi gửi AI; nội dung tệp/văn bản không thể "thoát khung" prompt (gỡ thẻ khung); chỉ nhận mảng/thẻ có thật, ngày hợp lệ, tên biến hợp lệ.
+- Test: `tests/smartImport.test.js` (16 test: luồng đủ, làm sạch đầu ra AI, tách chủ đề, OCR, bí mật, chống thoát khung, tắt tính năng, HTTP 403/422/400/200). Chạy thật trên máy chủ cục bộ: runbook máy in (4 bước, đúng ngày hiệu lực), tệp 2 chủ đề (tách đúng 2 bản nháp), nội dung trùng (phát hiện 2 mục TEAMWORK RULE).
+- Swagger ở cổng 3002 cần chạy lại `npm run docs` (và `npm run docs:build` nếu dùng tệp tĩnh trong `docs/`) để hiện 2 API mới.

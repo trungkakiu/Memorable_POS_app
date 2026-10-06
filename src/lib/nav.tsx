@@ -11,8 +11,9 @@ export const NAV: NavGroup[] = [
     { to: '/notifications', label: 'Thông báo', cap: 'read' },
   ] },
   { id: 'kb', label: 'Kho tri thức', short: 'Tri thức', icon: <BookOpen size={20} />, items: [
+    { to: '/import-knowledge', label: 'Nhập tri thức (AI)', cap: 'write' },
     { to: '/items', label: 'Danh sách tri thức', cap: 'read' },
-    { to: '/items/new', label: 'Tạo mục mới', cap: 'write' },
+    { to: '/items/new', label: 'Tạo mục thủ công', cap: 'write' },
     { to: '/search', label: 'Tìm kiếm', cap: 'read' },
     { to: '/templates', label: 'Mẫu nội dung', cap: 'read' },
     { to: '/knowledge', label: 'Nguồn tri thức', cap: 'read' },
@@ -21,6 +22,8 @@ export const NAV: NavGroup[] = [
   ] },
   { id: 'ai', label: 'Trợ lý AI', icon: <Sparkles size={20} />, items: [
     { to: '/ai', label: 'Hỏi đáp có trích nguồn', cap: 'read' },
+    { to: '/transcribe', label: 'Chép lời ghi âm', cap: 'ask' },
+    { to: '/web-sources', label: 'Nguồn Internet & câu trả lời đã học', cap: 'moderate' },
     { to: '/agents', label: 'Agent của tôi', cap: 'ask' },
     { to: '/agents/new', label: 'Tạo Agent mới', cap: 'ask' },
     { to: '/agents/skills', label: 'Thư viện skill', cap: 'ask' },

@@ -26,7 +26,10 @@ import { AskPage } from './reader/Assistant'
 import ReaderMyFile from './reader/MyFile'
 import ReaderCompare from './reader/Compare'
 import ReaderMemory from './reader/Memory'
+import { AdminTranscribePage, ReaderTranscribePage } from './components/Transcribe'
 import { CompareDocs, KnowledgeSearch, KnowledgeSources } from './pages/KnowledgePages'
+import ImportHub from './pages/ImportHub'
+import WebSources from './pages/WebSources'
 import { useUiMode } from './reader/common'
 
 function Guard({ cap, children }: { cap: Cap; children: ReactElement }) {
@@ -60,6 +63,7 @@ export default function App() {
               <Route path="read/:id" element={<ReaderRead />} />
               <Route path="ai" element={<AskPage />} />
               <Route path="my-file" element={<ReaderMyFile />} />
+              <Route path="transcribe" element={<ReaderTranscribePage />} />
               <Route path="compare" element={<ReaderCompare />} />
               <Route path="memory" element={<ReaderMemory />} />
             </Route>
@@ -69,6 +73,9 @@ export default function App() {
               <Route path="notifications" element={<Notifications />} />
               <Route path="items" element={<Items />} />
               <Route path="items/new" element={g('write', <ItemForm />)} />
+              <Route path="import-knowledge" element={g('write', <ImportHub />)} />
+              <Route path="transcribe" element={g('ask', <AdminTranscribePage />)} />
+              <Route path="web-sources" element={g('moderate', <WebSources />)} />
               <Route path="items/:id" element={<ItemDetail />} />
               <Route path="items/:id/edit" element={g('write', <ItemForm />)} />
               <Route path="search" element={<Search />} />

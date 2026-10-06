@@ -53,7 +53,7 @@ export const ACTION_LABEL = (a: string) => a
 export const TRUST_LABEL: Record<string, string> = { approved: 'Đã duyệt', pending: 'Chờ duyệt', draft: 'Bản nháp', overdue: 'Quá hạn', archived: 'Lưu trữ' }
 export const FILE_ICON: Record<string, string> = {
   pdf: '📕', docx: '📘', doc: '📘', odt: '📘', rtf: '📘', xlsx: '📗', xls: '📗', ods: '📗', csv: '📊', tsv: '📊', pptx: '📙', ppt: '📙', odp: '📙',
-  png: '🖼️', jpg: '🖼️', jpeg: '🖼️', gif: '🖼️', webp: '🖼️', bmp: '🖼️', txt: '📄', log: '📄', md: '📝', json: '🧾', xml: '🧾', yaml: '🧾', yml: '🧾', zip: '🗜️',
+  png: '🖼️', jpg: '🖼️', jpeg: '🖼️', jfif: '🖼️', jpe: '🖼️', pjpeg: '🖼️', pjp: '🖼️', gif: '🖼️', webp: '🖼️', bmp: '🖼️', avif: '🖼️', tif: '🖼️', tiff: '🖼️', heic: '🖼️', heif: '🖼️', mp3: '🎧', m4a: '🎧', aac: '🎧', wav: '🎧', ogg: '🎧', oga: '🎧', opus: '🎧', webm: '🎧', flac: '🎧', amr: '🎧', wma: '🎧', '3gp': '🎧', txt: '📄', log: '📄', md: '📝', json: '🧾', xml: '🧾', yaml: '🧾', yml: '🧾', zip: '🗜️',
 }
 
 export const KNOWLEDGE_LABEL: Record<string, string> = { documents: 'Trong tài liệu', hybrid: 'Kết hợp', general: 'Kiến thức chung' }

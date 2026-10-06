@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { DragEvent, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
-  AlertTriangle, ArrowRight, Bot, BookOpen, CheckCircle2, ClipboardCheck, Clock, FileEdit, Hourglass, Layers, Plus, Search, Sparkles, Timer, Bell, CalendarClock,
+  AlertTriangle, ArrowRight, Bot, BookOpen, CheckCircle2, ClipboardCheck, Clock, FileEdit, Hourglass, Layers, Plus, Search, Sparkles, Timer, Bell, CalendarClock, UploadCloud,
 } from 'lucide-react'
-import { get } from '../lib/api'
+import { LocalFile, checkFile, fromBrowserFile, get, pickLocalFiles } from '../lib/api'
+import { queueImportFiles } from '../lib/smartImport'
+import { toast } from '../store/ui'
 import { can } from '../lib/permissions'
 import { dt, num, pct, ROLE_LABEL, STATUS_LABEL, TYPE_LABEL } from '../lib/format'
 import type { ItemRow, Notice } from '../lib/types'
@@ -63,7 +65,8 @@ export default function Dashboard() {
 
   const quick = [
     { icon: <Search size={18} />, label: 'Tìm kiếm tri thức', desc: 'Có dấu / không dấu, theo mã lỗi', to: '/search', cap: 'read' as const },
-    { icon: <Plus size={18} />, label: 'Tạo mục mới', desc: 'Tài liệu, bài viết, prompt, runbook', to: '/items/new', cap: 'write' as const },
+    { icon: <Sparkles size={18} />, label: 'Nhập tri thức (AI)', desc: 'AI đọc tệp, điền sẵn mọi trường, kiểm tra trùng', to: '/import-knowledge', cap: 'write' as const },
+    { icon: <Plus size={18} />, label: 'Tạo mục thủ công', desc: 'Tài liệu, bài viết, prompt, runbook', to: '/items/new', cap: 'write' as const },
     { icon: <ClipboardCheck size={18} />, label: 'Hàng đợi duyệt', desc: 'Mục đang chờ bạn duyệt', to: '/reviews', cap: 'moderate' as const },
     { icon: <Bot size={18} />, label: 'Agent của tôi', desc: 'Trợ lý cá nhân hóa, tự tra cứu tài liệu', to: '/agents', cap: 'ask' as const },
     { icon: <Timer size={18} />, label: 'Ghi giờ công', desc: 'Cập nhật cuối ngày', to: '/timelogs', cap: 'timelog' as const },
@@ -86,10 +89,13 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="relative flex gap-3 flex-wrap">
-          <button className="h-10 px-4 rounded-lg bg-white text-brand-700 font-bold text-[13px] uppercase cursor-pointer border-0 flex items-center gap-2 hover:bg-brand-50" onClick={() => nav('/search')}><Search size={16} />Tìm kiếm</button>
+          {can(user.role, 'write') && <button className="h-10 px-4 rounded-lg bg-white text-brand-700 font-bold text-[13px] uppercase cursor-pointer border-0 flex items-center gap-2 hover:bg-brand-50 shadow-[0_6px_16px_-6px_rgba(0,0,0,.35)]" onClick={() => nav('/import-knowledge')}><UploadCloud size={16} />Nhập tri thức mới</button>}
+          <button className="h-10 px-4 rounded-lg bg-white/15 text-white font-bold text-[13px] uppercase cursor-pointer border border-white/40 flex items-center gap-2 hover:bg-white/25" onClick={() => nav('/search')}><Search size={16} />Tìm kiếm</button>
           <button className="h-10 px-4 rounded-lg bg-white/15 text-white font-bold text-[13px] uppercase cursor-pointer border border-white/40 flex items-center gap-2 hover:bg-white/25" onClick={() => chat.setOpen(true)}><Sparkles size={16} />Hỏi trợ lý AI</button>
         </div>
       </div>
+
+      {can(user.role, 'write') && <ImportDropCard />}
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <Seg value={tab} onChange={setTab} options={[{ value: 'sys', label: 'Tổng quan kho tri thức' }, { value: 'me', label: 'Dữ liệu cá nhân' }]} />
@@ -187,4 +193,29 @@ export default function Dashboard() {
       )}
     </>
   )
+}
+
+/** Ô nhập tri thức nổi bật cho người đóng góp/kiểm duyệt/quản trị: thả tệp là sang AI soạn bản nháp. */
+function ImportDropCard() {
+  const nav = useNavigate()
+  const [over, setOver] = useState(false)
+  async function go(list: LocalFile[]) {
+    const ok = list.filter((f) => !checkFile(f))
+    if (!ok.length) { nav('/import-knowledge'); return }
+    queueImportFiles(ok); nav('/import-knowledge')
+  }
+  async function onDrop(e: DragEvent) { e.preventDefault(); setOver(false); await go(await Promise.all(Array.from(e.dataTransfer.files).map(fromBrowserFile))) }
+  return (
+    <div className={'rounded-[10px] border-2 border-dashed p-5 flex items-center gap-5 flex-wrap transition ' + (over ? 'border-brand-500 bg-brand-50' : 'border-brand-200 bg-white')}
+      onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={onDrop}>
+      <span className="w-14 h-14 rounded-[10px] bg-gradient-to-br from-brand-500 to-brand-700 text-white grid place-items-center shrink-0 shadow-[0_8px_18px_-8px_rgba(98,40,200,.8)]"><UploadCloud size={28} /></span>
+      <div className="flex-1 min-w-[260px]">
+        <div className="text-[17px] font-extrabold">Nhập tri thức mới</div>
+        <div className="text-sm text-muted mt-0.5">Kéo thả quy trình, quy chế, biên bản, ảnh chụp, PDF, Word, Excel vào đây — AI đọc, phân loại, điền sẵn mọi trường, gắn thẻ và kiểm tra trùng. Bạn chỉ xem lại và bấm tạo.</div>
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        <button className="btn !h-11" onClick={async () => { try { await go(await pickLocalFiles(false)) } catch (e) { toast.error(e) } }}><Sparkles size={16} />Chọn tệp cho AI đọc</button>
+        <button className="btn outline !h-11" onClick={() => nav('/items/new')}><Plus size={16} />Nhập thủ công</button>
+      </div>
+    </div>)
 }

@@ -1,6 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Layers, Clock, Compass, FileSearch, ShieldCheck, TextSearch, FolderOpen, Frown, Loader2, MessageCircleQuestion, Mic, Plus, Search, SearchX, Smile, ThumbsDown, ThumbsUp, Star, History, PlayCircle, Timer } from 'lucide-react'
+import { ArrowLeft, ArrowRight, AudioLines, Layers, Clock, Compass, FileSearch, ShieldCheck, TextSearch, FolderOpen, Frown, Loader2, MessageCircleQuestion, Mic, Plus, Search, SearchX, Smile, ThumbsDown, ThumbsUp, Star, History, PlayCircle, Timer } from 'lucide-react'
 import { ApiError, get, post } from '../lib/api'
 import type { ItemRow, ItemType, KSearchResult, Space } from '../lib/types'
 import { PassageCard, PolicySelect, useIsOfficial } from '../components/Knowledge'
@@ -86,13 +86,14 @@ export function ReaderHome() {
   const runList = Object.values(runs).sort((a, b) => b.at - a.at)
 
   useEffect(() => { get<{ items: ItemRow[] }>('/items', { limit: 6, sort: 'updated' }).then((r) => setNews(r.items)).catch((e) => setErr((e as ApiError).full)) }, [])
-  const ask = (t: string) => { if (chat.agentId) chat.selectAgent(null); chat.setOpen(true); void chat.ask(t, chat.mode === 'hybrid' ? 'hybrid' : 'documents') }
+  const ask = (t: string) => { if (chat.agentId) chat.selectAgent(null); chat.setOpen(true); void chat.ask(t, chat.mode === 'general' ? 'documents' : chat.mode) }
 
   const intents = [
     { t: 'Đang có sự cố', d: 'Tìm cách xử lý, làm theo từng bước', ico: <TYPE_ICON.runbook size={26} />, act: () => nav('/browse/type/runbook'), hot: true },
     { t: 'Tìm cách làm việc', d: 'Gõ vấn đề, mình tìm bài phù hợp', ico: <Search size={26} />, act: () => { document.getElementById('rd-q')?.focus() } },
     { t: 'Tra quy định, tài liệu', d: 'Quy trình, biểu mẫu, hướng dẫn', ico: <TYPE_ICON.document size={26} />, act: () => nav('/browse/type/document') },
     { t: 'Hỏi về tệp của tôi', d: 'Kéo ảnh, PDF, Word… vào để hỏi', ico: <FileSearch size={26} />, act: () => nav('/my-file') },
+    { t: 'Chép lời ghi âm', d: 'Biến ghi âm cuộc họp thành chữ', ico: <AudioLines size={26} />, act: () => nav('/transcribe') },
     { t: 'Dùng câu lệnh AI sẵn', d: 'Điền thông tin rồi sao chép', ico: <TYPE_ICON.prompt size={26} />, act: () => nav('/browse/type/prompt') },
   ]
 
@@ -103,7 +104,7 @@ export function ReaderHome() {
         <span className="rd-chip gray capitalize"><Clock size={15} />{new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' })}</span>
       </div>
 
-      <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {intents.map((a) => (
           <button key={a.t} className="rd-card click rd-intent" style={a.hot ? { borderColor: '#fda29b', background: 'linear-gradient(135deg,#fffbfa,#fff)' } : undefined} onClick={a.act}>
             <span className={`rd-ico md ${a.hot ? '' : 'g'}`} style={a.hot ? { background: '#fee4e2', color: '#d92d20' } : undefined}>{a.ico}</span>

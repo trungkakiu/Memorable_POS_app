@@ -1,5 +1,6 @@
 // Chỉ dùng khi phát triển trong trình duyệt thường (không có Electron): giả lập cầu nối window.desk bằng fetch.
 // Không được đưa vào bản build (được bao bởi import.meta.env.DEV).
+import { AUDIO_EXT, IMAGE_EXT } from './api'
 export function installWebShim() {
   if (window.desk) return
   const base = () => localStorage.getItem('shim.server') || 'http://localhost:3901'
@@ -28,8 +29,8 @@ export function installWebShim() {
         return { ok: true, data: { status: res.status, ok: res.ok, json } }
       } catch (e) { return { ok: false, error: (e as Error).message } }
     },
-    pickFiles: ({ imagesOnly }) => new Promise((resolve) => {
-      const i = document.createElement('input'); i.type = 'file'; i.multiple = true; if (imagesOnly) i.accept = '.png,.jpg,.jpeg'
+    pickFiles: ({ imagesOnly, audioOnly }) => new Promise((resolve) => {
+      const i = document.createElement('input'); i.type = 'file'; i.multiple = true; if (imagesOnly || audioOnly) i.accept = (audioOnly ? AUDIO_EXT : IMAGE_EXT).map((e) => '.' + e).join(',')
       i.onchange = async () => resolve({ ok: true, data: await Promise.all(Array.from(i.files || []).map(async (f) => ({ name: f.name, size: f.size, bytes: new Uint8Array(await f.arrayBuffer()) }))) })
       i.click()
     }),

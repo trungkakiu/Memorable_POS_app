@@ -19,7 +19,7 @@ Kết quả: `release/Memorable Desktop-Setup-1.0.0.exe` (cài đặt) và `rele
 
 ## Chạy ngoại tuyến trên máy (không cần mạng)
 - **Đọc chữ trong ảnh / PDF quét**: tesseract.js, dữ liệu tiếng Việt + Anh trong `public/ocr` (`scripts/copy-ocr.cjs`).
-- **Nói thành chữ tiếng Việt**: Vosk (`vosk-model-small-vn-0.4` từ alphacephei.com) trong `public/vosk`; worker tách riêng bằng `npm run vosk` để giữ CSP chặt.
+- **Nói thành chữ và chép lời ghi âm**: ghi âm micro trong ứng dụng (WebM/Opus) hoặc chọn file ghi âm (mp3, m4a, wav, ogg, webm, amr...), AI trên máy chủ chép lời bằng `POST /ai/transcribe` (mô hình speech-to-text, cắt đoạn ở khoảng lặng, có mốc thời gian). Trang "Chép lời ghi âm" cho người đọc và quản trị.
 
 ## Theo dõi thay đổi API backend
 ```bash

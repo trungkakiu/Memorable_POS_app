@@ -5,7 +5,7 @@ import {
   AlertTriangle, ArrowLeft, Check, CheckCircle2, ClipboardCopy, Clock, Download, Eye, FileText, FolderOpen, Frown, Info, ListChecks, Loader2, MessageCircleQuestion, Phone, Play, Printer,
   RotateCcw, GitCompare, ShieldAlert, ShieldCheck, BookOpenText, SkipForward, Sparkles, Undo2, User as UserIcon, XCircle,
 } from 'lucide-react'
-import { ApiError, download, get, patch, post } from '../lib/api'
+import { ApiError, download, get, isAudioName, patch, post } from '../lib/api'
 import { bytes as fmtBytes, FILE_ICON, SEVERITY_LABEL } from '../lib/format'
 import { KIND_LABEL, extOf, kindOf } from '../lib/preview'
 import { can } from '../lib/permissions'
@@ -63,7 +63,7 @@ function ReaderFiles({ atts }: { atts: Attachment[] }) {
                 <button className="rd-btn sm" onClick={() => setView(a)}><Eye size={17} />Xem</button>
                 <button className="rd-btn secondary sm" onClick={() => dl(a)}><Download size={17} />Tải về</button>
                 {(a.ingest_status === 'done' || a.text_extracted) && <button className="rd-btn secondary sm" onClick={() => setText(a)}><BookOpenText size={17} />Đọc chữ trong tệp</button>}
-                {a.ai_readable && vision && can(role, 'ask') && <button className="rd-btn secondary sm" onClick={() => setAsk(a)}><MessageCircleQuestion size={17} />Nhờ trợ lý xem</button>}
+                {a.ai_readable && !isAudioName(a.filename) && vision && can(role, 'ask') && <button className="rd-btn secondary sm" onClick={() => setAsk(a)}><MessageCircleQuestion size={17} />Nhờ trợ lý xem</button>}
               </div>
             </div>)
         })}

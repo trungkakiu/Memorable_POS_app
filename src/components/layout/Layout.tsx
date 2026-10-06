@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Bell, BookMarked, ChevronDown, Cloud, CloudOff, HelpCircle, LogOut, Maximize2, Plus, Search, PanelLeftClose, PanelLeftOpen, ArrowRight, CheckCheck } from 'lucide-react'
+import { Bell, BookMarked, Sparkles, ChevronDown, Cloud, CloudOff, HelpCircle, LogOut, Maximize2, Plus, Search, PanelLeftClose, PanelLeftOpen, ArrowRight, CheckCheck } from 'lucide-react'
 import { NAV } from '../../lib/nav'
 import { can } from '../../lib/permissions'
 import { deskApi, post } from '../../lib/api'
@@ -103,7 +103,7 @@ function Sidebar() {
     <aside className={clsx('sidebar', collapsed && 'collapsed')} aria-label="Điều hướng chính">
       <div className="sb-top">
         {can(user.role, 'write') && (
-          <button className="sb-cta" onClick={() => nav('/items/new')} title="Tạo mục mới"><Plus size={18} /><span className="lbl">Tạo mục mới</span></button>
+          <button className="sb-cta" onClick={() => nav('/import-knowledge')} title="Nhập tri thức mới: AI đọc tệp và điền sẵn"><Sparkles size={18} /><span className="lbl">Nhập tri thức</span></button>
         )}
         <button className="sb-search" onClick={() => nav('/search')} title="Tìm kiếm nhanh (Ctrl+K)"><Search size={16} /><span className="lbl">Tìm kiếm nhanh</span><kbd className="lbl">Ctrl K</kbd></button>
       </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, RefreshCw, FilterX } from 'lucide-react'
+import { Plus, RefreshCw, FilterX, Sparkles } from 'lucide-react'
 import { useGet } from '../lib/api'
 import { can } from '../lib/permissions'
 import { dt, FRESH_LABEL, RISK_LABEL, STATUS_LABEL, TYPE_LABEL } from '../lib/format'
@@ -32,7 +32,8 @@ export default function Items() {
       <PageHeader title="Kho tri thức" subtitle="Tài liệu, bài viết, prompt và runbook của nhóm"
         actions={<>
           <button className="btn outline" onClick={reload}><RefreshCw size={15} />Tải lại</button>
-          {can(user.role, 'write') && <button className="btn" onClick={() => nav('/items/new')}><Plus size={16} />Tạo mục mới</button>}
+          {can(user.role, 'write') && <button className="btn outline" onClick={() => nav('/items/new')}><Plus size={16} />Tạo thủ công</button>}
+          {can(user.role, 'write') && <button className="btn" onClick={() => nav('/import-knowledge')}><Sparkles size={16} />Nhập tri thức (AI)</button>}
         </>} />
       <div className="card !p-4 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 items-end">
         <div className="field"><label>Loại</label><select className="select" value={f.type} onChange={(e) => set('type', e.target.value)}><option value="">Tất cả</option>{opt(TYPE_LABEL)}</select></div>

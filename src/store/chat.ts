@@ -8,14 +8,27 @@ import { toast } from './ui'
 export interface AnsPassage { chunk_id?: number; kind?: string; attachment_id?: number; filename?: string; page?: string; section?: string; ai_text_unverified?: boolean; tier?: string; score?: number; excerpt?: string }
 export interface Src { id: number; title: string; type: string; trust_label: string; freshness: string; next_review_date: string; tier?: string; tier_label?: string; passages?: AnsPassage[] }
 export type PolicyChoice = 'auto' | 'all' | 'reviewed' | 'official'
-export type AskMode = 'documents' | 'general' | 'hybrid'
-export const MODE_LABEL: Record<AskMode, string> = { documents: 'Trong tài liệu', general: 'Ngoài tài liệu', hybrid: 'Kết hợp' }
+export type AskMode = 'documents' | 'general' | 'hybrid' | 'web'
+export const MODE_LABEL: Record<AskMode, string> = { documents: 'Trong tài liệu', general: 'Ngoài tài liệu', hybrid: 'Kết hợp', web: 'Internet' }
 export const MODE_HINT: Record<AskMode, string> = {
   documents: 'Chỉ trả lời từ tài liệu đã duyệt của nhóm, luôn kèm nguồn',
   general: 'Kiến thức chung của AI — KHÔNG gửi tài liệu nội bộ, chỉ gửi câu hỏi',
   hybrid: 'Ưu tiên tài liệu; phần thiếu được bổ sung bằng kiến thức chung (tách riêng, có nhãn)',
+  web: 'Tìm trên Internet, ưu tiên trang chính thống; luôn ghi nguồn và xác minh nguồn. Chỉ gửi câu hỏi, không gửi tài liệu nội bộ',
 }
-export const MODE_FEATURE: Record<AskMode, string> = { documents: 'ask', general: 'ask_general', hybrid: 'ask_hybrid' }
+export const MODE_FEATURE: Record<AskMode, string> = { documents: 'ask', general: 'ask_general', hybrid: 'ask_hybrid', web: 'web_search' }
+export type WebScope = 'official' | 'balanced' | 'open'
+export const WEB_SCOPE_LABEL: Record<WebScope, string> = { official: 'Chỉ trang chính thống', balanced: 'Ưu tiên chính thống', open: 'Mọi trang (trừ trang bị chặn)' }
+export interface WebCitation { n: number; url: string; title: string; host: string; tier: 'official' | 'trusted' | 'unverified' | 'blocked'; tier_label: string; source_name?: string | null; category?: string | null; rule?: string; link?: 'ok' | 'restricted' | 'broken' | 'unreachable' | 'refused' | 'skipped'; http_status?: number | null }
+export interface WebVerification { score: number; level: 'high' | 'medium' | 'low'; official?: number; trusted?: number; unverified?: number; blocked?: number; sites?: number; links_ok?: number; links_bad?: number; coverage?: number; notes: string[] }
+export interface LearnedRef { id: number; question: string; topic: string; type_label?: string; level?: string | null; learned_at: string; similarity?: number; score?: number }
+export interface WebInfo {
+  citations: WebCitation[]; verification: WebVerification; suggestions: string[]; scope?: WebScope; scope_used?: string; fallback_used?: boolean
+  consulted_count?: number; queries?: string[]; result_id?: string; similar?: LearnedRef[]; checked_at?: string
+  /** Câu trả lời lấy từ bộ đã học (không tìm lại) */
+  learned?: { id: number; learned_at: string; topic: string; expires_at?: string }
+  feedback?: 'up' | 'down'
+}
 export interface Ans {
   mode?: AskMode; answer: string; insufficient_info?: boolean; grounded?: boolean; caveats?: string; warning?: string
   general_knowledge?: string; suggests_documents?: boolean; sources: Src[]; model: string; cost_usd: number
@@ -31,6 +44,8 @@ export interface Ans {
   fileAsk?: AskFileInfo
   // Trí nhớ Agent đã dùng cho lượt trả lời
   memory?: AgentMemoryUse
+  // Tìm trên Internet: nguồn, xác minh, gợi ý
+  web?: WebInfo
 }
 export interface ChatFile { name: string; size: number; attId?: number; status: 'saving' | 'saved' | 'error'; error?: string }
 export interface Msg {
@@ -46,6 +61,10 @@ const load = (): Msg[] => { try { return JSON.parse(sessionStorage.getItem(KEY) 
 const save = (m: Msg[]) => { try { sessionStorage.setItem(KEY, JSON.stringify(m.slice(-40))) } catch { /* bỏ qua */ } }
 const loadAgent = (): { agentId: number | null; convId: number | null } => { try { return JSON.parse(sessionStorage.getItem(AKEY) || '{"agentId":null,"convId":null}') } catch { return { agentId: null, convId: null } } }
 const saveAgent = (agentId: number | null, convId: number | null) => { try { sessionStorage.setItem(AKEY, JSON.stringify({ agentId, convId })) } catch { /* bỏ qua */ } }
+// Hội thoại của trợ lý hỏi đáp chung (POST /ai/ask): gửi lại conversation_id ở mỗi câu nối tiếp để AI nhớ các câu trước
+const QKEY = 'memorable.chat.ask'
+const loadAskConv = (): number | null => { try { const v = Number(sessionStorage.getItem(QKEY)); return Number.isInteger(v) && v > 0 ? v : null } catch { return null } }
+const saveAskConv = (id: number | null) => { try { if (id) sessionStorage.setItem(QKEY, String(id)); else sessionStorage.removeItem(QKEY) } catch { /* bỏ qua */ } }
 
 /** Nội dung tệp của các tin nhắn trong phiên hiện tại (không lưu vào sessionStorage) để xem trước ngay. */
 const chatBytes = new Map<string, Uint8Array>()
@@ -62,11 +81,21 @@ interface ChatState {
   draft: LocalFile[]
   target: Target
   agentId: number | null
+  /** Hội thoại đang mở với Agent */
   convId: number | null
+  /** Hội thoại đang mở với trợ lý hỏi đáp chung (/ai/ask) */
+  askConvId: number | null
   agents: Agent[]
   vision: boolean
   policy: PolicyChoice
   setPolicy: (p: PolicyChoice) => void
+  /** Phạm vi khi tìm trên Internet */
+  webScope: WebScope
+  setWebScope: (s: WebScope) => void
+  /** Mở một câu trả lời Internet đã học (không tốn AI) */
+  openLearned: (id: number) => Promise<void>
+  /** Đánh giá câu trả lời Internet */
+  rateWeb: (msgId: number, helpful: boolean) => Promise<void>
   /** Tìm sâu: mở rộng qua thẻ liên quan và nhiều tài liệu hơn (chậm hơn) */
   deep: boolean
   setDeep: (v: boolean) => void
@@ -128,9 +157,39 @@ export const useChat = create<ChatState>((set, getState) => {
       }
       return
     }
+    if (mode === 'web') {
+      try {
+        // vài lượt Internet ngay trước để hiểu câu hỏi nối tiếp (chỉ lượt Internet, không có tài liệu nội bộ)
+        const ms = getState().msgs; const context: { question: string; answer: string }[] = []
+        for (let i = ms.length - 1; i >= 0 && context.length < 2; i--) { const m = ms[i]; if (m.role === 'ai' && m.ans?.web && m.question && m.text) context.unshift({ question: m.question.slice(0, 1000), answer: m.text.slice(0, 1500) }) }
+        const r = await post<{ answer: string; mode: 'web'; insufficient_info?: boolean; model: string; cost_usd: number } & WebInfo>('/ai/web/ask', { question: question.slice(0, 1000), scope: getState().webScope, ...(context.length ? { context } : {}) })
+        const { answer, insufficient_info: insufficient, model, cost_usd: cost, ...web } = r
+        finish({ id: ++seq, role: 'ai', text: answer, mode: 'web', question, ans: { mode: 'web', answer, insufficient_info: insufficient, sources: [], model, cost_usd: cost, web } })
+      } catch (e) {
+        const er = e as ApiError
+        finish({ id: ++seq, role: 'ai', text: '', mode, err: errText(e instanceof ApiError ? er.status : 0, e instanceof ApiError ? er.full : String(e), e) })
+      }
+      return
+    }
+    const pol = getState().policy
+    const askOnce = (conv: number | null) => post<Omit<Ans, 'agentName'> & { conversation_id?: number }>('/ai/ask', {
+      // câu mở đầu tối đa 500 ký tự; câu nối tiếp được dài hơn (máy chủ nhận tới 2000)
+      question: question.slice(0, conv ? 2000 : 500), mode, ...(conv ? { conversation_id: conv } : {}),
+      ...(pol !== 'auto' ? { source_policy: pol } : {}), ...(getState().deep && mode !== 'general' ? { depth: 'deep' } : {}), ...(opts?.item_ids?.length ? { item_ids: opts.item_ids } : {}),
+    })
     try {
-      const pol = getState().policy
-      const r = await post<Omit<Ans, 'agentName'>>('/ai/ask', { question: question.slice(0, 500), mode, ...(pol !== 'auto' ? { source_policy: pol } : {}), ...(getState().deep && mode !== 'general' ? { depth: 'deep' } : {}), ...(opts?.item_ids?.length ? { item_ids: opts.item_ids } : {}) })
+      const conv = getState().askConvId
+      let r
+      try { r = await askOnce(conv) } catch (e) {
+        // Hội thoại cũ không còn (đã xóa) hoặc đã đầy: bắt đầu hội thoại mới rồi hỏi lại một lần
+        const st = e instanceof ApiError ? e.status : 0
+        if (!conv || !(st === 404 || st === 409)) throw e
+        set({ askConvId: null }); saveAskConv(null)
+        push({ id: ++seq, role: 'sys', text: st === 409 ? 'Hội thoại cũ đã đầy — đã tự bắt đầu hội thoại mới.' : 'Hội thoại cũ không còn — đã tự bắt đầu hội thoại mới.' })
+        if (question.length < 5) throw e
+        r = await askOnce(null)
+      }
+      if (r.conversation_id) { set({ askConvId: r.conversation_id }); saveAskConv(r.conversation_id) }
       finish({ id: ++seq, role: 'ai', text: r.answer, ans: { ...r, mode: r.mode ?? mode }, mode, question })
     } catch (e) {
       const er = e as ApiError
@@ -152,9 +211,26 @@ export const useChat = create<ChatState>((set, getState) => {
   const a0 = loadAgent()
   return {
     open: false, wide: false, mode: 'documents', msgs: load(), busy: false, unseen: 0, status: null, draft: [], target: { kind: 'new' },
-    agentId: a0.agentId, convId: a0.convId, agents: [], vision: true,
+    agentId: a0.agentId, convId: a0.convId, askConvId: loadAskConv(), agents: [], vision: true,
     policy: ((() => { try { const v = localStorage.getItem('memorable.chat.policy'); return v === 'all' || v === 'reviewed' || v === 'official' ? v : 'auto' } catch { return 'auto' } })()) as PolicyChoice,
     deep: false,
+    webScope: ((() => { try { const v = localStorage.getItem('memorable.chat.webScope'); return v === 'official' || v === 'open' ? v : 'balanced' } catch { return 'balanced' } })()) as WebScope,
+    setWebScope: (s) => { try { localStorage.setItem('memorable.chat.webScope', s) } catch { /* bỏ qua */ } set({ webScope: s }) },
+    openLearned: async (id) => {
+      if (getState().busy) return
+      set({ busy: true })
+      try {
+        const r = await get<{ id: number; question: string; topic: string; answer: string; sources: WebCitation[]; verification: WebVerification; learned_at: string; expires_at: string }>(`/ai/web/learned/${id}`)
+        push({ id: ++seq, role: 'user', text: r.question, mode: 'web' })
+        finish({ id: ++seq, role: 'ai', text: r.answer, mode: 'web', question: r.question, ans: { mode: 'web', answer: r.answer, sources: [], model: '', cost_usd: 0, web: { citations: r.sources || [], verification: r.verification, suggestions: [], learned: { id: r.id, learned_at: r.learned_at, topic: r.topic, expires_at: r.expires_at } } } })
+      } catch (e) { set({ busy: false }); toast.error(e instanceof ApiError ? e.full : String(e)) }
+    },
+    rateWeb: async (msgId, helpful) => {
+      const m = getState().msgs.find((x) => x.id === msgId); const w = m?.ans?.web
+      if (!m || !w || w.feedback) return
+      patchMsg(msgId, { ans: { ...m.ans!, web: { ...w, feedback: helpful ? 'up' : 'down' } } })
+      try { await post('/ai/web/feedback', w.learned ? { learned_id: w.learned.id, helpful } : { result_id: w.result_id, helpful }) } catch { /* đánh giá không quan trọng bằng việc đọc tiếp */ }
+    },
     setDeep: (v) => set({ deep: v }),
     setPolicy: (p) => { try { localStorage.setItem('memorable.chat.policy', p) } catch { /* bỏ qua */ } set({ policy: p }) },
     setOpen: (v) => set({ open: v, unseen: v ? 0 : getState().unseen }),
@@ -172,7 +248,7 @@ export const useChat = create<ChatState>((set, getState) => {
       if (ok.length) set((s) => ({ draft: [...s.draft, ...ok].slice(0, 10) }))
     },
     removeDraft: (i) => set((s) => ({ draft: s.draft.filter((_, j) => j !== i) })),
-    clear: () => { save([]); chatBytes.clear(); set({ msgs: [], unseen: 0, convId: null }); saveAgent(getState().agentId, null) },
+    clear: () => { save([]); chatBytes.clear(); set({ msgs: [], unseen: 0, convId: null, askConvId: null }); saveAgent(getState().agentId, null); saveAskConv(null) },
     loadStatus: async () => { try { set({ status: await get<AiStatus>('/ai/status') }) } catch { /* bỏ qua */ } },
     loadAgents: async () => {
       try {
@@ -182,7 +258,7 @@ export const useChat = create<ChatState>((set, getState) => {
       } catch { /* vai trò không dùng được Agent hoặc máy chủ cũ */ }
     },
     selectAgent: (id) => { set({ agentId: id, convId: null }); saveAgent(id, null) },
-    newConversation: () => { set({ convId: null }); saveAgent(getState().agentId, null); push({ id: ++seq, role: 'sys', text: 'Đã bắt đầu hội thoại mới — Agent sẽ không nhớ nội dung trước đó.' }) },
+    newConversation: () => { const ag = getState().agentId; set(ag ? { convId: null } : { askConvId: null }); if (ag) saveAgent(ag, null); else saveAskConv(null); push({ id: ++seq, role: 'sys', text: `Đã bắt đầu hội thoại mới — ${ag ? 'Agent' : 'trợ lý'} sẽ không nhớ nội dung trước đó.` }) },
     askFile: async (files, q, opts) => {
       const s = getState(); if (s.busy || !files.length) return
       const question = q.trim()
@@ -206,7 +282,7 @@ export const useChat = create<ChatState>((set, getState) => {
     },
     ask: async (q, modeArg, display, opts) => {
       const question = q.trim()
-      const minLen = getState().agentId ? 1 : 5
+      const minLen = getState().agentId || getState().askConvId ? 1 : 5
       if (question.length < minLen || getState().busy) return
       const mode = modeArg ?? getState().mode
       push({ id: ++seq, role: 'user', text: display ?? question, mode })
