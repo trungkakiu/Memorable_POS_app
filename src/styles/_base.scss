@@ -1,0 +1,19 @@
+@use "tokens" as *;
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0; background: $surface; color: $ink;
+  font-family: "Inter Variable", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px; -webkit-font-smoothing: antialiased; user-select: none;
+}
+input, textarea, [contenteditable] { user-select: text; }
+* { scrollbar-width: thin; scrollbar-color: #c9b6f2 transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #c9b6f2; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: $brand; }
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid $brand; outline-offset: 2px; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes pop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+.page-enter { animation: fadeUp .25s ease both; }

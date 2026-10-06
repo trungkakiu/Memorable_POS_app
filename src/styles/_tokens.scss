@@ -1,0 +1,27 @@
+// ---- Màu ----
+$brand: #7a2ee6;
+$brand-dark: #6422c8;
+$brand-deep: #45177f;
+$brand-soft: #f4effe;
+$brand-tint: #faf8ff;
+$brand-line: #d9c9f7;
+$ink: #1c2030;
+$ink-2: #3b4254;
+$muted: #667085;
+$line: #e6e0f2;
+$line-soft: #f0ecf8;
+$surface: #f5f3fa;
+$danger: #d92d20;
+$success: #12a150;
+$warn: #d97706;
+
+// ---- Bo góc: chỉ dùng 6 / 8 / 10 px ----
+$r-sm: 6px;
+$r-md: 8px;
+$r-lg: 10px;
+
+// ---- Đổ bóng & nền ----
+$shadow-xs: 0 1px 2px rgba(28, 32, 48, .06);
+$shadow-card: 0 1px 2px rgba(28, 32, 48, .05), 0 6px 18px -10px rgba(98, 40, 200, .22);
+$shadow-pop: 0 18px 44px -14px rgba(50, 20, 110, .45);
+$gradient: linear-gradient(135deg, #8b45f5 0%, #6422c8 100%);

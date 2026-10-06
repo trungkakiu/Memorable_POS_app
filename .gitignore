@@ -1,0 +1,20 @@
+# Phụ thuộc và sản phẩm build
+node_modules/
+dist/
+release/
+*.exe
+*.exe.zip
+*.blockmap
+
+# Môi trường, bí mật, nhật ký
+.env
+.env.*
+*.log
+npm-debug.log*
+
+# Công cụ / hệ điều hành
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

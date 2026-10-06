@@ -1,0 +1,46 @@
+@use "tokens" as *;
+
+// =====================================================================
+//  Khung hỏi trợ lý kiểu ChatGPT: biểu tượng AI · ô gõ · nút + · micro · gửi
+// =====================================================================
+.rd .rd-composer { position: relative; background: #fff; border: 1.5px solid $line; border-radius: $r-lg; box-shadow: 0 12px 32px -20px rgba(98, 40, 200, .45); transition: border-color .15s, box-shadow .15s;
+  &:focus-within { border-color: #b794f6; box-shadow: 0 0 0 4px rgba(122, 46, 230, .12), 0 12px 32px -20px rgba(98, 40, 200, .45); }
+  &.rec { border-color: #f0a3c4; box-shadow: 0 0 0 4px rgba(227, 96, 159, .12); }
+
+  .cmp-top { display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px 6px; }
+  .ai-badge { width: 38px; height: 38px; border-radius: $r-md; flex-shrink: 0; display: grid; place-items: center; color: #fff; background: $gradient; box-shadow: 0 8px 16px -8px rgba(98, 40, 200, .8); margin-top: 2px; }
+  textarea { flex: 1; min-width: 0; border: 0; resize: none; background: transparent; font: inherit; font-size: 1.05em; line-height: 1.55; color: $ink; padding: 8px 0; min-height: 60px; max-height: 220px;
+    &:focus { outline: none; } &::placeholder { color: #9298ab; } &[readonly] { color: $ink-2; } }
+
+  .cmp-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px 10px 10px; flex-wrap: wrap; }
+  .cmp-ico { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid $line; border-radius: $r-md; background: #fff; color: $ink-2; cursor: pointer; flex-shrink: 0; transition: all .12s;
+    &:hover:not(:disabled) { background: $brand-soft; border-color: $brand-line; color: $brand-dark; }
+    &.on { background: $brand-soft; border-color: $brand-line; color: $brand-dark; }
+    &.ok { background: $ink; border-color: $ink; color: #fff; &:hover:not(:disabled) { background: #2d3348; color: #fff; } }
+    &:disabled { opacity: .55; cursor: not-allowed; } }
+  .cmp-chip { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 13px; border: 1px solid $line; border-radius: $r-md; background: #fff; color: $ink-2; font: inherit; font-weight: 700; font-size: .85em; cursor: pointer;
+    svg { color: $brand; } &:hover { background: $brand-soft; border-color: $brand-line; }
+    &.on { background: $brand-soft; border-color: $brand; color: $brand-deep; } }
+  .cmp-pol { width: 200px; select { height: 40px !important; } }
+  .cmp-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .cmp-send { width: 42px; height: 42px; display: grid; place-items: center; border: 0; border-radius: $r-md; background: $gradient; color: #fff; cursor: pointer; box-shadow: 0 8px 16px -8px rgba(98, 40, 200, .9);
+    &:hover:not(:disabled) { filter: brightness(1.08); } &:disabled { background: #e6e0f2; color: #a29bb8; box-shadow: none; cursor: not-allowed; } }
+
+  // Menu của nút +
+  .cmp-menu { position: absolute; left: 0; top: 48px; z-index: 30; width: 330px; background: #fff; border: 1px solid $line; border-radius: $r-lg; box-shadow: $shadow-pop; padding: 6px; animation: pop .14s ease both;
+    button { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: $r-md; background: none; text-align: left; cursor: pointer; font: inherit; color: $ink;
+      svg { color: $brand; flex-shrink: 0; margin-top: 2px; } b { display: block; font-size: .92em; } small { display: block; color: $muted; font-size: .78em; margin-top: 1px; }
+      &:hover { background: $brand-soft; } }
+    .sep { height: 1px; background: $line-soft; margin: 4px 8px; } }
+
+  // Đang ghi âm: sóng âm thay cho các nút phụ
+  .cmp-wave { flex: 1; min-width: 200px; display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: $r-md; background: #fff5f9; border: 1px solid #f7cfe2; color: #a3245f;
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #e0457f; animation: rd-blink 1s ease-in-out infinite; flex-shrink: 0; }
+    .tm { font-weight: 800; font-variant-numeric: tabular-nums; font-size: .85em; }
+    .bars { flex: 1; height: 26px; display: flex; align-items: center; gap: 3px; min-width: 60px;
+      i { flex: 1; max-width: 4px; min-height: 3px; border-radius: 2px; background: linear-gradient(180deg, #b04ad8, #e3609f); transition: height .08s linear; } }
+    .hint { font-size: .78em; font-weight: 700; white-space: nowrap; } }
+
+  .cmp-drop { position: absolute; inset: 0; border-radius: $r-lg; border: 2px dashed $brand; background: rgba(244, 239, 254, .94); display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 800; color: $brand-deep; pointer-events: none; }
+}
+@keyframes rd-blink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }

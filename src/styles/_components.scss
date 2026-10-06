@@ -1,0 +1,302 @@
+@use "tokens" as *;
+
+// =====================================================================
+//  Khối nội dung: card / panel / page-head / stat
+// =====================================================================
+.card {
+  background: #fff; border: 1px solid $line; border-radius: $r-lg; box-shadow: $shadow-card; padding: 18px;
+  &.flat { box-shadow: none; }
+  &.tight { padding: 12px; }
+}
+
+.panel {
+  background: #fff; border: 1px solid $line; border-radius: $r-lg; box-shadow: $shadow-card; overflow: hidden; display: flex; flex-direction: column; min-width: 0;
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 13px 18px; border-bottom: 1px solid $line-soft; background: linear-gradient(180deg, #fff, $brand-tint); }
+  .panel-title { display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; color: $ink;
+    &::before { content: ""; width: 4px; height: 16px; border-radius: 2px; background: $gradient; flex-shrink: 0; } }
+  .panel-body { padding: 18px; flex: 1; min-width: 0; }
+}
+.section-title { font-size: 13.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; color: $ink; display: flex; align-items: center; gap: 10px;
+  &::before { content: ""; width: 4px; height: 16px; border-radius: 2px; background: $gradient; } }
+
+.page-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  background: #fff; border: 1px solid $line; border-radius: $r-lg; box-shadow: $shadow-card; padding: 16px 20px; position: relative; overflow: hidden;
+  &::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: $gradient; }
+  h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.01em; color: $ink; }
+  p { margin: 3px 0 0; color: $muted; font-size: 13px; line-height: 1.45; max-width: 760px; }
+  .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+}
+
+.pill {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  background: $gradient; color: #fff; font-weight: 700; text-transform: uppercase; letter-spacing: .02em;
+  font-size: 11.5px; padding: 6px 12px; border-radius: $r-sm; line-height: 1.2;
+  &.soft { background: $brand-soft; color: $brand-dark; }
+  &.ok { background: #dcfae6; color: #067647; }
+  &.warn { background: #fef0c7; color: #93370d; }
+  &.bad { background: #fee4e2; color: #b42318; }
+  &.gray { background: #eef0f4; color: #475467; }
+  &.sm { font-size: 10.5px; padding: 3px 8px; }
+  &.block { display: flex; width: 100%; }
+}
+
+.stat {
+  background: #fff; border: 1px solid $line; border-radius: $r-lg; box-shadow: $shadow-card; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; min-width: 0;
+  &::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: $gradient; opacity: .85; }
+  .stat-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .stat-ico { width: 32px; height: 32px; border-radius: $r-md; background: $brand-soft; color: $brand; display: grid; place-items: center; flex-shrink: 0; }
+  .stat-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: $muted; line-height: 1.25; }
+  .stat-value { font-size: 28px; font-weight: 800; color: $ink; letter-spacing: -.02em; line-height: 1.05; font-variant-numeric: tabular-nums;
+    small { font-size: 12px; font-weight: 700; color: $muted; margin-left: 5px; letter-spacing: 0; } }
+  .stat-hint { font-size: 12px; color: $muted; min-height: 16px; &.up { color: $success; font-weight: 600; } &.down { color: $danger; font-weight: 600; } }
+}
+
+// Ô "nhãn – giá trị" có khung, thay cho chữ trôi nổi
+.kv { background: $brand-tint; border: 1px solid $line-soft; border-radius: $r-md; padding: 9px 12px; display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  .k { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: $muted; }
+  .v { font-weight: 600; color: $ink; word-break: break-word; line-height: 1.4; } }
+
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 32px 16px; color: $muted; text-align: center;
+  border: 1px dashed $brand-line; border-radius: $r-lg; background: $brand-tint; width: 100%;
+  .t { font-weight: 700; color: $ink-2; } }
+td > .empty, .tbl-wrap .empty { border: 0; background: transparent; }
+
+// =====================================================================
+//  Nút, form
+// =====================================================================
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; cursor: pointer; height: 36px;
+  border: 1px solid transparent; border-radius: $r-md; font-weight: 700; font-size: 12.5px;
+  text-transform: uppercase; letter-spacing: .02em; padding: 0 16px; transition: all .15s; white-space: nowrap;
+  background: $gradient; color: #fff; box-shadow: 0 1px 2px rgba(98, 40, 200, .35);
+  &:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 6px 14px -6px rgba(98, 40, 200, .65); }
+  &:active:not(:disabled) { transform: translateY(1px); }
+  &:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+  &.outline { background: #fff; color: $brand-dark; border-color: $brand-line; box-shadow: $shadow-xs;
+    &:hover:not(:disabled) { background: $brand-soft; border-color: $brand; box-shadow: none; filter: none; } }
+  &.ghost { background: transparent; color: $brand-dark; box-shadow: none; &:hover:not(:disabled) { background: $brand-soft; box-shadow: none; filter: none; } }
+  &.danger { background: $danger; box-shadow: 0 1px 2px rgba(217, 45, 32, .35); }
+  &.success { background: $success; box-shadow: 0 1px 2px rgba(18, 161, 80, .35); }
+  &.sm { height: 30px; padding: 0 11px; font-size: 11px; }
+  &.lg { height: 44px; padding: 0 24px; font-size: 13.5px; }
+  &.icon { width: 34px; height: 34px; padding: 0; }
+  &.sm.icon { width: 30px; height: 30px; }
+  &.block { width: 100%; }
+}
+
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0;
+  > label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: $muted; letter-spacing: .04em; } }
+.input, .select, .textarea {
+  width: 100%; border: 1px solid #d5cfe6; background: #fff; border-radius: $r-md; padding: 0 12px; height: 38px;
+  font-size: 14px; color: $ink; transition: border-color .15s, box-shadow .15s; font-family: inherit; box-shadow: $shadow-xs;
+  &:hover { border-color: $brand-line; }
+  &:focus { outline: none; border-color: $brand; box-shadow: 0 0 0 3px rgba(122, 46, 230, .14); }
+  &:disabled { background: #f6f5f9; color: $muted; }
+  &::placeholder { color: #9aa1b2; }
+  &.lg { height: 46px; padding: 0 16px; font-size: 15px; font-weight: 500; }
+  &.right { text-align: right; }
+}
+.textarea { height: auto; padding: 9px 12px; resize: vertical; min-height: 72px; line-height: 1.5; }
+.select { appearance: none; padding-right: 32px; cursor: pointer;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%237a2ee6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 11px center; }
+.search-box { position: relative;
+  > svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: $brand; pointer-events: none; }
+  .input { padding-left: 38px; } }
+.check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;
+  input { accent-color: $brand; width: 16px; height: 16px; } }
+
+.seg { display: inline-flex; padding: 3px; border: 1px solid $line; border-radius: $r-md; background: #fff; gap: 2px; box-shadow: $shadow-xs; flex-wrap: wrap;
+  button { border: 0; background: transparent; cursor: pointer; height: 32px; padding: 0 16px; border-radius: $r-sm;
+    font-weight: 700; text-transform: uppercase; font-size: 12px; color: $ink-2; transition: all .15s;
+    &:hover { background: $brand-soft; color: $brand-dark; }
+    &.on { background: $gradient; color: #fff; box-shadow: 0 2px 6px -2px rgba(98, 40, 200, .7); } }
+  &.sm button { height: 28px; padding: 0 12px; font-size: 11px; } }
+
+// =====================================================================
+//  Bảng
+// =====================================================================
+.tbl-wrap { border: 1px solid $line; border-radius: $r-lg; overflow: auto; background: #fff; box-shadow: $shadow-card; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px;
+  thead th { position: sticky; top: 0; background: #f7f4fd; text-align: left; padding: 11px 14px; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; color: $ink-2; letter-spacing: .05em; border-bottom: 1px solid $line; white-space: nowrap; z-index: 1; }
+  tbody td { padding: 11px 14px; border-bottom: 1px solid $line-soft; vertical-align: middle; }
+  tbody tr:nth-child(even) { background: #fdfcff; }
+  tbody tr:hover { background: #f6f1ff; }
+  tbody tr.clickable { cursor: pointer; }
+  tbody tr:last-child td { border-bottom: 0; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .center { text-align: center; } }
+
+// =====================================================================
+//  Modal, toast
+// =====================================================================
+.modal-backdrop { position: fixed; inset: 0; background: rgba(24, 16, 48, .55); backdrop-filter: blur(3px); z-index: 80;
+  display: flex; align-items: center; justify-content: center; padding: 24px; animation: fadeUp .15s ease both; }
+.modal { background: #fff; border-radius: $r-lg; width: 100%; max-height: calc(100vh - 48px); display: flex; flex-direction: column;
+  box-shadow: $shadow-pop; animation: pop .18s ease both; border: 1px solid $line; overflow: hidden;
+  &.sm { max-width: 440px; } &.md { max-width: 640px; } &.lg { max-width: 920px; } &.xl { max-width: 1120px; }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid $line; background: linear-gradient(180deg, #fff, $brand-tint);
+    h3 { margin: 0; font-size: 14px; font-weight: 800; text-transform: uppercase; color: $brand-deep; display: flex; align-items: center; gap: 10px; letter-spacing: .02em;
+      &::before { content: ""; width: 4px; height: 16px; border-radius: 2px; background: $gradient; } } }
+  .modal-body { padding: 20px; overflow: auto; }
+  .modal-foot { padding: 12px 20px; border-top: 1px solid $line; display: flex; justify-content: flex-end; gap: 10px; background: $brand-tint; } }
+
+.toasts { position: fixed; right: 20px; bottom: 20px; z-index: 120; display: flex; flex-direction: column; gap: 10px; }
+.toast { background: #fff; border: 1px solid $line; border-left: 4px solid $brand; border-radius: $r-md; padding: 11px 16px;
+  box-shadow: $shadow-pop; min-width: 260px; max-width: 420px; font-weight: 600; animation: fadeUp .2s ease both; cursor: pointer;
+  &.error { border-left-color: $danger; } &.success { border-left-color: $success; } &.warn { border-left-color: $warn; } }
+
+// =====================================================================
+//  Khung ứng dụng: header + sidebar
+// =====================================================================
+.app-header { height: 64px; flex-shrink: 0; background: #fff; border-bottom: 1px solid $line; box-shadow: 0 4px 14px -10px rgba(98, 40, 200, .35);
+  display: flex; align-items: center; padding: 0 18px; gap: 16px; position: relative; z-index: 40; }
+.brand { display: flex; align-items: center; gap: 11px; min-width: 0; flex-shrink: 0;
+  .logo { width: 40px; height: 40px; border-radius: $r-lg; background: $gradient; display: grid; place-items: center; color: #fff; box-shadow: 0 6px 14px -6px rgba(98, 40, 200, .8); }
+  .t1 { font-weight: 900; color: $brand; font-size: 17px; line-height: 1; letter-spacing: .01em; }
+  .t2 { font-weight: 600; color: $muted; font-size: 10.5px; text-transform: uppercase; margin-top: 4px; letter-spacing: .03em; } }
+.topnav { display: flex; gap: 2px; flex: 1; justify-content: center; min-width: 0;
+  .nav-item { position: relative;
+    > button { display: flex; align-items: center; gap: 5px; border: 0; background: transparent; cursor: pointer; font-weight: 700; font-size: 12.5px; height: 38px;
+      text-transform: uppercase; padding: 0 11px; border-radius: $r-md; color: $ink-2; white-space: nowrap; letter-spacing: .02em;
+      &:hover { color: $brand-dark; background: $brand-soft; } &.on { color: $brand-dark; background: $brand-soft; box-shadow: inset 0 -2px 0 $brand; } }
+    .menu { display: none; position: absolute; top: calc(100% + 2px); left: 0; min-width: 240px; background: #fff; border: 1px solid $line;
+      border-radius: $r-lg; padding: 6px; box-shadow: $shadow-pop; z-index: 60;
+      a { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: $r-md; font-weight: 600; color: $ink-2; text-decoration: none; font-size: 13.5px;
+        cursor: pointer; &:hover { background: $brand-soft; color: $brand-dark; } } }
+    &:hover .menu { display: block; } } }
+.hdr-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.user-chip { display: flex; align-items: center; gap: 10px; padding: 4px 12px 4px 4px; border: 1px solid $line; border-radius: $r-md; background: $brand-tint; margin: 0 4px;
+  .av { width: 30px; height: 30px; border-radius: $r-md; background: $gradient; color: #fff; font-weight: 800; display: grid; place-items: center; font-size: 13px; }
+  .n { font-weight: 700; font-size: 12.5px; line-height: 1.15; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .r { font-size: 10.5px; color: $muted; font-weight: 600; text-transform: uppercase; line-height: 1.2; } }
+.icon-btn { width: 36px; height: 36px; border-radius: $r-md; border: 0; background: transparent; cursor: pointer; display: grid; place-items: center; color: $ink-2; position: relative;
+  &:hover { background: $brand-soft; color: $brand; }
+  .dot { position: absolute; top: 0; right: -1px; min-width: 16px; height: 16px; border-radius: 8px; background: $danger; color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; padding: 0 4px; border: 2px solid #fff; box-sizing: content-box; } }
+
+// =====================================================================
+//  Thanh bên
+// =====================================================================
+.sidebar { width: 264px; flex-shrink: 0; display: flex; flex-direction: column; background: linear-gradient(180deg, #fff 0%, #fbfaff 100%); border-right: 1px solid $line;
+  transition: width .2s ease; overflow: hidden; position: relative;
+  .sb-top { padding: 14px 12px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .sb-cta { display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; border: 0; border-radius: $r-md; cursor: pointer; background: $gradient; color: #fff;
+    font-weight: 800; font-size: 12.5px; text-transform: uppercase; letter-spacing: .03em; box-shadow: 0 8px 16px -8px rgba(98, 40, 200, .85); transition: filter .15s, transform .1s;
+    &:hover { filter: brightness(1.08); } &:active { transform: translateY(1px); } }
+  .sb-search { display: flex; align-items: center; gap: 9px; height: 36px; padding: 0 11px; border: 1px solid $line; border-radius: $r-md; background: #fff; cursor: pointer; color: $muted; font-size: 13px; text-align: left;
+    svg { color: $brand; flex-shrink: 0; } .lbl { white-space: nowrap; } span.lbl { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+    kbd { flex-shrink: 0; white-space: nowrap; font: 700 10px/1 inherit; padding: 3px 5px; border: 1px solid $line; border-bottom-width: 2px; border-radius: 4px; background: $brand-tint; color: $muted; }
+    &:hover { border-color: $brand-line; background: $brand-tint; color: $brand-dark; } }
+
+  .sb-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px 10px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .sb-label { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #9aa1b2; padding: 8px 10px 6px; }
+
+  .sb-head { position: relative; display: flex; align-items: center; gap: 11px; width: 100%; height: 42px; padding: 0 10px 0 8px; border: 0; background: transparent; cursor: pointer; border-radius: $r-md;
+    color: $ink-2; font-weight: 700; font-size: 12.5px; text-transform: uppercase; letter-spacing: .01em; text-align: left; transition: background .15s, color .15s;
+    .ico { position: relative; width: 30px; height: 30px; border-radius: $r-md; display: grid; place-items: center; background: $brand-soft; color: $brand; flex-shrink: 0; transition: all .15s;
+      .pip { position: absolute; top: -2px; right: -2px; width: 9px; height: 9px; border-radius: 50%; background: $danger; border: 2px solid #fff; box-sizing: content-box; } }
+    .lbl { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chev { flex: 0 0 auto !important; color: #9aa1b2; transition: transform .2s; }
+    &:hover { background: $brand-tint; color: $brand-dark; .ico { background: #ece3ff; } }
+    &.open .chev { transform: rotate(180deg); }
+    &.active { background: $brand-soft; color: $brand-deep;
+      &::before { content: ""; position: absolute; left: -10px; top: 9px; bottom: 9px; width: 4px; border-radius: 0 4px 4px 0; background: $gradient; }
+      .ico { background: $gradient; color: #fff; box-shadow: 0 6px 12px -6px rgba(98, 40, 200, .9); } } }
+
+  .sb-sub { margin: 2px 0 6px 25px; padding: 2px 0 2px 12px; border-left: 1px solid $line; display: flex; flex-direction: column; gap: 1px; animation: fadeUp .18s ease both; }
+  .sb-link { position: relative; display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 6px 10px; border-radius: $r-sm; font-size: 13px; font-weight: 600; color: $ink-2; text-decoration: none; transition: background .12s, color .12s;
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #cfc6e6; flex-shrink: 0; transition: all .15s; }
+    .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    &::before { content: ""; position: absolute; left: -13px; top: 50%; width: 8px; border-top: 1px solid $line; }
+    &:hover { background: $brand-tint; color: $brand-dark; .dot { background: $brand; } }
+    &.on { background: #ece3ff; color: $brand-deep; font-weight: 800; .dot { background: $brand; box-shadow: 0 0 0 3px rgba(122, 46, 230, .2); } } }
+
+  .sb-badge { min-width: 20px; height: 18px; padding: 0 6px; border-radius: 5px; background: $danger; color: #fff; font-size: 10.5px; font-weight: 800; display: inline-grid; place-items: center; line-height: 1; flex-shrink: 0; }
+
+  .sb-notif { margin: 0 10px 10px; border: 1px solid $line; border-radius: $r-lg; background: #fff; box-shadow: $shadow-xs; overflow: hidden; flex-shrink: 0;
+    .head { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; background: linear-gradient(180deg, #fff, $brand-tint); border-bottom: 1px solid $line-soft;
+      .ttl { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: $ink-2; svg { color: $brand; } }
+      .more { border: 0; background: none; color: $brand; font-size: 11.5px; font-weight: 700; cursor: pointer; &:hover { text-decoration: underline; } } }
+    .list { display: flex; flex-direction: column; max-height: 168px; overflow-y: auto; }
+    .none { display: flex; align-items: center; gap: 8px; padding: 14px 12px; font-size: 12.5px; color: $muted; svg { color: $success; } }
+    .row { display: flex; align-items: flex-start; gap: 9px; padding: 9px 12px; border: 0; border-bottom: 1px solid $line-soft; background: #fff; text-align: left; cursor: pointer; width: 100%;
+      .dot { width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: #d4d0e0; flex-shrink: 0; }
+      .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; b { font-size: 12.5px; color: $ink; } .msg { font-size: 11.5px; color: $muted; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; } }
+      .time { font-size: 10.5px; color: #9aa1b2; flex-shrink: 0; margin-top: 2px; }
+      &.unread { background: #faf6ff; .dot { background: $brand; box-shadow: 0 0 0 3px rgba(122, 46, 230, .2); } }
+      &:hover { background: $brand-soft; } &:last-child { border-bottom: 0; } }
+    .foot { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 32px; border: 0; border-top: 1px solid $line-soft; background: $brand-tint; color: $brand-dark; font-size: 11.5px; font-weight: 700; cursor: pointer; &:hover { background: $brand-soft; } } }
+
+  .sb-toggle { display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; margin: 0 10px 10px; border: 1px solid $line; border-radius: $r-md; background: #fff; color: $muted; font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+    &:hover { background: $brand-soft; color: $brand-dark; border-color: $brand-line; } }
+
+  // ---- Chế độ thu gọn (chỉ biểu tượng) ----
+  &.collapsed { width: 68px;
+    .lbl, .sb-sub { display: none !important; }
+    .sb-top { padding: 14px 10px 10px; }
+    .sb-cta, .sb-search { justify-content: center; padding: 0; }
+    .sb-head { justify-content: center; padding: 0; height: 46px; gap: 0;
+      &.active::before { left: -10px; } }
+    .sb-toggle { margin: 0 10px 10px; } }
+}
+
+.main-wrap { max-width: 1480px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 18px;
+  > * { margin-left: auto; margin-right: auto; width: 100%; } }
+
+.cat-chip { border: 1px solid $line; background: #fff; border-radius: $r-md; padding: 7px 13px; font-weight: 600; font-size: 12.5px; cursor: pointer; color: $ink-2; text-align: left;
+  &:hover { border-color: $brand; color: $brand-dark; background: $brand-soft; } &.on { background: $gradient; color: #fff; border-color: transparent; } }
+.kbd { display: inline-block; border: 1px solid $line; border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; font-size: 11px; font-weight: 700; color: $muted; background: #fff; }
+.progress { height: 8px; border-radius: 4px; background: #eee8fb; overflow: hidden; > i { display: block; height: 100%; background: $gradient; border-radius: 4px; } }
+
+// =====================================================================
+//  Markdown
+// =====================================================================
+.md-body { line-height: 1.7; font-size: 14.5px; user-select: text; word-break: break-word;
+  h1, h2, h3, h4 { margin: 1.2em 0 .5em; font-weight: 800; color: $brand-deep; line-height: 1.25; }
+  h1 { font-size: 1.6em; } h2 { font-size: 1.35em; border-bottom: 1px solid $line; padding-bottom: .25em; } h3 { font-size: 1.15em; }
+  > :first-child { margin-top: 0; } > :last-child { margin-bottom: 0; }
+  p { margin: .6em 0; } ul, ol { padding-left: 1.5em; margin: .6em 0; } ul { list-style: disc; } ol { list-style: decimal; } li { margin: .2em 0; }
+  a { color: $brand; font-weight: 600; text-decoration: underline; }
+  a.cite { text-decoration: none; background: $brand-soft; border: 1px solid $brand-line; border-radius: 4px; padding: 0 5px; font-size: .82em; white-space: nowrap; &:hover { background: $brand; color: #fff; } }
+  code { background: $brand-soft; color: $brand-dark; padding: 1px 6px; border-radius: 4px; font-size: .9em; font-family: "Cascadia Code", Consolas, monospace; }
+  pre { background: #1f1b2e; color: #eae6f7; padding: 14px 16px; border-radius: $r-md; overflow: auto; code { background: none; color: inherit; padding: 0; } }
+  blockquote { margin: .8em 0; padding: .4em 1em; border-left: 4px solid $brand-line; background: $brand-tint; border-radius: 0 $r-md $r-md 0; color: #4b5563; }
+  table { border-collapse: collapse; margin: .8em 0; width: 100%; th, td { border: 1px solid $line; padding: 6px 10px; text-align: left; } th { background: #f7f4fd; } }
+  hr { border: 0; border-top: 1px solid $line; margin: 1.2em 0; } img { max-width: 100%; border-radius: $r-md; } }
+
+// =====================================================================
+//  Bóng chat AI
+// =====================================================================
+.chat-fab { position: fixed; right: 24px; bottom: 24px; z-index: 70; width: 56px; height: 56px; border-radius: $r-lg; border: 0; cursor: pointer; background: $gradient; color: #fff;
+  display: grid; place-items: center; box-shadow: 0 14px 30px -10px rgba(98, 40, 200, .85), 0 0 0 4px rgba(122, 46, 230, .15); transition: transform .15s, box-shadow .15s;
+  &:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 18px 34px -10px rgba(98, 40, 200, .95), 0 0 0 6px rgba(122, 46, 230, .18); }
+  .badge { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; border-radius: 10px; background: $danger; color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; padding: 0 5px; border: 2px solid #fff; }
+  .tip { position: absolute; right: 64px; white-space: nowrap; background: $ink; color: #fff; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: $r-md; opacity: 0; pointer-events: none; transition: opacity .15s; }
+  &:hover .tip { opacity: 1; } }
+.chat-panel { position: fixed; right: 24px; bottom: 92px; z-index: 70; width: 420px; height: min(620px, calc(100vh - 120px)); display: flex; flex-direction: column;
+  background: #fff; border: 1px solid $line; border-radius: $r-lg; box-shadow: $shadow-pop; overflow: hidden; animation: pop .18s ease both;
+  &.wide { width: 560px; }
+  .chat-head { background: $gradient; color: #fff; padding: 12px 14px; display: flex; align-items: center; gap: 10px;
+    .ico { width: 34px; height: 34px; border-radius: $r-md; background: rgba(255,255,255,.18); display: grid; place-items: center; }
+    .ttl { font-weight: 800; font-size: 14px; line-height: 1.15; } .sub { font-size: 11px; opacity: .85; display: flex; align-items: center; gap: 5px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; &.off { background: #fbbf24; } }
+    .spacer { flex: 1; }
+    button { width: 30px; height: 30px; border-radius: $r-sm; border: 0; background: transparent; color: #fff; cursor: pointer; display: grid; place-items: center; &:hover { background: rgba(255,255,255,.2); } } }
+  .chat-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: $brand-tint; }
+  .chat-foot { border-top: 1px solid $line; padding: 10px; background: #fff; display: flex; gap: 8px; align-items: flex-end;
+    textarea { flex: 1; border: 1px solid #d5cfe6; border-radius: $r-md; padding: 9px 12px; font: inherit; font-size: 14px; resize: none; max-height: 110px; min-height: 40px; line-height: 1.4;
+      &:focus { outline: none; border-color: $brand; box-shadow: 0 0 0 3px rgba(122, 46, 230, .14); } } } }
+.msg { display: flex; gap: 8px; max-width: 100%;
+  &.user { justify-content: flex-end; }
+  .av { width: 28px; height: 28px; border-radius: $r-md; display: grid; place-items: center; flex-shrink: 0; background: $brand-soft; color: $brand-dark; }
+  &.ai .av { background: $gradient; color: #fff; }
+  .bubble { padding: 9px 13px; border-radius: $r-lg; font-size: 13.5px; line-height: 1.55; max-width: calc(100% - 40px);
+    &.u { background: $brand; color: #fff; border-top-right-radius: 3px; white-space: pre-wrap; }
+    &.a { background: #fff; border: 1px solid $line; border-top-left-radius: 3px; box-shadow: $shadow-xs; }
+    &.err { background: #fef3f2; border: 1px solid #fecdca; color: #b42318; } }
+  .src { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; padding: 7px 9px; border: 1px solid $line; border-radius: $r-md; background: #fff; cursor: pointer; font-size: 12px;
+    &:hover { background: $brand-soft; border-color: $brand-line; } } }
+.typing { display: inline-flex; gap: 4px; padding: 4px 2px;
+  i { width: 6px; height: 6px; border-radius: 50%; background: $brand; opacity: .4; animation: blink 1.2s infinite; &:nth-child(2) { animation-delay: .2s; } &:nth-child(3) { animation-delay: .4s; } } }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; transform: scale(.8); } 40% { opacity: 1; transform: scale(1); } }

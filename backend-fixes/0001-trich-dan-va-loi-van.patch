@@ -1,0 +1,218 @@
+--- /dev/null
++++ b/src/services/ai/citeText.js
+@@ -0,0 +1,45 @@
++// Quy tắc trình bày câu trả lời cho người dùng cuối (nhiều người không rành công nghệ):
++// - trích nguồn thống nhất dạng [doc:ID] (giao diện đổi thành liên kết mở tài liệu);
++// - không lộ nhãn kỹ thuật nội bộ (tier, approved, OCR...) trong văn bản hiển thị.
++
++const CITE_RULE = 'In every text field shown to the user, cite a team document right after the sentence it supports as [doc:ID] (for example [doc:12]). Never write a bare [12], "doc 12" or "document 12".';
++
++const PLAIN_RULE = [
++  'The readers are non-technical staff. In user-facing text never use internal labels such as tier, official, reviewed, unreviewed, stale, approved, OCR, chunk or passage.',
++  'Say instead (in Vietnamese): "nguồn chính thống", "đã kiểm duyệt", "chưa được kiểm duyệt", "đã quá hạn rà soát", "chữ đọc từ ảnh, chưa ai kiểm tra".',
++  'Address the reader as "bạn".',
++].join(' ');
++
++/**
++ * Chuẩn hóa trích dẫn trong văn bản AI trả về:
++ * - [12] hoặc [doc:12] của tài liệu thật (có trong validIds) -> [doc:12]
++ * - [doc:99] không thuộc tài liệu đã gửi -> gỡ bỏ (AI bịa nguồn)
++ * - [3] không phải id tài liệu -> giữ nguyên (có thể là chú thích thường)
++ */
++const normalizeCites = (text, validIds) => {
++  if (typeof text !== 'string' || !text) return text;
++  const ok = validIds instanceof Map || validIds instanceof Set ? validIds : new Set(validIds || []);
++  return text
++    .replace(/\[(doc:)?(\d+(?:\s*[,;]\s*\d+)*)\]/g, (all, prefixed, list) => {
++      const ids = list.split(/\s*[,;]\s*/).map(Number);
++      if (ids.every((id) => ok.has(id))) return ids.map((id) => `[doc:${id}]`).join(' ');
++      if (!prefixed) return all;
++      const keep = ids.filter((id) => ok.has(id));
++      return keep.map((id) => `[doc:${id}]`).join(' ');
++    })
++    .replace(/[ \t]{2,}/g, ' ');
++};
++
++/** Áp dụng normalizeCites cho mọi chuỗi trong một đối tượng/mảng (giữ nguyên số, id). */
++const normalizeDeep = (value, validIds) => {
++  if (typeof value === 'string') return normalizeCites(value, validIds);
++  if (Array.isArray(value)) return value.map((v) => normalizeDeep(v, validIds));
++  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalizeDeep(v, validIds)]));
++  return value;
++};
++
++const WITHHELD_VI = 'Câu trả lời không dẫn được tài liệu nào hợp lệ nên đã bị giữ lại.';
++const WITHHELD_PART_VI = 'Phần được cho là lấy từ tài liệu không dẫn được nguồn hợp lệ nên đã bị giữ lại.';
++const COMPARE_NOTE_VI = 'So sánh bằng AI chỉ để hỗ trợ đọc. Hãy đối chiếu các điểm quan trọng với tài liệu gốc.';
++
++module.exports = { CITE_RULE, PLAIN_RULE, normalizeCites, normalizeDeep, WITHHELD_VI, WITHHELD_PART_VI, COMPARE_NOTE_VI };
+--- a/src/services/ai/tasks.js
++++ b/src/services/ai/tasks.js
+@@ -19,6 +19,7 @@
+ const E = require('../../utils/errors');
+ 
+ const LANG_NOTE = 'Write in Vietnamese unless the source text is in another language.';
++const { CITE_RULE, PLAIN_RULE, normalizeCites, normalizeDeep, WITHHELD_VI, WITHHELD_PART_VI, COMPARE_NOTE_VI } = require('./citeText');
+ 
+ // ---------------------------------------------------------------- AI-01: gợi ý thẻ, tóm tắt, mức rủi ro
+ const SUGGEST_OUTPUT = {
+@@ -224,7 +225,7 @@
+ ].join(' ');
+ 
+ const validConflicts = (data, byId) => (data.conflicts || [])
+-  .map((c) => ({ topic: c.topic, detail: c.detail, item_ids: [...new Set((c.item_ids || []).filter((id) => byId.has(id)))] }))
++  .map((c) => ({ topic: normalizeCites(c.topic, byId), detail: normalizeCites(c.detail, byId), item_ids: [...new Set((c.item_ids || []).filter((id) => byId.has(id)))] }))
+   .filter((c) => c.item_ids.length >= 2 || (c.item_ids.length && c.detail));
+ 
+ const askDocuments = async (user, question, opt = {}) => {
+@@ -248,6 +249,7 @@
+     CROSS_DOC_RULES,
+     'If you rely on a document whose tier is stale or unreviewed, say so in caveats.',
+     'Be concise and give steps as a numbered list when the question is procedural.',
++    CITE_RULE, PLAIN_RULE,
+     LANG_NOTE, UNTRUSTED_NOTICE,
+   ].join(' ');
+   const prompt = [...docsOf(sources), `<question>${neutralize(question)}</question>`].join('\n');
+@@ -261,10 +263,10 @@
+   const withheld = Boolean(data.insufficient_info) || unsupported;
+   return {
+     mode: 'documents',
+-    answer: unsupported ? null : data.answer,
++    answer: unsupported ? null : normalizeCites(data.answer, byId),
+     insufficient_info: withheld,
+     grounded: !withheld,
+-    caveats: unsupported ? 'The answer had no valid source and was withheld.' : data.caveats || '',
++    caveats: unsupported ? WITHHELD_VI : normalizeCites(data.caveats || '', byId),
+     // Trả lời một phần: AI nói "chưa đủ thông tin" nhưng vẫn nêu được phần có trong tài liệu và đã trích nguồn thì giữ nguồn lại
+     partial: Boolean(data.insufficient_info) && !unsupported && cited.length > 0 && Boolean(data.answer),
+     conflicts: unsupported ? [] : validConflicts(data, byId),
+@@ -317,6 +319,7 @@
+     'Set insufficient_info to true when the documents alone do not answer the question. Use an empty string for a field you do not use.',
+     CROSS_DOC_RULES,
+     'Mention stale or unreviewed sources in caveats.',
++    CITE_RULE, PLAIN_RULE,
+     LANG_NOTE, UNTRUSTED_NOTICE,
+   ].join(' ');
+   const prompt = [...docsOf(sources), `<question>${neutralize(question)}</question>`].join('\n');
+@@ -326,7 +329,7 @@
+   const cited = [...new Set((data.citations || []).map((c) => c.item_id))].filter((id) => byId.has(id));
+   const fromDocs = (data.from_documents || '').trim();
+   const unsupported = Boolean(fromDocs) && cited.length === 0; // có nội dung "từ tài liệu" nhưng không có nguồn hợp lệ: giữ lại
+-  const answer = unsupported ? null : fromDocs || null;
++  const answer = unsupported ? null : normalizeCites(fromDocs, byId) || null;
+   const general = (data.general_knowledge || '').trim();
+   return {
+     mode: 'hybrid',
+@@ -334,7 +337,7 @@
+     general_knowledge: general || null,
+     insufficient_info: Boolean(data.insufficient_info) || !answer,
+     grounded: Boolean(answer),
+-    caveats: unsupported ? 'The part claimed to come from documents had no valid source and was withheld.' : data.caveats || '',
++    caveats: unsupported ? WITHHELD_PART_VI : normalizeCites(data.caveats || '', byId),
+     conflicts: answer ? validConflicts(data, byId) : [],
+     cross_document: Boolean(answer) && cited.length > 1,
+     sources: answer ? cited.map(sourceBuilder(byId)) : [],
+@@ -392,6 +395,7 @@
+     'gaps: things one would expect to compare but that some documents do not cover. recommendation: what the reader should do next (for example which document to follow or have reviewed).',
+     'If a question is given, focus the comparison on it. Use only the document ids provided; cite the ids in every item.',
+     'Text marked "chữ do AI đọc, chưa kiểm chứng" may contain reading mistakes.',
++    CITE_RULE, PLAIN_RULE,
+     LANG_NOTE, UNTRUSTED_NOTICE,
+   ].join(' ');
+   const prompt = [
+@@ -405,13 +409,15 @@
+   return {
+     documents: docs.map((d) => ({ id: d.item.id, title: d.item.title, tier: d.tier.tier, tier_label: authority.TIER_LABEL_VI[d.tier.tier], trust_label: d.tier.label, effective_date: d.item.effective_date, next_review_date: d.item.next_review_date })),
+     skipped,
+-    summary: data.summary || '',
+-    common_points: (data.common_points || []).map((c) => ({ point: c.point, item_ids: ids(c.item_ids) })).filter((c) => c.item_ids.length),
+-    differences: (data.differences || []).map((d) => ({ topic: d.topic, positions: (d.positions || []).filter((p) => ok.has(p.item_id)) })).filter((d) => d.positions.length),
+-    conflicts: (data.conflicts || []).map((c) => ({ topic: c.topic, detail: c.detail, item_ids: ids(c.item_ids), resolution: c.resolution })).filter((c) => c.item_ids.length),
+-    gaps: data.gaps || [],
+-    recommendation: data.recommendation || '',
+-    note: 'AI comparison is a reading aid. Check important points against the original documents.',
++    ...normalizeDeep({
++      summary: data.summary || '',
++      common_points: (data.common_points || []).map((c) => ({ point: c.point, item_ids: ids(c.item_ids) })).filter((c) => c.item_ids.length),
++      differences: (data.differences || []).map((d) => ({ topic: d.topic, positions: (d.positions || []).filter((p) => ok.has(p.item_id)) })).filter((d) => d.positions.length),
++      conflicts: (data.conflicts || []).map((c) => ({ topic: c.topic, detail: c.detail, item_ids: ids(c.item_ids), resolution: c.resolution })).filter((c) => c.item_ids.length),
++      gaps: data.gaps || [],
++      recommendation: data.recommendation || '',
++    }, ok),
++    note: COMPARE_NOTE_VI,
+     model, cost_usd: cost,
+   };
+ };
+--- a/src/services/knowledge/askFiles.js
++++ b/src/services/knowledge/askFiles.js
+@@ -24,6 +24,7 @@
+ const MAX_QUERIES = 7;
+ const RERANK_POOL = 24;
+ const LANG_NOTE = 'Write in Vietnamese unless the question is in another language.';
++const { CITE_RULE, PLAIN_RULE, normalizeCites, WITHHELD_VI } = require('../ai/citeText');
+ const GENERAL_WARNING = 'Phần này KHÔNG dựa trên tài liệu của nhóm mà từ kiến thức chung của AI: cần kiểm chứng trước khi áp dụng.';
+ 
+ const ANALYZE_OUTPUT = loose({
+@@ -208,6 +209,8 @@
+     'Documents carry a tier: official > reviewed > unreviewed > stale. Combine several documents when needed. If documents disagree, report it in conflicts, prefer the higher tier and then the more recent one, and explain why. Text marked "chữ do AI đọc, chưa kiểm chứng" may contain reading mistakes: say so in caveats when you rely on it for exact values.',
+     mode === 'hybrid' ? 'You MAY add general knowledge in general_knowledge, clearly generic and never stating company-specific facts; otherwise leave it empty. Never put general knowledge into answer.' : '',
+     'Be concise; give steps as a numbered list when the question is procedural.',
++    CITE_RULE, PLAIN_RULE,
++    'Write need as one short sentence addressed to the reader ("Bạn cần ...").',
+     LANG_NOTE, UNTRUSTED_NOTICE,
+   ].filter(Boolean).join(' ');
+   const prompt = [
+@@ -231,10 +234,10 @@
+   const general = mode === 'hybrid' ? clamp(r.data.general_knowledge, 3000).trim() : '';
+   return {
+     ...base,
+-    answer: withheld ? null : clamp(r.data.answer, 4000),
++    answer: withheld ? null : normalizeCites(clamp(r.data.answer, 4000), byId),
+     insufficient_info: withheld,
+     grounded: !withheld,
+-    caveats: !r.data.insufficient_info && cited.length === 0 ? 'The answer had no valid source and was withheld.' : clamp(r.data.caveats, 1000),
++    caveats: !r.data.insufficient_info && cited.length === 0 ? WITHHELD_VI : normalizeCites(clamp(r.data.caveats, 1000), byId),
+     conflicts: withheld ? [] : (r.data.conflicts || []).map((c) => ({ topic: clamp(c.topic, 200), detail: clamp(c.detail, 600), item_ids: [...new Set((c.item_ids || []).filter((id) => byId.has(id)))] })).filter((c) => c.item_ids.length),
+     discrepancies: withheld ? [] : (r.data.discrepancies || []).filter((d) => byId.has(d.item_id)).slice(0, 8).map((d) => ({ topic: clamp(d.topic, 200), uploaded_says: clamp(d.uploaded_says, 400), source_says: clamp(d.source_says, 400), item_id: d.item_id })),
+     cross_document: !withheld && cited.length > 1,
+--- a/tests/askfile.test.js
++++ b/tests/askfile.test.js
+@@ -144,7 +144,7 @@
+     create.mockResolvedValueOnce(reply(ANALYZED)).mockResolvedValueOnce(reply(answer({ citations: [{ item_id: 999 }] })));
+     const r = await askWithFiles(user, { files: [file()], question: 'Ai ký?' });
+     expect(r).toMatchObject({ answer: null, grounded: false, insufficient_info: true, sources: [] });
+-    expect(r.caveats).toMatch(/no valid source/);
++    expect(r.caveats).toMatch(/không dẫn được tài liệu nào hợp lệ/);
+     expect(r.related).toEqual([]);
+   });
+ 
+--- /dev/null
++++ b/tests/citeText.test.js
+@@ -0,0 +1,27 @@
++// Chuẩn hóa trích dẫn và lời văn hiển thị cho người dùng cuối
++const { normalizeCites, normalizeDeep, CITE_RULE, PLAIN_RULE } = require('../src/services/ai/citeText');
++
++describe('normalizeCites', () => {
++  const ids = new Set([44, 46]);
++  test('[ID] của tài liệu thật thành [doc:ID]', () => {
++    expect(normalizeCites('Quy tắc gồm 3 phần [44].', ids)).toBe('Quy tắc gồm 3 phần [doc:44].');
++    expect(normalizeCites('Theo [44, 46] thì', ids)).toBe('Theo [doc:44] [doc:46] thì');
++  });
++  test('giữ nguyên ngoặc số không phải id tài liệu', () => {
++    expect(normalizeCites('Bước [1] rồi [2]', ids)).toBe('Bước [1] rồi [2]');
++  });
++  test('gỡ [doc:ID] không thuộc tài liệu đã gửi', () => {
++    expect(normalizeCites('Nguồn [doc:99] bịa và [doc:44] thật', ids)).toBe('Nguồn bịa và [doc:44] thật');
++  });
++  test('nhận Map làm tập id và bỏ qua giá trị không phải chuỗi', () => {
++    expect(normalizeCites('[46]', new Map([[46, {}]]))).toBe('[doc:46]');
++    expect(normalizeCites(null, ids)).toBeNull();
++  });
++  test('normalizeDeep chỉ đổi chuỗi, giữ số và mảng id', () => {
++    expect(normalizeDeep({ summary: '[44] và [46]', item_ids: [44], n: 2 }, ids)).toEqual({ summary: '[doc:44] và [doc:46]', item_ids: [44], n: 2 });
++  });
++  test('quy tắc prompt yêu cầu [doc:ID] và lời văn không kỹ thuật', () => {
++    expect(CITE_RULE).toMatch(/\[doc:ID\]/);
++    expect(PLAIN_RULE).toMatch(/non-technical/);
++  });
++});
