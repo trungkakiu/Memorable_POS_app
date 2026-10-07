@@ -6,13 +6,16 @@
 //
 // Nguồn spec (theo thứ tự ưu tiên):
 //   1. Mã nguồn backend: BACKEND_DIR (mặc định ../Memorable) — sinh spec trực tiếp từ route + tài liệu, không ghi gì vào backend
-//   2. API_DOCS_URL (ví dụ http://26.118.183.122:3002/openapi.json)
+//   2. API_DOCS_URL (ví dụ https://memorable.clearlink.io.vn/openapi.json, nếu máy chủ mở tài liệu)
 //   3. BACKEND_DIR/docs/openapi.json (bản build sẵn, có thể cũ)
 const fs = require('node:fs'); const path = require('node:path'); const { execFileSync } = require('node:child_process')
 
 const root = path.join(__dirname, '..')
 const baselineFile = path.join(root, 'api', 'openapi.baseline.json')
-const backendDir = path.resolve(root, process.env.BACKEND_DIR || '../Memorable')
+const { parseEnvFile } = require('../electron/appConfig.cjs')
+const fileEnv = parseEnvFile(path.join(root, '.env')) // BACKEND_DIR, API_DOCS_URL có thể đặt trong .env
+const envOf = (k) => process.env[k] || fileEnv[k]
+const backendDir = path.resolve(root, envOf('BACKEND_DIR') || '../Memorable')
 const args = process.argv.slice(2)
 const asJson = args.includes('--json'); const accept = args.includes('--accept')
 
@@ -21,8 +24,8 @@ async function loadCurrent() {
     const code = "const { app } = require('./src/app'); const { buildSpec } = require('./src/docs/openapi'); process.stdout.write(JSON.stringify(buildSpec(app, { baseUrl: process.env.API_URL || 'http://localhost:3001' }))); process.exit(0)"
     try { return { source: `mã nguồn ${backendDir}`, spec: JSON.parse(execFileSync(process.execPath, ['-e', code], { cwd: backendDir, maxBuffer: 64 << 20, timeout: 90000, stdio: ['ignore', 'pipe', 'ignore'] }).toString('utf8')) } } catch { /* thử nguồn khác */ }
   }
-  if (process.env.API_DOCS_URL) {
-    try { const r = await fetch(process.env.API_DOCS_URL); if (r.ok) return { source: process.env.API_DOCS_URL, spec: await r.json() } } catch { /* thử nguồn khác */ }
+  if (envOf('API_DOCS_URL')) {
+    try { const r = await fetch(envOf('API_DOCS_URL')); if (r.ok) return { source: envOf('API_DOCS_URL'), spec: await r.json() } } catch { /* thử nguồn khác */ }
   }
   const built = path.join(backendDir, 'docs', 'openapi.json')
   if (fs.existsSync(built)) return { source: built + ' (bản build sẵn)', spec: JSON.parse(fs.readFileSync(built, 'utf8')) }

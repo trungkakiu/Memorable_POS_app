@@ -1,0 +1,134 @@
+@use "tokens" as *;
+
+// =====================================================================
+//  Điền mẫu tự động: thư viện mẫu bên trái, bàn điền bên phải (thông tin → xem lại → tải về)
+//  Dùng chung cho giao diện Người đọc (.rd) và quản trị (.af-admin: chữ nhỏ hơn, gọn hơn)
+// =====================================================================
+.af { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.af-grid { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 18px; align-items: start;
+  @media (max-width: 1000px) { grid-template-columns: minmax(0, 1fr); .af-lib.has-sel { display: none; } } }
+
+// ---- Thư viện ----
+.af-lib { position: relative; display: flex; flex-direction: column; gap: 12px; position: sticky; top: 8px; max-height: calc(100vh - 140px); overflow: hidden;
+  @media (max-width: 1000px) { position: relative; max-height: none; } }
+.af-search { display: flex; align-items: center; gap: 8px; padding: 0 12px; min-height: 44px; border: 2px solid $line; border-radius: $r-md; background: #fff; color: $muted;
+  &:focus-within { border-color: $brand; color: $brand; }
+  input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; color: $ink; }
+  button { border: 0; background: transparent; color: $muted; cursor: pointer; display: grid; place-items: center; padding: 4px; border-radius: 6px; &:hover { background: $brand-soft; color: $brand; } } }
+.af-tabs { display: flex; gap: 4px; padding: 4px; border-radius: $r-md; background: $brand-tint;
+  button { flex: 1; border: 0; background: transparent; padding: 7px 6px; white-space: nowrap; border-radius: 8px; font: inherit; font-size: .86em; font-weight: 700; color: $ink-2; cursor: pointer;
+    &.on { background: #fff; color: $brand-dark; box-shadow: $shadow-xs; } &:hover:not(.on) { color: $brand; } } }
+.af-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; margin: 0 -6px; padding: 0 6px 4px; min-height: 0; }
+.af-sec { display: flex; align-items: center; gap: 6px; margin: 8px 2px 2px; font-size: .74em; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: $muted; &:first-child { margin-top: 0; } }
+.af-card { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 12px; border: 1px solid $line-soft; border-radius: $r-md; background: #fff; cursor: pointer; font: inherit; color: $ink; transition: border-color .15s, background .15s, box-shadow .15s;
+  &:hover { border-color: $brand-line; background: #fcfbff; .af-go { opacity: 1; transform: none; } }
+  &.on { border-color: $brand; background: $brand-soft; box-shadow: 0 0 0 3px rgba(122, 46, 230, .12); .af-go { opacity: 1; transform: none; color: $brand; } } }
+.af-go { flex-shrink: 0; opacity: 0; transform: translateX(-4px); transition: all .15s; color: $muted; }
+.af-name { display: block; font-weight: 800; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.af-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .8em; color: $muted; margin-top: 2px;
+  > span:not(:last-child)::after { content: "·"; margin-left: 10px; color: $line; } }
+.af-reason { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; padding: 2px 8px; border-radius: 999px; background: #ecfdf3; color: #067647; font-size: .76em; font-weight: 700; }
+.af-kind { flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;
+  &.docx { background: #e8f0fe; color: #1a56db; } &.xlsx { background: #e7f8ee; color: #0e7c3a; } &.csv { background: #fff4e5; color: #b54708; }
+  &.lg { width: 52px; height: 52px; border-radius: 14px; } }
+.af-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; padding: 28px 12px; color: $muted;
+  b { color: $ink; } span { font-size: .9em; line-height: 1.5; max-width: 280px; } }
+.af-uploading { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: $r-md; background: $brand-soft; color: $brand-dark; font-weight: 700; font-size: .88em; }
+.af-drop { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border: 3px dashed $brand; border-radius: inherit; background: rgba(250, 248, 255, .94); color: $brand-deep; font-weight: 800; pointer-events: none; }
+.af-tip { display: flex; gap: 8px; font-size: .78em; line-height: 1.5; color: $muted; padding-top: 8px; border-top: 1px dashed $line;
+  code { padding: 0 4px; border-radius: 4px; background: $brand-tint; color: $brand-dark; font-size: .95em; } }
+
+// ---- Chào mừng ----
+.af-welcome { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 32px 24px !important; }
+.af-hero { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; color: #fff; background: $gradient; box-shadow: 0 12px 24px -12px rgba(98, 40, 200, .8); }
+.af-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; width: 100%; margin: 8px 0; text-align: left;
+  @media (max-width: 760px) { grid-template-columns: minmax(0, 1fr); } }
+.af-step { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: $r-md; background: #fbf9ff; border: 1px solid $line-soft;
+  .n { position: absolute; top: 12px; right: 14px; font-weight: 900; font-size: 1.4em; color: $brand-line; }
+  .ic { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: $brand-soft; color: $brand; }
+  small { color: $muted; line-height: 1.5; } }
+.af-privacy { display: flex; align-items: flex-start; gap: 8px; font-size: .8em; line-height: 1.5; color: $ink-2; padding: 8px 12px; border-radius: $r-md; background: #f4fbf6; border: 1px solid #c6ecd3;
+  svg { flex-shrink: 0; margin-top: 2px; color: #067647; } }
+
+// ---- Đầu mẫu ----
+.af-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.af-back { border: 1px solid $line; background: #fff; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; cursor: pointer; color: $ink-2; &:hover { border-color: $brand; color: $brand; }
+  @media (min-width: 1001px) { display: none; } }
+.af-head-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+// ---- Thanh bước ----
+.af-stepper { display: flex; gap: 0; list-style: none; margin: 0; padding: 0;
+  li { flex: 1; display: flex; align-items: center; &:not(:last-child)::after { content: ""; flex: 1; height: 2px; background: $line; margin: 0 10px; } &.past::after { background: $brand; } }
+  button { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; font: inherit; font-weight: 700; color: $muted; cursor: pointer; padding: 0; white-space: nowrap; &:disabled { cursor: default; } }
+  span { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: .85em; font-weight: 800; border: 2px solid $line; background: #fff; }
+  li.cur button { color: $brand-dark; span { border-color: $brand; background: $brand; color: #fff; } }
+  li.past button { color: $ink-2; span { border-color: $brand; background: $brand-soft; color: $brand; } } }
+
+// ---- Bước 1 ----
+.af-source { position: relative; display: flex; flex-direction: column; border: 2px solid $line; border-radius: $r-md; background: #fff; transition: border-color .15s;
+  &:focus-within, &.over { border-color: $brand; }
+  .fk-tray { padding: 10px 10px 0; }
+  textarea { border: 0; outline: none; resize: vertical; min-height: 160px; padding: 12px 14px; font: inherit; line-height: 1.6; color: $ink; background: transparent; }
+  .fc-drop-over { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border-radius: inherit; background: rgba(250, 248, 255, .94); color: $brand-deep; font-weight: 800; pointer-events: none; } }
+.af-source-bar { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-top: 1px solid $line-soft; }
+.af-ico { width: 34px; height: 34px; border-radius: 10px; border: 0; background: transparent; color: $ink-2; display: grid; place-items: center; cursor: pointer; &:hover { background: $brand-soft; color: $brand; } }
+.af-need { display: flex; flex-wrap: wrap; gap: 6px;
+  span { padding: 4px 10px; border-radius: 999px; background: $brand-tint; color: $ink-2; font-size: .82em; font-weight: 600; } }
+.af-run { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: $r-md; border: 1px solid $line-soft; background: #fcfbff;
+  b { font-size: .92em; } small { color: $muted; font-size: .78em; } }
+.af-mini { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; padding: 5px 10px; border-radius: 8px; border: 1px solid $brand-line; background: #fff; color: $brand-dark; font: inherit; font-size: .8em; font-weight: 700; cursor: pointer; white-space: nowrap;
+  &:hover { background: $brand-soft; } }
+
+// ---- Bước 2 ----
+.af-summary { display: flex; flex-wrap: wrap; gap: 6px;
+  span { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: .8em; font-weight: 700; background: $brand-tint; color: $ink-2;
+    &.ok { background: #ecfdf3; color: #067647; } &.warn { background: #fffaeb; color: #b54708; } &.bad { background: #fef3f2; color: #b42318; } } }
+.af-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px;
+  @media (max-width: 760px) { grid-template-columns: minmax(0, 1fr); } }
+.af-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px 12px; border-radius: $r-md; border: 1px solid transparent; background: #fbfaff;
+  &.wide { grid-column: 1 / -1; }
+  &.ok { background: #f6fef9; }
+  &.warn { background: #fffcf5; border-color: #fedf89; }
+  &.missing { background: #fff8f7; border-color: #fecdca; .af-input { border-color: #fda29b; } } }
+.af-label { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: .92em; }
+.af-type { font-size: .72em; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: #fff; border: 1px solid $line; color: $muted; }
+.af-key { font-size: .7em; color: $muted; }
+.af-conf { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; font-size: .74em; font-weight: 800; padding: 2px 8px; border-radius: 999px;
+  &.ok { background: #d1fadf; color: #05603a; } &.warn { background: #fef0c7; color: #93370d; } &.bad { background: #fee4e2; color: #b42318; } &.edited { background: $brand-soft; color: $brand-dark; } }
+.af-input { width: 100%; min-height: 42px; padding: 8px 12px; border: 2px solid $line; border-radius: 10px; background: #fff; font: inherit; color: $ink; line-height: 1.5;
+  &:focus { outline: none; border-color: $brand; box-shadow: 0 0 0 3px rgba(122, 46, 230, .1); }
+  &.mono { font-variant-numeric: tabular-nums; letter-spacing: .01em; } }
+textarea.af-input { resize: vertical; min-height: 84px; }
+.af-check { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; input { width: 20px; height: 20px; accent-color: $brand; } }
+.af-help { display: inline-flex; align-items: center; gap: 4px; color: $muted; font-size: .8em; line-height: 1.4; }
+.af-evidence { color: #475467; font-size: .78em; font-style: italic; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.af-out { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid $line-soft; }
+.af-done { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-radius: $r-md; background: #ecfdf3; border: 1px solid #abefc6; color: #05603a; }
+
+// ---- Bảng ----
+.af-table-wrap { overflow: auto; border: 1px solid $line; border-radius: $r-md; max-height: 60vh; background: #fff; }
+.af-table { width: 100%; border-collapse: collapse; font-size: .9em;
+  th { position: sticky; top: 0; z-index: 1; background: #f6f3ff; text-align: left; padding: 8px 10px; font-weight: 800; color: $ink-2; border-bottom: 1px solid $line; white-space: nowrap; }
+  td { border-bottom: 1px solid $line-soft; padding: 0; vertical-align: top; }
+  tr:hover td { background: #fcfbff; }
+  input, select { width: 100%; min-width: 160px; border: 0; background: transparent; padding: 9px 10px; font: inherit; color: $ink; outline: none;
+    &:focus { background: #fff; box-shadow: inset 0 0 0 2px $brand; } &.mono { font-variant-numeric: tabular-nums; min-width: 125px; } &.empty:not(:focus) { background: #fff8f7; } }
+  td.text-center { padding: 9px 4px; }
+  &.edit input, &.edit select { min-width: 0; } }
+.af-x { border: 0; background: transparent; color: $muted; padding: 9px; cursor: pointer; border-radius: 6px; &:hover { color: $danger; background: #fef3f2; } }
+
+// ---- Gợi ý trong khung trò chuyện khi gửi tệp Word/Excel/CSV ----
+.hc-fill-hint { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; margin-bottom: 8px; border-radius: $r-md; background: linear-gradient(120deg, #f7f2ff, #fff); border: 1px solid $brand-line; color: $ink-2; font-size: .9em;
+  svg { color: $brand; }
+  button { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; padding: 7px 14px; background: $gradient; color: #fff; font: inherit; font-weight: 800; font-size: .92em; cursor: pointer; white-space: nowrap; } }
+
+// ---- Thẻ trên trang chủ ----
+.rd .rd-intent-new { background: linear-gradient(120deg, #f7f2ff 0%, #fff 60%); border-color: $brand-line; }
+.rd .rd-new { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: $gradient; color: #fff; font-size: .62em; font-weight: 800; vertical-align: middle; letter-spacing: .03em; }
+
+// ---- Giao diện quản trị: gọn hơn ----
+.af-admin { font-size: 14px;
+  .af-input { min-height: 36px; border-width: 1px; border-radius: 8px; }
+  .af-search { min-height: 38px; border-width: 1px; }
+  .af-source { border-width: 1px; }
+  .af-hero { width: 52px; height: 52px; } }

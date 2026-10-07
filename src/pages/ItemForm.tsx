@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Copy, Eye, FileText, Plus, Save, Sparkles, Trash2, Wand2 } from 'lucide-react'
-import { ApiError, get, post, put } from '../lib/api'
+import { ApiError, get, post, put, UPLOAD_MB } from '../lib/api'
 import { RISK_LABEL, SENS_LABEL, SEVERITY_LABEL, TYPE_LABEL, todayStr } from '../lib/format'
 import type { Attachment, ItemDetail, ItemType, PromptVar, RunbookStep, Template } from '../lib/types'
 import type { LocalFile } from '../lib/api'
@@ -274,7 +274,7 @@ export default function ItemForm() {
       )}
 
       <Section title={edit ? `Tệp & ảnh đính kèm (${atts.length})` : 'Tệp & ảnh đính kèm'}
-        right={<span className="text-xs text-muted">Tối đa 10 MB/tệp · AI chỉ đọc txt, md, csv</span>}>
+        right={<span className="text-xs text-muted">Tối đa {UPLOAD_MB} MB/tệp · AI chỉ đọc txt, md, csv</span>}>
         {edit ? (
           <div className="flex flex-col gap-4">
             <Uploader itemId={Number(id)} compact onUploaded={reloadAtts} />

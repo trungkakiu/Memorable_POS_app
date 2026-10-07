@@ -5,7 +5,7 @@ import {
   AlertTriangle, ArrowRight, Bot, CheckCircle2, ClipboardPaste, Copy, ExternalLink, Eye, FileStack, FileText, FileUp, Files, ImagePlus, Layers, Loader2, Lock,
   PencilLine, Plus, RotateCcw, ScanSearch, ShieldAlert, Sparkles, Trash2, UploadCloud, Wand2, X, XCircle,
 } from 'lucide-react'
-import { ApiError, LocalFile, checkFile, fromBrowserFile, pickLocalFiles } from '../lib/api'
+import { ApiError, LocalFile, checkFile, fromBrowserFile, pickLocalFiles, AUDIO_MB, UPLOAD_MB } from '../lib/api'
 import { can } from '../lib/permissions'
 import { bytes as fmtBytes, FILE_ICON, TYPE_LABEL } from '../lib/format'
 import { extOf } from '../lib/preview'
@@ -307,7 +307,7 @@ function Drop({ onFiles, disabled, label, small }: { onFiles: (f: LocalFile[]) =
       onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={onDrop}>
       <UploadCloud size={small ? 26 : 36} className="text-brand-500" />
       <div className="font-bold">{label}</div>
-      <div className="text-xs text-muted">PDF, Word, Excel, PowerPoint, ảnh chụp, văn bản (tối đa 10 MB/tệp) · ghi âm cuộc họp mp3, m4a, wav… (25 MB) · dán ảnh bằng Ctrl+V</div>
+      <div className="text-xs text-muted">PDF, Word, Excel, PowerPoint, ảnh chụp, văn bản (tối đa {UPLOAD_MB} MB/tệp) · ghi âm cuộc họp mp3, m4a, wav… ({AUDIO_MB} MB) · dán ảnh bằng Ctrl+V</div>
       <div className="flex gap-2 mt-1"><button className="btn sm" disabled={disabled} onClick={() => void pick()}><FileUp size={14} />Chọn tệp</button><button className="btn outline sm" disabled={disabled} onClick={() => void pick(true)}><ImagePlus size={14} />Chọn ảnh</button></div>
     </div>)
 }

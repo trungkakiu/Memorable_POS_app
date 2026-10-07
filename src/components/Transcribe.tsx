@@ -7,7 +7,7 @@ import clsx from 'clsx'
 import {
   AlertTriangle, Check, ClipboardCopy, Download, FilePlus2, Languages, Loader2, MessageCircleQuestion, Mic, Pencil, Play, RotateCcw, Sparkles, Trash2, UploadCloud, X,
 } from 'lucide-react'
-import { AUDIO_EXT, AUDIO_MIME, LocalFile, checkFile, deskApi, fromBrowserFile, isAudioName, pickLocalFiles } from '../lib/api'
+import { AUDIO_EXT, AUDIO_MIME, LocalFile, checkFile, deskApi, fromBrowserFile, isAudioName, pickLocalFiles, AUDIO_MB } from '../lib/api'
 import { bytes as fmtBytes } from '../lib/format'
 import { extOf } from '../lib/preview'
 import { can } from '../lib/permissions'
@@ -73,8 +73,13 @@ export default function TranscribeWorkbench({ variant = 'reader' }: { variant?: 
   const recorder = useRef<Recorder | null>(null)
   const player = useRef<HTMLAudioElement>(null)
 
-  const url = useMemo(() => (file?.bytes ? URL.createObjectURL(new Blob([file.bytes as BlobPart], { type: AUDIO_MIME[extOf(file.name)] || 'audio/webm' })) : null), [file])
-  useEffect(() => () => { if (url) URL.revokeObjectURL(url) }, [url])
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!file?.bytes) { setUrl(null); return }
+    const u = URL.createObjectURL(new Blob([file.bytes as BlobPart], { type: AUDIO_MIME[extOf(file.name)] || 'audio/webm' }))
+    setUrl(u)
+    return () => URL.revokeObjectURL(u)
+  }, [file])
   useEffect(() => { void useChat.getState().loadStatus(); if (queued) { const f = queued; queued = null; choose(f) } }, []) // eslint-disable-line
   useEffect(() => () => recorder.current?.cancel(), [])
   useEffect(() => { if (rec !== 'on') return; setSecs(0); const t = setInterval(() => setSecs((s) => s + 1), 1000); return () => clearInterval(t) }, [rec])
@@ -145,7 +150,7 @@ export default function TranscribeWorkbench({ variant = 'reader' }: { variant?: 
             onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={(e) => void onDrop(e)}>
             <span className={admin ? 'tsc-ico' : 'rd-ico lg g'}><UploadCloud size={30} /></span>
             <div className={admin ? 'font-bold text-[15px]' : 'text-[1.25em] font-black'}>Kéo file ghi âm vào đây</div>
-            <div className="text-muted max-w-[460px] leading-relaxed text-[0.92em]">Ghi âm cuộc họp, cuộc gọi, bài giảng, ghi chú giọng nói… Nhận mp3, m4a (iPhone), wav, ogg, opus, webm, amr, aac, flac, wma, 3gp. Tối đa 25 MB.</div>
+            <div className="text-muted max-w-[460px] leading-relaxed text-[0.92em]">Ghi âm cuộc họp, cuộc gọi, bài giảng, ghi chú giọng nói… Nhận mp3, m4a (iPhone), wav, ogg, opus, webm, amr, aac, flac, wma, 3gp. Tối đa {AUDIO_MB} MB.</div>
             <button className={c.big} disabled={off} onClick={() => void pick()}><UploadCloud size={admin ? 15 : 22} />Chọn file ghi âm</button>
           </div>
           <div className={clsx(c.card, 'flex flex-col items-center justify-center text-center gap-3')}>

@@ -1,6 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, AudioLines, Layers, Clock, Compass, FileSearch, ShieldCheck, TextSearch, FolderOpen, Frown, Loader2, MessageCircleQuestion, Mic, Plus, Search, SearchX, Smile, ThumbsDown, ThumbsUp, Star, History, PlayCircle, Timer } from 'lucide-react'
+import { ArrowLeft, ArrowRight, AudioLines, Wand2, Layers, Clock, Compass, FileSearch, ShieldCheck, TextSearch, FolderOpen, Frown, Loader2, MessageCircleQuestion, Mic, Plus, Search, SearchX, Smile, ThumbsDown, ThumbsUp, Star, History, PlayCircle, Timer } from 'lucide-react'
 import { ApiError, get, post } from '../lib/api'
 import type { ItemRow, ItemType, KSearchResult, Space } from '../lib/types'
 import { PassageCard, PolicySelect, useIsOfficial } from '../components/Knowledge'
@@ -9,7 +9,7 @@ import { useAuth } from '../store/auth'
 import { useChat } from '../store/chat'
 import { toast } from '../store/ui'
 import { useWorkspace } from './workspace'
-import Composer from './Composer'
+import HomeChat from './HomeChat'
 import { TOPIC_COLORS, TYPE_DESC, TYPE_ICON, TYPE_PLAIN, TYPE_SHORT, friendlyDate } from './common'
 
 const TYPES: ItemType[] = ['runbook', 'article', 'document', 'prompt']
@@ -92,7 +92,8 @@ export function ReaderHome() {
     { t: 'Đang có sự cố', d: 'Tìm cách xử lý, làm theo từng bước', ico: <TYPE_ICON.runbook size={26} />, act: () => nav('/browse/type/runbook'), hot: true },
     { t: 'Tìm cách làm việc', d: 'Gõ vấn đề, mình tìm bài phù hợp', ico: <Search size={26} />, act: () => { document.getElementById('rd-q')?.focus() } },
     { t: 'Tra quy định, tài liệu', d: 'Quy trình, biểu mẫu, hướng dẫn', ico: <TYPE_ICON.document size={26} />, act: () => nav('/browse/type/document') },
-    { t: 'Hỏi về tệp của tôi', d: 'Kéo ảnh, PDF, Word… vào để hỏi', ico: <FileSearch size={26} />, act: () => nav('/my-file') },
+    { t: 'Hỏi về tệp của tôi', d: 'Kéo ảnh, PDF, Word… vào khung trợ lý', ico: <FileSearch size={26} />, act: () => window.dispatchEvent(new CustomEvent('rd:focus-chat')) },
+    { t: 'Điền mẫu tự động', d: 'Hợp đồng, giấy đề nghị, bảng kê… dán thông tin hoặc gửi ảnh, AI điền giúp và giữ nguyên định dạng mẫu', ico: <Wand2 size={26} />, act: () => nav('/autofill'), wide: true },
     { t: 'Chép lời ghi âm', d: 'Biến ghi âm cuộc họp thành chữ', ico: <AudioLines size={26} />, act: () => nav('/transcribe') },
     { t: 'Dùng câu lệnh AI sẵn', d: 'Điền thông tin rồi sao chép', ico: <TYPE_ICON.prompt size={26} />, act: () => nav('/browse/type/prompt') },
   ]
@@ -100,26 +101,19 @@ export function ReaderHome() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div><h1 className="rd-h2 !text-[1.9em] !mb-1">{hello}, {first}!</h1><p className="rd-sub !mb-0">Hôm nay bạn cần làm gì? Chọn một việc bên dưới hoặc gõ vào ô tìm kiếm.</p></div>
+        <div><h1 className="rd-h2 !text-[1.9em] !mb-1">{hello}, {first}!</h1><p className="rd-sub !mb-0">Hỏi trợ lý, gửi ảnh hay tệp để hỏi, hoặc chọn một việc bên dưới.</p></div>
         <span className="rd-chip gray capitalize"><Clock size={15} />{new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' })}</span>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <HomeChat />
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {intents.map((a) => (
-          <button key={a.t} className="rd-card click rd-intent" style={a.hot ? { borderColor: '#fda29b', background: 'linear-gradient(135deg,#fffbfa,#fff)' } : undefined} onClick={a.act}>
+          <button key={a.t} className={`rd-card click rd-intent${a.wide ? ' sm:col-span-2 rd-intent-new' : ''}`} style={a.hot ? { borderColor: '#fda29b', background: 'linear-gradient(135deg,#fffbfa,#fff)' } : undefined} onClick={a.act}>
             <span className={`rd-ico md ${a.hot ? '' : 'g'}`} style={a.hot ? { background: '#fee4e2', color: '#d92d20' } : undefined}>{a.ico}</span>
-            <span className="min-w-0"><span className="t block">{a.t}</span><span className="d block">{a.d}</span></span>
+            <span className="min-w-0"><span className="t block">{a.t}{a.wide && <span className="rd-new">Mới</span>}</span><span className="d block">{a.d}</span></span>
           </button>))}
       </div>
-
-      <section className="flex flex-col gap-2">
-        <Composer onSend={ask} placeholder="Hỏi trợ lý AI bất cứ điều gì — ví dụ: Máy in không in được thì làm thế nào?" />
-        <div className="flex gap-x-4 gap-y-1 flex-wrap text-[0.8em] text-muted px-1">
-          <span><b className="text-ink-2">Enter</b> để gửi · <b className="text-ink-2">Shift+Enter</b> xuống dòng</span>
-          <span className="flex items-center gap-1"><Mic size={13} />Bấm micro để nói, chữ hiện ngay (nhận dạng trên máy)</span>
-          <span className="flex items-center gap-1"><Plus size={13} />Thêm hoặc kéo thả tệp, ảnh để hỏi về tệp</span>
-        </div>
-      </section>
 
       <div className="grid xl:grid-cols-[minmax(0,1fr)_340px] gap-8 items-start">
         <div className="flex flex-col gap-8">
@@ -161,7 +155,7 @@ export function ReaderHome() {
             <div className="font-black">Công cụ nhanh</div>
             <button className="rd-tool" onClick={() => window.dispatchEvent(new CustomEvent('rd:time'))}><Timer size={20} />Ghi giờ làm hôm nay</button>
             <button className="rd-tool" onClick={() => nav('/browse')}><Compass size={20} />Duyệt tất cả chủ đề</button>
-            <button className="rd-tool" onClick={() => chat.setOpen(true)}><MessageCircleQuestion size={20} />Mở trợ lý</button>
+            <button className="rd-tool" onClick={() => window.dispatchEvent(new CustomEvent('rd:focus-chat'))}><MessageCircleQuestion size={20} />Hỏi trợ lý</button>
           </div>
           {spaces.length > 0 && <div className="rd-card p-5 flex flex-col gap-3"><div className="font-black">Chủ đề</div>
             <div className="flex gap-2 flex-wrap">{spaces.map((s, i) => <button key={s.id} className="rd-chip" style={{ background: TOPIC_COLORS[i % TOPIC_COLORS.length] + '1c', color: TOPIC_COLORS[i % TOPIC_COLORS.length], cursor: 'pointer', border: 0, padding: '9px 15px', fontSize: '.9em' }} onClick={() => nav(`/browse/space/${s.id}`)}>{s.name}</button>)}</div></div>}

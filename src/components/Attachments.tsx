@@ -2,7 +2,7 @@ import { DragEvent, useCallback, useEffect, useMemo, useRef, useState } from 're
 import clsx from 'clsx'
 import { AlertCircle, CheckCircle2, Clipboard, ClipboardPaste, Download, Eye, FileUp, Image as ImageIcon, Info, Loader2, Paperclip, Replace, Trash2, UploadCloud, X } from 'lucide-react'
 import {
-  ApiError, LocalFile, checkFile, del, download, fetchAttachment, forgetAttachment, fromBrowserFile, get, isAiVisionName, isAudioName, pickLocalFiles, uploadAttachment, uploadAttachments,
+  ApiError, LocalFile, checkFile, del, download, fetchAttachment, forgetAttachment, fromBrowserFile, get, isAiVisionName, isAudioName, pickLocalFiles, uploadAttachment, uploadAttachments, AUDIO_MB, UPLOAD_MB,
 } from '../lib/api'
 import { bytes as fmtBytes, FILE_ICON } from '../lib/format'
 import { KIND_LABEL, extOf, isPreviewable, kindOf } from '../lib/preview'
@@ -160,7 +160,7 @@ export function Uploader({ itemId, onUploaded, compact }: { itemId: number; onUp
           patch(j.key, { status: 'ok', attId: o.att.id, warn: [...(o.att.warnings || []), ...(o.att.duplicate_of ? [`Trùng với tệp #${o.att.duplicate_of}`] : [])] })
         } else {
           const st = o.status || 0; const text = isAiText(j.file.name)
-          patch(j.key, { status: 'err', msg: st === 409 ? 'Tệp này đã được đính kèm vào mục' : st === 413 ? 'Tệp vượt quá 10 MB (hoặc quá 10 tệp một lần)' : st === 415 ? (o.message || 'Loại tệp không được phép hoặc nội dung không khớp đuôi tệp') : st === 403 ? 'Chỉ chủ sở hữu mục (hoặc quản trị) mới được đính kèm' : (o.message || 'Tải lên thất bại'), needMask: st === 422 && text })
+          patch(j.key, { status: 'err', msg: st === 409 ? 'Tệp này đã được đính kèm vào mục' : st === 413 ? `Tệp vượt quá ${UPLOAD_MB} MB (hoặc quá 10 tệp một lần)` : st === 415 ? (o.message || 'Loại tệp không được phép hoặc nội dung không khớp đuôi tệp') : st === 403 ? 'Chỉ chủ sở hữu mục (hoặc quản trị) mới được đính kèm' : (o.message || 'Tải lên thất bại'), needMask: st === 422 && text })
         }
       })
       if (any) onUploaded()
@@ -210,7 +210,7 @@ export function Uploader({ itemId, onUploaded, compact }: { itemId: number; onUp
         onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={onDrop}>
         <UploadCloud size={compact ? 26 : 34} className="mx-auto text-brand-500" strokeWidth={1.6} />
         <div className="font-bold mt-1.5">Kéo thả tệp vào đây hoặc dán ảnh (Ctrl+V)</div>
-        <div className="text-xs text-muted mt-1">Ảnh, PDF, Word/Excel/PowerPoint, văn bản, CSV, JSON, ZIP… · tối đa 10 MB/tệp · 10 tệp mỗi lần</div>
+        <div className="text-xs text-muted mt-1">Ảnh, PDF, Word/Excel/PowerPoint, văn bản, CSV, JSON, ZIP… · tối đa {UPLOAD_MB} MB/tệp · 10 tệp mỗi lần</div>
         <div className="flex gap-2 justify-center mt-3 flex-wrap">
           <button className="btn" disabled={busy} onClick={() => pick(false)}><FileUp size={15} />Chọn tệp</button>
           <button className="btn outline" disabled={busy} onClick={() => pick(true)}><ImageIcon size={15} />Chọn ảnh</button>
@@ -219,7 +219,7 @@ export function Uploader({ itemId, onUploaded, compact }: { itemId: number; onUp
         <label className="check text-xs mt-3 justify-center"><input type="checkbox" checked={confirmMasked} onChange={(e) => setConfirmMasked(e.target.checked)} />Tệp văn bản đã che bí mật (confirm_masked)</label>
       </div>
       <div className="flex items-start gap-2 text-xs rounded-lg bg-amber-50 border border-amber-200 text-amber-900 px-3 py-2"><Info size={14} className="shrink-0 mt-0.5" />
-        <span>Hệ thống <b>tự đọc chữ</b> của docx, xlsx, pptx, odt/ods/odp, rtf, txt, md, csv, tsv, log, json, xml, yaml. <b>Ảnh và PDF</b> chỉ được lưu — bấm <b>“AI đọc chữ”</b> sau khi tải lên để tìm kiếm/AI dùng được. <b>File ghi âm</b> (mp3, m4a, wav…, tối đa 25 MB) được AI chép lời. doc/xls/ppt bản cũ chưa đọc được (hãy chuyển sang bản mới).</span></div>
+        <span>Hệ thống <b>tự đọc chữ</b> của docx, xlsx, pptx, odt/ods/odp, rtf, txt, md, csv, tsv, log, json, xml, yaml. <b>Ảnh và PDF</b> chỉ được lưu — bấm <b>“AI đọc chữ”</b> sau khi tải lên để tìm kiếm/AI dùng được. <b>File ghi âm</b> (mp3, m4a, wav…, tối đa {AUDIO_MB} MB) được AI chép lời. doc/xls/ppt bản cũ chưa đọc được (hãy chuyển sang bản mới).</span></div>
       {jobs.length > 0 && (
         <div className="border border-line rounded-lg divide-y divide-line-soft bg-white">
           {jobs.map((j) => (

@@ -26,3 +26,45 @@
 
 // Số trích dẫn [n] trong câu trả lời Internet
 .md-body a[href^="http"]:not([href*=" "]) { text-underline-offset: 2px; }
+
+// =====================================================================
+//  Khung trợ lý gọn: tiêu đề một dòng, "đang đọc" gập được, thanh chọn chế độ, chip tùy chọn, ô nhập có nút gửi bên trong.
+//  Nhường tối đa chỗ cho phần trò chuyện (nhất là khi trợ lý mở ở cột bên phải).
+// =====================================================================
+.rd {
+  .ask-head { padding: 10px 12px 10px 14px; gap: 10px;
+    .ico { width: 34px; height: 34px; border-radius: $r-md; display: grid; place-items: center; background: rgba(255,255,255,.2); flex-shrink: 0; }
+    .t { font-size: .98em; line-height: 1.2; } .s { font-size: .78em; }
+    .hb { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: $r-md; background: rgba(255,255,255,.16); color: #fff; cursor: pointer; flex-shrink: 0;
+      &:hover { background: rgba(255,255,255,.28); } } }
+
+  .ask-ctx { border-bottom: 1px solid $line; background: #fff;
+    .bar { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 14px; border: 0; background: transparent; font: inherit; font-size: .88em; text-align: left; cursor: pointer; color: $ink;
+      &:hover { background: $brand-tint; } }
+    .tg { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; font-size: .9em; font-weight: 700; color: $brand-dark; }
+    .acts { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px;
+      button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid $brand-line; border-radius: 999px; background: $brand-tint; color: $brand-deep; font: inherit; font-size: .8em; font-weight: 700; cursor: pointer;
+        svg { width: 14px; height: 14px; color: $brand; } &:hover:not(:disabled) { background: $brand-soft; } &:disabled { opacity: .55; cursor: wait; } } } }
+
+  .rd-dock-in .rd-chat-body { padding: 14px; gap: 12px; }
+  .rd-dock-in .rd-bubble { padding: 12px 14px; max-width: 100%; }
+
+  .ask-foot { padding: 10px 12px 12px; gap: 8px; }
+  .ask-seg { display: flex; gap: 3px; padding: 3px; border-radius: $r-md; background: #f1edf9;
+    button { flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 6px; border: 0; border-radius: 6px; background: transparent; color: $ink-2; font: inherit; font-size: .82em; font-weight: 700; cursor: pointer; white-space: nowrap;
+      svg { flex-shrink: 0; color: $brand; } span { overflow: hidden; text-overflow: ellipsis; }
+      &:hover { background: rgba(255,255,255,.6); }
+      &.on { background: #fff; color: $brand-deep; box-shadow: 0 1px 3px rgba(69, 23, 127, .18); } } }
+  .ask-opts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    .opt { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 9px; border: 1px solid $line; border-radius: 999px; background: #fff; color: $ink-2; font: inherit; font-size: .78em; font-weight: 600; cursor: pointer; white-space: nowrap;
+      svg { flex-shrink: 0; color: $muted; }
+      &:hover { border-color: $brand-line; }
+      &.on { border-color: $brand-line; background: $brand-soft; color: $brand-deep; svg { color: $brand; } }
+      &.sel { padding-right: 4px; select { field-sizing: content; max-width: 220px; border: 0; background: transparent; font: inherit; font-weight: 700; color: inherit; cursor: pointer; padding-right: 2px; &:focus { outline: none; } } }
+      &.note { cursor: default; border-style: dashed; color: $muted; } } }
+  .ask-input { position: relative; display: flex; align-items: flex-end; border: 2px solid $line; border-radius: $r-md; background: #fff; transition: border-color .12s, box-shadow .12s;
+    &:focus-within { border-color: $brand; box-shadow: 0 0 0 4px rgba(122, 46, 230, .12); }
+    textarea { flex: 1; min-width: 0; border: 0 !important; box-shadow: none !important; padding: 11px 12px; min-height: 46px; max-height: 130px; font: inherit; font-size: .98em; line-height: 1.5; resize: none; background: transparent; &:focus { outline: none; } }
+    .go { width: 38px; height: 38px; margin: 4px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: $r-md; background: $gradient; color: #fff; cursor: pointer;
+      &:disabled { background: #e6e0f2; color: #a29bb8; cursor: not-allowed; } } }
+}

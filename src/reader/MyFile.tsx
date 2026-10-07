@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import {
   AlertTriangle, Bot, Check, Eye, FileSearch, FileText, ListChecks, Loader2, Lock, Replace, ScanText, Send, Sparkles, Trash2, UploadCloud, User as UserIcon,
 } from 'lucide-react'
-import { ApiError, LocalFile, checkFile, fromBrowserFile, pickLocalFiles } from '../lib/api'
+import { ApiError, LocalFile, checkFile, fromBrowserFile, pickLocalFiles, UPLOAD_MB } from '../lib/api'
 import { bytes as fmtBytes, FILE_ICON } from '../lib/format'
 import { Chunk, LOCAL_ACCEPT, LocalDoc, chunkDoc, kindOfLocal, pickChunks, readLocalFile, redact, sampleChunks, segments } from '../lib/localDoc'
 import { extOf } from '../lib/preview'
@@ -141,7 +141,7 @@ export function LocalFileAsk() {
           onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={onDrop}>
           <span className="rd-ico lg g"><UploadCloud size={32} /></span>
           <div className="text-[1.3em] font-black">Kéo tệp vào đây hoặc bấm chọn</div>
-          <div className="text-muted max-w-[560px] leading-relaxed">Hỗ trợ: ảnh (png, jpg, jfif, webp, ảnh iPhone heic…), PDF, Word (docx), Excel (xlsx), PowerPoint (pptx), văn bản (txt, md, csv, json…). Dán ảnh chụp màn hình bằng Ctrl+V cũng được. Tối đa 10 MB.</div>
+          <div className="text-muted max-w-[560px] leading-relaxed">Hỗ trợ: ảnh (png, jpg, jfif, webp, ảnh iPhone heic…), PDF, Word (docx), Excel (xlsx), PowerPoint (pptx), văn bản (txt, md, csv, json…). Dán ảnh chụp màn hình bằng Ctrl+V cũng được. Tối đa {UPLOAD_MB} MB.</div>
           <button className="rd-btn lg" onClick={() => void pick()}><UploadCloud size={22} />Chọn tệp từ máy</button>
         </div>
       ) : (

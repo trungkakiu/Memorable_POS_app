@@ -1,9 +1,10 @@
 // Chỉ dùng khi phát triển trong trình duyệt thường (không có Electron): giả lập cầu nối window.desk bằng fetch.
 // Không được đưa vào bản build (được bao bởi import.meta.env.DEV).
 import { AUDIO_EXT, IMAGE_EXT } from './api'
+import { APP_CONFIG } from './appConfig'
 export function installWebShim() {
   if (window.desk) return
-  const base = () => localStorage.getItem('shim.server') || 'http://localhost:3901'
+  const base = () => localStorage.getItem('shim.server') || APP_CONFIG.devServer
   const url = (p: string, q?: Record<string, unknown>) => {
     const u = new URL(base() + p)
     Object.entries(q || {}).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') u.searchParams.set(k, String(v)) })
@@ -42,7 +43,7 @@ export function installWebShim() {
       return { ok: true, data: { ok: true, mime: res.headers.get('content-type') || 'application/octet-stream', name: 'anh.png', base64: b64(buf), size: buf.byteLength } }
     },
     ping: async () => { const t = Date.now(); try { const r = await fetch(url('/')); return { ok: true, data: { online: r.ok, ms: Date.now() - t } } } catch { return { ok: true, data: { online: false, ms: 0 } } } },
-    getConfig: async () => ok({ serverUrl: base() }),
+    getConfig: async () => ok({ serverUrl: base(), defaultServer: APP_CONFIG.devServer }),
     setConfig: async (p) => { if (p.serverUrl) localStorage.setItem('shim.server', p.serverUrl); return ok({ serverUrl: base() }) },
     info: async () => ok({ version: 'web', electron: '-', node: '-', userData: '', platform: 'web' }),
     toggleFullscreen: async () => ok(false),

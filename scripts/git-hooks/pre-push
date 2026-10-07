@@ -1,0 +1,37 @@
+#!/bin/sh
+# Chỉ cho phép push khi chủ kho đồng ý: mỗi lần push, Windows hiện hộp thoại hỏi (kèm danh sách commit sắp đẩy).
+# Bấm Yes thì push, bấm No hoặc để quá 2 phút thì hủy. Áp dụng cho mọi cách push: terminal, VS Code, AI agent.
+# Cài: cp scripts/git-hooks/pre-push .git/hooks/pre-push   (hook không được đẩy theo kho, mỗi bản clone phải cài lại)
+remote="$1"
+url="$2"
+repo=$(basename "$(git rev-parse --show-toplevel 2>/dev/null)")
+z40=0000000000000000000000000000000000000000
+
+msg=$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/prepush-$$.txt")
+{
+  echo "Có lệnh PUSH từ kho \"$repo\" lên $remote"
+  echo "$url"
+  echo
+  while read -r local_ref local_sha remote_ref remote_sha; do
+    [ -z "$local_ref" ] && continue
+    if [ "$local_sha" = "$z40" ]; then echo "XÓA nhánh trên máy chủ: $remote_ref"; continue; fi
+    echo "Nhánh: ${local_ref#refs/heads/} -> ${remote_ref#refs/heads/}"
+    if [ "$remote_sha" = "$z40" ]; then range="$local_sha"; else range="$remote_sha..$local_sha"; fi
+    n=$(git rev-list --count "$range" 2>/dev/null || echo "?")
+    echo "Số commit: $n"
+    git log --format='  - %h %s (%an)' -n 8 "$range" 2>/dev/null
+  done
+  echo
+  echo "Anh có cho phép push không?"
+} > "$msg"
+
+# Hộp thoại luôn nằm trên cùng (4096), Yes/No (4), dấu hỏi (32); tự hủy sau 120 giây. Trả 6 = Yes.
+ans=$(powershell.exe -NoProfile -NonInteractive -Command "\$t = Get-Content -LiteralPath '$(cygpath -w "$msg" 2>/dev/null || echo "$msg")' -Encoding UTF8 -Raw; \$r = (New-Object -ComObject WScript.Shell).Popup(\$t, 120, 'Xác nhận git push', 4 + 32 + 4096); Write-Output \$r" 2>/dev/null | tr -d '\r')
+rm -f "$msg"
+
+if [ "$ans" = "6" ]; then
+  echo "pre-push: chủ kho đã cho phép, tiếp tục push."
+  exit 0
+fi
+echo "pre-push: PUSH BỊ CHẶN - chủ kho chưa cho phép (bấm No, hết 2 phút hoặc không hiện được hộp thoại)." >&2
+exit 1

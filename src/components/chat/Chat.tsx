@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import {
   AlertCircle, AlertTriangle, Bot, CheckCircle2, Eye, ExternalLink, Plus, Settings2, Wrench, FileUp, Info, Loader2, Maximize2, Minimize2, Paperclip, Send, ShieldCheck, Sparkles, Trash2, UploadCloud, User as UserIcon, X,
 } from 'lucide-react'
-import { fromBrowserFile, isAiVisionName, pickLocalFiles } from '../../lib/api'
+import { fromBrowserFile, isAiVisionName, pickLocalFiles, UPLOAD_MB } from '../../lib/api'
 import { bytes as fmtBytes, dt, FILE_ICON, FRESH_LABEL, KNOWLEDGE_LABEL, TOOL_LABEL, TRUST_LABEL, TYPE_LABEL } from '../../lib/format'
 import { KIND_LABEL, extOf, kindOf } from '../../lib/preview'
 import { can } from '../../lib/permissions'
@@ -78,10 +78,12 @@ export function Messages({ msgs, busy, onOpenItem, onPick, onAsk, compact }: { m
                     ? <Pill sm tone="soft"><Eye size={11} />{m.ans.analysis.kind === 'image' ? 'AI đọc ảnh' : 'AI đọc PDF'}: {m.ans.analysis.filename}</Pill>
                     : <Pill sm tone={m.ans?.mode === 'general' ? 'warn' : 'soft'}>{m.ans?.agentName ? KNOWLEDGE_LABEL[m.ans?.mode ?? 'documents'] : MODE_LABEL[m.ans?.mode ?? 'documents']}</Pill>}
                   {m.ans?.agentName && <Pill sm tone="soft"><Bot size={11} />Agent: {m.ans.agentName}</Pill>}
+                  {m.ans?.fileChat && <Pill sm tone="soft"><Paperclip size={11} />AI đã xem {m.ans.fileChat.files.map((f) => f.filename).join(', ')}{m.ans.fileChat.kb ? ' · đối chiếu tài liệu' : ''}</Pill>}
                   {m.ans?.cross_document && <Pill sm tone="soft">Đối chiếu nhiều tài liệu</Pill>}
                   {m.ans?.grounded === true && <Pill sm tone="ok"><ShieldCheck size={11} />Có nguồn tài liệu</Pill>}
                   {m.ans?.insufficient_info && <Pill tone="warn" sm><AlertTriangle size={11} />Không đủ thông tin trong kho tri thức</Pill>}
                 </div>
+                {m.ans?.fileChat?.skipped.map((s) => <div key={s.filename} className="mb-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5"><b>{s.filename}</b>: {s.reason}</div>)}
                 {m.ans?.mode === 'hybrid' && <div className="text-[10.5px] font-bold uppercase text-muted mb-1 tracking-wide">Từ tài liệu của nhóm</div>}
                 {m.ans?.web ? <WebText text={m.text} w={m.ans.web} /> : <Md citeIds={[...(m.ans?.sources || []).map((s) => s.id), ...(m.ans?.sourceIds || [])]}>{m.text}</Md>}
                 {m.ans?.caveats && <div className="text-xs text-amber-800 mt-2 pt-2 border-t border-line flex gap-1"><b className="shrink-0">Lưu ý:</b><div className="min-w-0 flex-1"><Md citeIds={(m.ans.sources || []).map((s) => s.id)}>{m.ans.caveats}</Md></div></div>}
@@ -207,7 +209,7 @@ export function useChatDrop() {
 export const DropOverlay = ({ show }: { show: boolean }) => !show ? null : (
   <div className="absolute inset-0 z-20 bg-brand-600/90 text-white grid place-items-center text-center pointer-events-none border-4 border-dashed border-white/70 rounded-[10px]">
     <div><UploadCloud size={44} className="mx-auto" strokeWidth={1.5} /><div className="font-extrabold text-lg mt-2">Thả tệp / ảnh để lưu vào kho tri thức</div>
-      <div className="text-sm opacity-90 mt-1">pdf, docx, xlsx, pptx, ảnh (png, jpg, jfif, webp, heic…), txt, md, csv · tối đa 10 MB</div></div></div>)
+      <div className="text-sm opacity-90 mt-1">pdf, docx, xlsx, pptx, ảnh (png, jpg, jfif, webp, heic…), txt, md, csv · tối đa {UPLOAD_MB} MB</div></div></div>)
 
 function DraftTray() {
   const { draft, removeDraft, target, setTarget, vision, setVision, status } = useChat()
@@ -246,9 +248,10 @@ function DraftTray() {
 }
 
 export function Composer({ disabled, placeholder, drop }: { disabled?: boolean; placeholder?: string; drop: ReturnType<typeof useChatDrop> }) {
-  const { send, busy, draft } = useChat()
+  const { send, busy, draft, fileCtx, removeFileCtx, clearFileCtx } = useChat()
   const agentId = useChat((s) => s.agentId)
-  const min = agentId ? 1 : 5; const max = agentId ? 2000 : 500
+  // Đang hỏi về tệp: câu nối tiếp ngắn vẫn được (AI vẫn thấy các tệp)
+  const min = agentId || fileCtx.length ? 1 : 5; const max = agentId || fileCtx.length ? 2000 : 500
   const role = useAuth((s) => s.user?.role)
   const writer = can(role, 'write')
   const [q, setQ] = useState('')
@@ -269,6 +272,10 @@ export function Composer({ disabled, placeholder, drop }: { disabled?: boolean; 
   return (
     <>
       <ModeSwitch />
+      {fileCtx.length > 0 && (
+        <div className="px-3 pt-2 flex items-center gap-1.5 flex-wrap text-[11.5px]"><span className="font-bold text-muted">AI đang xem:</span>
+          {fileCtx.map((f, i) => <span key={`${f.name}|${f.size}`} className="pill sm soft !pr-1"><Paperclip size={10} />{f.name}<button className="ml-0.5 border-0 bg-transparent cursor-pointer p-0 leading-none" onClick={() => removeFileCtx(i)} aria-label={`Bỏ ${f.name}`}>×</button></span>)}
+          <button className="border-0 bg-transparent text-brand-700 font-bold cursor-pointer underline p-0" onClick={clearFileCtx}>Xong với tệp</button></div>)}
       <DraftTray />
       <div className="chat-foot !border-t-0 !pt-1.5">
         <button className="btn outline icon" style={{ height: 40, width: 40 }} disabled={disabled || busy} onClick={pick} aria-label="Đính kèm tệp hoặc ảnh"

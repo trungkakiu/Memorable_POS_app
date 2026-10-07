@@ -10,6 +10,7 @@ release-*/
 # Môi trường, bí mật, nhật ký
 .env
 .env.*
+!.env.example
 *.log
 npm-debug.log*
 

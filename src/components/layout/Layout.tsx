@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Bell, BookMarked, Sparkles, ChevronDown, Cloud, CloudOff, HelpCircle, LogOut, Maximize2, Plus, Search, PanelLeftClose, PanelLeftOpen, ArrowRight, CheckCheck } from 'lucide-react'
+import { Bell, BookMarked, Menu, X, Sparkles, ChevronDown, Cloud, CloudOff, HelpCircle, LogOut, Maximize2, Plus, Search, PanelLeftClose, PanelLeftOpen, ArrowRight, CheckCheck } from 'lucide-react'
 import { NAV } from '../../lib/nav'
 import { can } from '../../lib/permissions'
 import { deskApi, post } from '../../lib/api'
@@ -18,7 +18,7 @@ function useGroups() {
 }
 const isOn = (path: string, to: string) => (to === '/' ? path === '/' : to === '/items' ? /^\/items(\/\d+.*)?$/.test(path) : to === '/agents' ? /^\/agents(\/\d+.*)?$/.test(path) : to === '/ai' ? path === '/ai' : path === to || path.startsWith(to + '/'))
 
-function Header() {
+function Header({ onMenu }: { onMenu: () => void }) {
   const user = useAuth((s) => s.user)!
   const logout = useAuth((s) => s.logout)
   const nav = useNavigate()
@@ -30,6 +30,7 @@ function Header() {
 
   return (
     <header className="app-header">
+      <button className="icon-btn app-burger" onClick={onMenu} aria-label="Mở menu"><Menu size={22} /></button>
       <div className="brand">
         <div className="logo"><BookMarked size={24} /></div>
         <div>
@@ -49,7 +50,7 @@ function Header() {
         <button className="btn outline sm" onClick={() => nav('/connection')} title={n.online ? `Máy chủ phản hồi ${n.ms} ms` : 'Không kết nối được máy chủ'}>
           {n.online ? <Cloud size={15} /> : <CloudOff size={15} />}<span className="hidden min-[1500px]:inline">{n.online === null ? '…' : n.online ? 'Online' : 'Offline'}</span>
         </button>
-        <button className="btn outline sm" onClick={() => useUiMode.getState().setSimple(true)} title="Chuyển sang giao diện đọc đơn giản, chữ lớn">Giao diện đơn giản</button>
+        <button className="btn outline sm" onClick={() => useUiMode.getState().setSimple(true)} title="Chuyển sang giao diện đọc đơn giản, chữ lớn"><span className="hdr-simple">Giao diện đơn giản</span><span className="hdr-simple-short">Đơn giản</span></button>
         <div className="user-chip" title={user.email}><span className="av">{user.name.trim().charAt(0).toUpperCase()}</span><div><div className="n">{user.name}</div><div className="r">{ROLE_LABEL[user.role]}</div></div></div>
         <button className="icon-btn" title="Toàn màn hình (F11)" onClick={() => deskApi().toggleFullscreen()}><Maximize2 size={19} /></button>
         <button className="icon-btn" title="Trợ giúp" onClick={() => setHelp(true)}><HelpCircle size={21} /></button>
@@ -75,18 +76,28 @@ const LS_OPEN = 'memorable.sb.open'
 const LS_COL = 'memorable.sb.collapsed'
 const readOpen = (): string[] | null => { try { const v = JSON.parse(localStorage.getItem(LS_OPEN) || 'null'); return Array.isArray(v) ? v : null } catch { return null } }
 
-function Sidebar() {
+// Màn hẹp (dưới 1024px): thanh bên là menu trượt, luôn ở dạng đầy đủ
+const useNarrow = () => {
+  const q = '(max-width: 1023px)'
+  const [narrow, setNarrow] = useState(() => window.matchMedia(q).matches)
+  useEffect(() => { const m = window.matchMedia(q); const h = () => setNarrow(m.matches); m.addEventListener('change', h); return () => m.removeEventListener('change', h) }, [])
+  return narrow
+}
+
+function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => void }) {
   const user = useAuth((s) => s.user)!
   const loc = useLocation()
   const nav = useNavigate()
   const groups = useGroups()
   const n = useNotices()
   const activeId = groups.find((g) => g.items.some((i) => isOn(loc.pathname, i.to)))?.id
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(LS_COL) === '1')
+  const [collapsedPref, setCollapsed] = useState(() => localStorage.getItem(LS_COL) === '1')
+  const narrow = useNarrow()
+  const collapsed = collapsedPref && !narrow
   const [open, setOpen] = useState<string[]>(() => readOpen() ?? ['home'])
   useEffect(() => { if (activeId) setOpen((o) => (o.includes(activeId) ? o : [...o, activeId])) }, [activeId])
   useEffect(() => { try { localStorage.setItem(LS_OPEN, JSON.stringify(open)) } catch { /* bỏ qua */ } }, [open])
-  useEffect(() => { try { localStorage.setItem(LS_COL, collapsed ? '1' : '0') } catch { /* bỏ qua */ } }, [collapsed])
+  useEffect(() => { try { localStorage.setItem(LS_COL, collapsedPref ? '1' : '0') } catch { /* bỏ qua */ } }, [collapsedPref])
 
   // Số đếm hiển thị cạnh từng mục
   const badge = (to: string): number => (to === '/notifications' ? n.unread : to === '/reviews' ? n.queue : to === '/tasks' ? n.tasks : 0)
@@ -100,7 +111,8 @@ function Sidebar() {
   }
 
   return (
-    <aside className={clsx('sidebar', collapsed && 'collapsed')} aria-label="Điều hướng chính">
+    <aside className={clsx('sidebar', collapsed && 'collapsed', mobileOpen && 'mobile-open')} aria-label="Điều hướng chính">
+      <div className="sb-mobile-head"><b>Menu</b><button className="icon-btn" onClick={onClose} aria-label="Đóng menu"><X size={20} /></button></div>
       <div className="sb-top">
         {can(user.role, 'write') && (
           <button className="sb-cta" onClick={() => nav('/import-knowledge')} title="Nhập tri thức mới: AI đọc tệp và điền sẵn"><Sparkles size={18} /><span className="lbl">Nhập tri thức</span></button>
@@ -154,7 +166,7 @@ function Sidebar() {
           {n.items.length > 0 && <button className="foot" onClick={() => nav('/notifications')}>Xem tất cả thông báo<ArrowRight size={13} /></button>}
         </div>)}
 
-      <button className="sb-toggle" onClick={() => setCollapsed(!collapsed)} title={collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'} aria-label="Thu gọn / mở rộng thanh bên">
+      <button className="sb-toggle" onClick={() => setCollapsed(!collapsedPref)} title={collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'} aria-label="Thu gọn / mở rộng thanh bên">
         {collapsed ? <PanelLeftOpen size={17} /> : <><PanelLeftClose size={17} /><span className="lbl">Thu gọn</span></>}
       </button>
     </aside>
@@ -164,6 +176,9 @@ function Sidebar() {
 export default function Layout() {
   const n = useNotices()
   const nav = useNavigate()
+  const loc = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
+  useEffect(() => { setMenuOpen(false) }, [loc.pathname])
   useEffect(() => {
     n.refresh(); n.ping()
     const a = setInterval(n.refresh, 45000)
@@ -178,10 +193,11 @@ export default function Layout() {
   }, [])
   return (
     <div className="h-full flex flex-col">
-      <Header />
+      <Header onMenu={() => setMenuOpen(true)} />
       <div className="flex flex-1 min-h-0">
-        <Sidebar />
-        <main className="flex-1 min-w-0 overflow-auto p-5"><div className="page-enter main-wrap"><Outlet /></div></main>
+        <Sidebar mobileOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+        {menuOpen && <div className="app-nav-backdrop" onClick={() => setMenuOpen(false)} aria-hidden />}
+        <main className="app-main flex-1 min-w-0 overflow-auto p-5"><div className="page-enter main-wrap"><Outlet /></div></main>
       </div>
       <ChatWidget />
     </div>

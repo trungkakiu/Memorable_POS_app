@@ -1,7 +1,7 @@
 // Nói / ghi âm thành chữ bằng AI trên máy chủ (POST /ai/transcribe, mô hình speech-to-text của OpenAI).
 // Ghi âm micro ngay trong ứng dụng (WebM/Opus, nhỏ gọn), dừng lại thì gửi lên máy chủ để AI chép lời có dấu câu, đúng tên riêng và con số.
 // File ghi âm có sẵn (mp3, m4a, wav...) cũng đi cùng đường này. Máy chủ không lưu âm thanh.
-import { ApiError, LocalFile, postFiles } from './api'
+import { ApiError, LocalFile, postFiles, AUDIO_MB } from './api'
 
 export interface TranscriptSegment { index: number; start: number; end: number; text: string }
 export interface Transcript {
@@ -20,7 +20,7 @@ export function sttError(e: unknown): string {
   const er = e as ApiError
   if (er?.status === 503) return 'Tính năng chép lời bằng AI đang tắt hoặc chưa được bật. Hãy báo quản trị viên.'
   if (er?.status === 429) return 'Hôm nay bạn đã dùng hết lượt AI, hoặc AI đang quá tải. Hãy thử lại sau.'
-  if (er?.status === 413) return 'Bản ghi quá dài hoặc quá nặng. Hãy cắt thành các phần ngắn hơn (dưới 25 MB).'
+  if (er?.status === 413) return `Bản ghi quá dài hoặc quá nặng. Hãy cắt thành các phần ngắn hơn (dưới ${AUDIO_MB} MB).`
   if (er?.status === 415) return 'Không đọc được âm thanh trong tệp này. Hãy lưu lại thành MP3 hoặc M4A rồi thử lại.'
   if (er?.status === 0) return 'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.'
   return er?.message || 'Không chép lời được. Hãy thử lại.'

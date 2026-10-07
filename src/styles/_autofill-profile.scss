@@ -1,0 +1,145 @@
+@use "tokens" as *;
+
+// =====================================================================
+//  Điền mẫu tự động (phần 2): hồ sơ của tôi, quét CCCD, điền sẵn từ hồ sơ, tiến độ và nguồn từng ô
+// =====================================================================
+.af-profile { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 16px 20px; border-radius: $r-lg; border: 1px solid $brand-line;
+  background: linear-gradient(120deg, #f6f1ff 0%, #ffffff 55%, #f2f8ff 100%); box-shadow: $shadow-card;
+  &.is-empty { border-style: dashed; }
+  &.admin { padding: 12px 16px; border-radius: 12px; } }
+.af-avatar { width: 52px; height: 52px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; background: $gradient; color: #fff; font-weight: 900; font-size: 1.1em; letter-spacing: .02em; box-shadow: 0 8px 18px -10px rgba(98, 40, 200, .9); }
+.af-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; background: #ecfdf3; color: #067647; font-size: .74em; font-weight: 700; white-space: nowrap; }
+.af-meter { display: flex; align-items: center; gap: 10px; margin-top: 6px; max-width: 440px;
+  i { display: block; flex: 1; height: 8px; border-radius: 999px; background: #e9e4f7; position: relative; overflow: hidden; }
+  span { font-size: .8em; font-weight: 700; color: $ink-2; white-space: nowrap; } }
+.af-meter-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: $gradient; }
+.af-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px;
+  span { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; font-size: .74em; font-weight: 700;
+    &.on { background: #ecfdf3; color: #067647; }
+    &.off { background: #f2f4f7; color: #98a2b3; } } }
+.af-profile-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.af-btn-primary, .af-btn-soft { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 16px; border-radius: 999px; font: inherit; font-weight: 800; font-size: .92em; cursor: pointer; white-space: nowrap; transition: all .15s;
+  &:disabled { opacity: .5; cursor: not-allowed; } }
+.af-btn-primary { border: 0; color: #fff; background: $gradient; box-shadow: 0 8px 16px -10px rgba(98, 40, 200, .9);
+  &:hover:not(:disabled) { transform: translateY(-1px); } }
+.af-btn-soft { border: 1px solid $brand-line; background: #fff; color: $brand-dark;
+  &:hover:not(:disabled) { background: $brand-soft; } }
+
+// ---- Hộp sửa hồ sơ ----
+.af-prof-intro { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border-radius: 12px; background: #f4fbf6; border: 1px solid #c6ecd3; }
+.af-prof-group { display: flex; flex-direction: column; gap: 10px;
+  h4 { display: flex; align-items: center; gap: 8px; margin: 0; padding-bottom: 6px; border-bottom: 1px solid $line-soft; font-size: 14px; font-weight: 800; color: $ink;
+    small { margin-left: auto; font-weight: 700; color: $muted; } } }
+.af-prof-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px;
+  @media (max-width: 640px) { grid-template-columns: minmax(0, 1fr); } }
+.af-prof-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 13px; font-weight: 700; color: $ink-2;
+  &.wide { grid-column: 1 / -1; }
+  em { font-style: normal; font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 999px; background: $brand-tint; color: $brand-dark; } }
+
+// ---- Quét CCCD ----
+.af-scan-slot { position: relative; min-height: 190px; border: 2px dashed $brand-line; border-radius: 14px; background: #fbf9ff; overflow: hidden; display: flex; flex-direction: column;
+  &.has { border-style: solid; background: #fff; } }
+.af-scan-pick { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px; border: 0; background: transparent; cursor: pointer; font: inherit; color: $ink-2; text-align: center;
+  svg { color: $brand; }
+  small { color: $muted; font-size: 12px; }
+  &:hover { background: $brand-soft; } }
+.af-scan-img { width: 100%; height: 160px; object-fit: contain; background: #f2f4f7; }
+.af-scan-cap { display: flex; align-items: center; gap: 6px; padding: 6px 10px; font-size: 12px; font-weight: 700; border-top: 1px solid $line-soft;
+  button { margin-left: auto; border: 0; background: transparent; cursor: pointer; color: $muted; display: grid; place-items: center;
+    &:hover { color: $danger; } } }
+.af-scan-list { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow: auto; }
+.af-scan-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid $line-soft; cursor: pointer;
+  > input { width: 18px; height: 18px; margin-top: 8px; accent-color: $brand; flex-shrink: 0; }
+  &.on { border-color: $brand-line; background: #fcfaff; }
+  @media (max-width: 560px) { flex-wrap: wrap; } }
+.af-scan-label { width: 130px; flex-shrink: 0; padding-top: 7px; font-weight: 700; font-size: 13px;
+  @media (max-width: 560px) { width: auto; } }
+
+// ---- Bước 1: điền sẵn từ hồ sơ ----
+.af-in-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start;
+  @media (max-width: 1280px) { grid-template-columns: minmax(0, 1fr); } }
+.af-step-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; background: $brand-soft; color: $brand-dark; font-weight: 900; font-size: .9em; }
+.af-prefill { display: flex; flex-direction: column; gap: 12px;
+  &.has { border-color: #b6e3c7 !important; background: linear-gradient(120deg, #f4fcf7, #fff 60%) !important; } }
+.af-ring { width: 58px; height: 58px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center;
+  span { width: 44px; height: 44px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-size: .78em; font-weight: 900; color: $ink; } }
+.af-filled { display: flex; flex-wrap: wrap; gap: 6px;
+  span { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 4px 10px; border-radius: 999px; background: #fff; border: 1px solid #c6ecd3; font-size: .82em; color: $ink-2;
+    svg { color: #12b76a; flex-shrink: 0; }
+    em { font-style: normal; color: $muted; }
+    b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+    &.today { border-color: #d0d5dd;
+      svg { color: #475467; } } } }
+.af-lack { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px; background: #fffaeb; border: 1px solid #fedf89; color: #93370d; font-size: .86em; }
+.af-need span.have { background: #ecfdf3; color: #067647; display: inline-flex; align-items: center; gap: 4px; }
+.af-cta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.af-cost { display: inline-flex; align-items: center; gap: 5px; font-size: .84em; color: $muted; }
+
+// ---- Bước 2: tiến độ, lọc, nguồn từng ô ----
+.af-toggle { display: inline-flex; align-items: center; gap: 7px; font-size: .88em; font-weight: 700; color: $ink-2; cursor: pointer; user-select: none;
+  input { width: 17px; height: 17px; accent-color: $brand; } }
+.af-progress { display: flex; align-items: center; gap: 10px; font-size: .88em; color: $muted;
+  b { color: $ink; font-size: 1.05em; } }
+.af-bar { flex: 1; height: 10px; border-radius: 999px; background: #eceaf4; overflow: hidden;
+  i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #12b76a, #32d583); transition: width .3s; } }
+.af-summary span.prof { background: #eff8ff; color: #175cd3; }
+.af-summary span.day { background: #f2f4f7; color: #344054; }
+.af-conf.prof { background: #d1e9ff; color: #175cd3; }
+.af-conf.day { background: #eaecf0; color: #344054; }
+.af-field.prof { background: #f5faff; }
+.af-allset { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 14px; border-radius: 12px; background: #ecfdf3; color: #067647; font-weight: 700; }
+.af-learn { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; border: 1px solid $brand-line; background: #fbf9ff; }
+.af-learn-row { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: .88em; cursor: pointer;
+  input { width: 16px; height: 16px; accent-color: $brand; flex-shrink: 0; } }
+.af-mini.ghost { border-color: transparent; background: transparent; color: $muted;
+  &:hover { color: $ink; background: #f2f4f7; } }
+
+// Thanh tải về luôn nằm dưới cùng khi cuộn danh sách ô dài
+.af-out.sticky { position: sticky; bottom: 0; z-index: 3; margin: 0 -20px -20px; padding: 14px 20px; background: rgba(255, 255, 255, .96); backdrop-filter: blur(6px); border-radius: 0 0 $r-lg $r-lg; box-shadow: 0 -10px 20px -18px rgba(16, 24, 40, .5); }
+.af-admin .af-out.sticky { margin: 0 -16px -16px; padding: 12px 16px; border-radius: 0 0 12px 12px; }
+
+// Đầu mẫu: chữ chiếm tối thiểu 280px, nút tự xuống dòng khi hẹp
+.af-head > .min-w-0 { flex: 1 1 280px; }
+.af-head-actions { margin-left: auto; }
+
+// =====================================================================
+//  Co giãn theo độ rộng THẬT của khu vực Điền mẫu (container query), không theo cửa sổ:
+//  thanh bên rộng hay hẹp, cỡ chữ lớn hay nhỏ thì bố cục vẫn vừa.
+// =====================================================================
+.af { container: af / inline-size; }
+.af-stepper li { min-width: 0; }
+.af-stepper li.cur { min-width: max-content; }
+.af-stepper li:not(:last-child)::after { min-width: 12px; }
+.af .af-back { display: none; }
+
+@container af (max-width: 900px) {
+  .af-grid { grid-template-columns: minmax(0, 1fr); }
+  .af-lib { position: relative; max-height: none; top: auto; }
+  .af-lib.has-sel { display: none; }
+  .af .af-back { display: grid; }
+}
+@container af (max-width: 780px) {
+  .af-in-grid { grid-template-columns: minmax(0, 1fr); }
+  .af-form { grid-template-columns: minmax(0, 1fr); }
+  .af-steps { grid-template-columns: minmax(0, 1fr); }
+}
+@container af (max-width: 560px) {
+  .af-stepper li:not(:last-child)::after { margin: 0 6px; }
+  .af-stepper li:not(.cur) button { font-size: 0; gap: 0; }
+  .af-stepper li:not(.cur) button span { font-size: 13px; }
+  .af-profile { padding: 14px; }
+  .af-profile-actions { width: 100%; }
+  .af-profile-actions > button { flex: 1; justify-content: center; }
+  .af-head-actions { width: 100%; margin-left: 0; }
+  .af-out.sticky > label { min-width: 0 !important; flex-basis: 100%; }
+  .af-out.sticky > div { width: 100%; }
+  .af-filled span b { max-width: 160px; }
+}
+
+// Màn thấp hoặc khung hẹp: thanh tải về không dính đáy (tránh che mất các ô)
+@media (max-height: 720px) {
+  .af-out.sticky, .af-admin .af-out.sticky { position: static; margin: 0; padding: 14px 0 0; background: none; backdrop-filter: none; box-shadow: none; border-radius: 0; }
+}
+@container af (max-width: 560px) {
+  .af-out.sticky, .af-admin .af-out.sticky { position: static; margin: 0; padding: 14px 0 0; background: none; backdrop-filter: none; box-shadow: none; border-radius: 0; }
+}

@@ -1,0 +1,118 @@
+@use "tokens" as *;
+
+// =====================================================================
+//  Trò chuyện kèm tệp kiểu ChatGPT: cột giữa, ô nhập dính đáy, khay tệp có ảnh thu nhỏ, lưới ảnh trong tin nhắn
+// =====================================================================
+
+// ---- Khay tệp chờ gửi và tệp trong tin nhắn (dùng chung) ----
+.fk-tray { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 10px 0; }
+.fk-tile { position: relative; display: flex; align-items: center; gap: 8px; max-width: 230px; padding: 6px 28px 6px 6px; border: 1px solid $line; border-radius: 10px; background: #fff;
+  &.img { padding: 0; width: 64px; height: 64px; overflow: hidden; }
+  .fk-open { border: 0; padding: 0; background: none; cursor: zoom-in; display: block; line-height: 0; }
+  .fk-th { width: 44px; height: 44px; border-radius: 8px; }
+  &.img .fk-th { width: 64px; height: 64px; border-radius: 0; }
+  .fk-meta { min-width: 0; display: flex; flex-direction: column; font-size: 12px; line-height: 1.3;
+    b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { color: $muted; } }
+  .fk-x { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(28,32,48,.72); color: #fff; cursor: pointer;
+    &:hover { background: #d92d20; } } }
+
+.fk-sent { display: flex; flex-wrap: wrap; gap: 6px; max-width: 100%; }
+.fk-sent-img { width: 132px; height: 132px; border: 1px solid $line; border-radius: 14px; overflow: hidden; padding: 0; background: #fff; cursor: zoom-in;
+  img { width: 100%; height: 100%; object-fit: cover; } }
+.fk-sent-file { display: flex; align-items: center; gap: 10px; max-width: 260px; padding: 8px 12px 8px 8px; border: 1px solid $line; border-radius: 12px; background: #fff; font: inherit; cursor: pointer;
+  b { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { display: block; font-size: 11.5px; color: $muted; }
+  &.err { border-color: #fecdca; background: #fef3f2; small { color: #b42318; } } }
+
+// ---- Trang "Hỏi về tệp của tôi" ----
+.rd .fc { position: relative; display: flex; flex-direction: column; min-height: calc(100vh - 230px); }
+.rd .fc-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; max-width: 860px; width: 100%; margin: 0 auto 8px; }
+.rd .fc-head-act { display: flex; gap: 8px; flex-wrap: wrap; }
+.rd .fc-chip { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px; border: 1.5px solid $line; border-radius: 999px; background: #fff; color: $ink-2; font: inherit; font-size: .86em; font-weight: 700; cursor: pointer;
+  svg { color: $brand; } &:hover { border-color: $brand-line; background: $brand-tint; }
+  &.on { border-color: $brand; background: $brand-soft; color: $brand-deep; } }
+.rd .fc-col { width: 100%; max-width: 860px; margin: 0 auto; }
+.rd .fc-msgs { flex: 1; display: flex; flex-direction: column; gap: 22px; padding: 18px 0 24px; }
+
+.rd .fc-empty { margin: auto 0; display: flex; flex-direction: column; gap: 18px; padding: 10px 0; }
+.rd .fc-drop { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 38px 24px; border: 2px dashed $brand-line; border-radius: 18px; background: #fff; font: inherit; color: $ink; cursor: pointer; text-align: center;
+  b { font-size: 1.12em; } small { color: $muted; max-width: 560px; line-height: 1.6; }
+  &:hover { border-color: $brand; background: $brand-tint; } }
+.rd .fc-ideas { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;
+  button { display: flex; align-items: center; gap: 10px; padding: 13px 15px; border: 1px solid $line; border-radius: 14px; background: #fff; color: $ink; font: inherit; font-size: .93em; font-weight: 600; text-align: left; cursor: pointer;
+    svg { flex-shrink: 0; color: $brand; } &:hover { border-color: $brand-line; background: $brand-tint; } } }
+
+.rd .fc-user { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.rd .fc-user-text { max-width: 78%; padding: 12px 16px; border-radius: 18px 18px 4px 18px; background: $brand-soft; color: $ink; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.rd .fc-ai { display: flex; gap: 12px; align-items: flex-start;
+  .rd-bubble.bot { max-width: 100%; border: 0; box-shadow: none; background: transparent; padding: 2px 0 0; } }
+.rd .fc-av { width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: $gradient; color: #fff; box-shadow: 0 6px 14px -8px rgba(98, 40, 200, .8); }
+.rd .fc-typing { display: flex; align-items: center; gap: 10px; padding-top: 6px; color: $muted; font-weight: 600; svg { color: $brand; } }
+.rd .fc-tools { display: flex; gap: 6px; flex-wrap: wrap;
+  button { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: $muted; font: inherit; font-size: .82em; font-weight: 600; cursor: pointer;
+    &:hover:not(:disabled) { border-color: $line; background: #fff; color: $ink; } &:disabled { opacity: .5; } } }
+
+.rd .fc-foot { position: sticky; bottom: 0; z-index: 5; padding: 8px 0 14px; background: #f7f4ff;
+  // dải mờ phía trên để nội dung cuộn xuống không bị cắt cứng, và không bị chữ đè lên
+  &::before { content: ''; position: absolute; left: 0; right: 0; top: -28px; height: 28px; background: linear-gradient(180deg, rgba(247,244,255,0), #f7f4ff); pointer-events: none; } }
+.rd .fc-box { border: 1.5px solid $line; border-radius: 22px; background: #fff; box-shadow: 0 12px 32px -20px rgba(98, 40, 200, .45); transition: border-color .15s, box-shadow .15s;
+  &:focus-within { border-color: #b794f6; box-shadow: 0 0 0 4px rgba(122, 46, 230, .1), 0 12px 32px -20px rgba(98, 40, 200, .45); }
+  textarea { display: block; width: 100%; border: 0; resize: none; background: transparent; font: inherit; font-size: 1.02em; line-height: 1.55; color: $ink; padding: 14px 18px 6px; min-height: 54px; max-height: 200px;
+    &:focus { outline: none; } &::placeholder { color: #9298ab; } } }
+.rd .fc-bar { display: flex; align-items: center; gap: 8px; padding: 4px 10px 10px; }
+.rd .fc-hint { flex: 1; min-width: 0; font-size: .78em; color: $muted; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd .fc-ico { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid $line; border-radius: 50%; background: #fff; color: $ink-2; cursor: pointer;
+  &:hover:not(:disabled) { background: $brand-soft; border-color: $brand-line; color: $brand-dark; } &.on { background: $ink; border-color: $ink; color: #fff; } }
+.rd .fc-send { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 50%; background: $gradient; color: #fff; cursor: pointer; box-shadow: 0 8px 16px -8px rgba(98, 40, 200, .9);
+  &:disabled { background: #e6e0f2; color: #a29bb8; box-shadow: none; cursor: not-allowed; } }
+.rd .fc-menu { position: absolute; left: 0; bottom: 48px; z-index: 30; width: 320px; padding: 6px; background: #fff; border: 1px solid $line; border-radius: 14px; box-shadow: $shadow-pop; animation: pop .14s ease both;
+  button { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: 10px; background: none; text-align: left; cursor: pointer; font: inherit; color: $ink;
+    svg { color: $brand; flex-shrink: 0; margin-top: 2px; }
+    span { min-width: 0; } b { display: block; font-size: .92em; } small { display: block; color: $muted; font-size: .78em; margin-top: 1px; }
+    &:hover { background: $brand-soft; } } }
+.rd .fc-note { margin-top: 8px; text-align: center; font-size: .76em; color: $muted; }
+
+// Tệp AI đang "thấy" trong cuộc trò chuyện (dùng cả ở thanh trợ lý)
+.rd .fc-ctx { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; font-size: .8em;
+  .cap { font-weight: 700; color: $muted; } }
+.rd .fc-ctx-th { width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; font-size: 12px !important; }
+.rd .fc-ctx-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 220px; padding: 3px 4px 3px 5px; border: 1px solid $brand-line; border-radius: 999px; background: $brand-tint; color: $brand-deep; font-weight: 600;
+  svg { flex-shrink: 0; } button { width: 18px; height: 18px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: $brand-dark; cursor: pointer; &:hover { background: $brand-soft; } } }
+.rd .fc-ctx-done { border: 0; background: transparent; color: $brand-dark; font: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; }
+
+.rd .fc-drop-over { position: absolute; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border: 3px dashed $brand; border-radius: 18px; background: rgba(250, 248, 255, .92); color: $brand-deep; font-weight: 800; font-size: 1.1em; pointer-events: none; }
+
+// Nút đính kèm trong ô nhập của thanh trợ lý
+.rd .ask-input .clip { width: 36px; height: 36px; margin: 5px 0 5px 5px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: $r-md; background: transparent; color: $muted; cursor: pointer;
+  &:hover { background: $brand-soft; color: $brand-dark; } }
+.rd .ask-foot .fk-tray { padding: 0; }
+
+// Tiêu đề trong câu trả lời của trợ lý: gọn như văn bản chat, không to như trang đọc bài
+.rd .rd-bubble .md-body, .rd .fc-ai .md-body {
+  h1, h2, h3, h4 { color: $ink; border: 0; padding: 0; margin: .9em 0 .35em; line-height: 1.35; }
+  h1, h2 { font-size: 1.12em; } h3 { font-size: 1.04em; } h4 { font-size: 1em; }
+}
+
+// =====================================================================
+//  Khung trợ lý lớn ở trang chủ: gộp trợ lý + hỏi về tệp (kiểu ChatGPT)
+// =====================================================================
+.rd .hc { position: relative; display: flex; flex-direction: column; background: #fff; border: 1.5px solid $line; border-radius: 22px; box-shadow: 0 18px 40px -28px rgba(98, 40, 200, .55); }
+.rd .hc-top { display: flex; align-items: center; gap: 12px; padding: 14px 18px 4px;
+  b { display: block; font-weight: 900; font-size: 1.02em; } small { display: block; font-size: .8em; color: $muted; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+.rd .hc-badge { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: $gradient; color: #fff; box-shadow: 0 8px 16px -8px rgba(98, 40, 200, .8); }
+.rd .hc-hb { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid $line; border-radius: 999px; background: #fff; color: $ink-2; font: inherit; font-size: .82em; font-weight: 700; cursor: pointer; white-space: nowrap;
+  &:hover { background: $brand-tint; border-color: $brand-line; } &.icon { width: 34px; padding: 0; justify-content: center; } }
+.rd .hc-msgs { display: flex; flex-direction: column; gap: 14px; margin: 10px 12px 0; padding: 16px; border-radius: 16px; background: $brand-tint; min-height: 280px; max-height: calc(100vh - 380px); overflow-y: auto;
+  .rd-bubble { max-width: 100%; } }
+.rd .hc-foot { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 16px; }
+.rd .hc .fc-box { box-shadow: none; }
+.rd .hc-modes { display: flex; gap: 3px; padding: 3px; border-radius: 999px; background: #f1edf9; min-width: 0; overflow-x: auto;
+  button { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: $ink-2; font: inherit; font-size: .8em; font-weight: 700; cursor: pointer; white-space: nowrap;
+    svg { flex-shrink: 0; color: $brand; } &:hover { background: rgba(255,255,255,.7); }
+    &.on { background: #fff; color: $brand-deep; box-shadow: 0 1px 3px rgba(69, 23, 127, .18); } } }
+.rd .hc-opts { padding: 0 2px; }
+.rd .hc-hint { margin-left: auto; font-size: .76em; color: $muted; b { color: $ink-2; } }
+.rd .hc-starters { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; padding-top: 4px;
+  button { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid $line; border-radius: 14px; background: #fff; color: $ink; font: inherit; font-size: .9em; font-weight: 600; text-align: left; cursor: pointer;
+    svg { flex-shrink: 0; color: $brand; } &:hover { border-color: $brand-line; background: $brand-tint; } } }
+.rd .fc-menu .sep { height: 1px; background: $line-soft; margin: 4px 8px; }
+@media (max-width: 760px) { .rd .hc-modes span { display: none; } .rd .hc-hint { display: none; } }

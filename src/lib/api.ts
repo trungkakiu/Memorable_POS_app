@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { APP_CONFIG } from './appConfig'
 
 type Reply<T> = { ok: boolean; data?: T; error?: string }
 interface Desk {
@@ -9,7 +10,7 @@ interface Desk {
   openExternal: (a: { name: string; base64: string }) => Promise<Reply<boolean>>
   blob: (a: { path: string; token?: string | null }) => Promise<Reply<{ ok: boolean; status?: number; error?: string; mime?: string; name?: string; base64?: string; size?: number }>>
   ping: () => Promise<Reply<{ online: boolean; ms: number; message?: string }>>
-  getConfig: () => Promise<Reply<{ serverUrl: string; email?: string }>>
+  getConfig: () => Promise<Reply<{ serverUrl: string; email?: string; defaultServer?: string }>>
   setConfig: (p: { serverUrl?: string; email?: string }) => Promise<Reply<{ serverUrl: string; email?: string }>>
   info: () => Promise<Reply<{ version: string; electron: string; node: string; userData: string; platform: string }>>
   toggleFullscreen: () => Promise<Reply<boolean>>
@@ -92,9 +93,12 @@ export const AUDIO_MIME: Record<string, string> = {
 }
 export const AUDIO_EXT = Object.keys(AUDIO_MIME)
 export const ALLOWED_EXT = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf', ...IMAGE_EXT, ...AUDIO_EXT, 'txt', 'md', 'csv', 'tsv', 'log', 'json', 'xml', 'yaml', 'yml', 'zip']
-export const MAX_UPLOAD = 10 * 1024 * 1024
-/** File ghi âm được lớn hơn (cuộc họp dài): 25 MB, đúng giới hạn của máy chủ */
-export const MAX_AUDIO_UPLOAD = 25 * 1024 * 1024
+/** Giới hạn dung lượng (MB) lấy từ .env: MEMORABLE_MAX_UPLOAD_MB, MEMORABLE_MAX_AUDIO_MB (phải khớp máy chủ) */
+export const UPLOAD_MB = APP_CONFIG.maxUploadMb
+export const AUDIO_MB = APP_CONFIG.maxAudioMb
+export const MAX_UPLOAD = UPLOAD_MB * 1024 * 1024
+/** File ghi âm được lớn hơn (cuộc họp dài), đúng giới hạn của máy chủ */
+export const MAX_AUDIO_UPLOAD = AUDIO_MB * 1024 * 1024
 export const MAX_FILES_PER_REQUEST = 10
 const extLower = (n: string) => (n.split('.').pop() || '').toLowerCase()
 /** Ảnh xem trực tiếp được trong ứng dụng (ảnh thu nhỏ, phóng to, chèn vào nội dung). */
@@ -114,7 +118,7 @@ export function checkFile(f: { name: string; size: number }): string | null {
   const ext = f.name.split('.').pop()?.toLowerCase() || ''
   if (!ALLOWED_EXT.includes(ext)) return `Loại .${ext} không được phép`
   if (f.size === 0) return 'Tệp rỗng'
-  if (f.size > maxBytesFor(f.name)) return isAudioName(f.name) ? 'File ghi âm vượt quá 25 MB' : 'Vượt quá 10 MB'
+  if (f.size > maxBytesFor(f.name)) return isAudioName(f.name) ? `File ghi âm vượt quá ${AUDIO_MB} MB` : `Vượt quá ${UPLOAD_MB} MB`
   return null
 }
 
@@ -218,7 +222,7 @@ export function useGet<T = any>(path: string | null, query?: Record<string, unkn
 /** Hỏi bằng tệp: gửi thẳng tối đa 5 tệp (ảnh/PDF/Word/Excel…) kèm câu hỏi; máy chủ đọc, đối chiếu kho rồi trả lời. Tệp không được lưu. */
 export async function askWithFiles<T>(files: LocalFile[], fields: { question?: string; mode?: string; source_policy?: string; item_ids?: string }): Promise<T> {
   const valid = files.filter((f) => f.bytes && !checkFile(f)).slice(0, 5)
-  if (!valid.length) throw new ApiError('Không có tệp hợp lệ để gửi (tối đa 10 MB mỗi tệp, ghi âm 25 MB, đúng loại cho phép)', 422)
+  if (!valid.length) throw new ApiError(`Không có tệp hợp lệ để gửi (tối đa ${UPLOAD_MB} MB mỗi tệp, ghi âm ${AUDIO_MB} MB, đúng loại cho phép)`, 422)
   const r = await desk().uploadForm({ path: '/ai/ask-file', token, files: valid.map((f) => ({ name: f.name, bytes: f.bytes! })), fields })
   if (!r.ok || !r.data) throw new ApiError(r.error || 'Không gửi được tệp', 0)
   const d = r.data
@@ -231,7 +235,7 @@ export async function askWithFiles<T>(files: LocalFile[], fields: { question?: s
 /** Gửi tệp (multipart) kèm trường văn bản tới một API AI bất kỳ, trả RD; lỗi HTTP thành ApiError (kèm RD.errors/skipped). */
 export async function postFiles<T>(path: string, files: LocalFile[], fields: Record<string, string | number | boolean | undefined>, max = 5): Promise<T> {
   const valid = files.filter((f) => f.bytes && !checkFile(f)).slice(0, max)
-  if (!valid.length) throw new ApiError('Không có tệp hợp lệ để gửi (tối đa 10 MB mỗi tệp, ghi âm 25 MB, đúng loại cho phép)', 422)
+  if (!valid.length) throw new ApiError(`Không có tệp hợp lệ để gửi (tối đa ${UPLOAD_MB} MB mỗi tệp, ghi âm ${AUDIO_MB} MB, đúng loại cho phép)`, 422)
   const r = await desk().uploadForm({ path, token, files: valid.map((f) => ({ name: f.name, bytes: f.bytes! })), fields })
   if (!r.ok || !r.data) throw new ApiError(r.error || 'Không gửi được tệp', 0)
   const d = r.data

@@ -9,6 +9,7 @@ import { ErrorBox, Loading, Pager, Section, useBusy } from '../components/shared
 import { useAuth } from '../store/auth'
 import { toast } from '../store/ui'
 import { useNotices } from '../store/notices'
+import { APP_CONFIG } from '../lib/appConfig'
 
 export function Users() {
   const me = useAuth((s) => s.user)!
@@ -78,6 +79,7 @@ const KNOWN: { key: string; kind: SettingKind; group: string; title: string; hel
   { key: 'ai_ask_effort', kind: 'select', group: 'Hội thoại & suy luận', title: 'Mức suy luận khi hỏi đáp', help: 'Mức suy luận của mô hình khi soạn câu trả lời /ai/ask', def: 'high', options: [['low', 'Thấp — nhanh, rẻ'], ['medium', 'Vừa'], ['high', 'Cao — kỹ hơn, chậm và tốn hơn']] },
   { key: 'ai_agent_final_pass', kind: 'bool', group: 'Hội thoại & suy luận', title: 'Agent trả lời lại có suy luận sau khi tra cứu', help: 'Sau các vòng gọi công cụ (không suy luận), Agent soạn câu trả lời cuối thêm một lượt có suy luận; tắt để nhanh và rẻ hơn' },
   { key: 'ai_agent_final_effort', kind: 'select', group: 'Hội thoại & suy luận', title: 'Mức suy luận lượt trả lời cuối của Agent', help: 'Áp dụng khi bật lượt trả lời cuối', def: 'high', options: [['low', 'Thấp — nhanh, rẻ'], ['medium', 'Vừa'], ['high', 'Cao — kỹ hơn, chậm và tốn hơn']] },
+  { key: 'ai_feature_file_chat', kind: 'bool', group: 'Hỏi bằng tệp', title: 'Trò chuyện kèm tệp kiểu ChatGPT', help: 'POST /ai/file-chat — AI nhìn ảnh/PDF trực tiếp, đọc Word/Excel, chép lời ghi âm; dùng ở trang Hỏi về tệp và nút đính kèm của trợ lý' },
   { key: 'ai_feature_web_search', kind: 'bool', group: 'Tìm trên Internet', title: 'Cho AI tìm trên Internet', help: 'POST /ai/web/ask — chỉ gửi câu hỏi, không gửi tài liệu nội bộ; luôn ghi nguồn và xác minh nguồn' },
   { key: 'ai_web_scope_default', kind: 'select', group: 'Tìm trên Internet', title: 'Phạm vi tìm mặc định', help: 'Khi người dùng không chọn', def: 'balanced', options: [['balanced', 'Ưu tiên chính thống, thiếu thì mở rộng'], ['official', 'Chỉ trang chính thống'], ['open', 'Mọi trang (trừ trang bị chặn)']] },
   { key: 'ai_feature_web_learn', kind: 'bool', group: 'Tìm trên Internet', title: 'Cho AI khái quát câu hỏi để học câu trả lời tốt', help: 'Gọi mô hình nhỏ để bỏ thông tin riêng và quyết định câu trả lời có dùng lại được không' },
@@ -321,7 +323,7 @@ export function Connection() {
     <div className="flex flex-col gap-5 max-w-[900px]">
       <PageHeader title="Kết nối & tài khoản" />
       <Section title="Máy chủ Memorable API" right={<Pill tone={n.online ? 'ok' : n.online === false ? 'bad' : 'gray'}>{n.online ? `Online · ${n.ms} ms` : n.online === false ? 'Offline' : 'Đang kiểm tra'}</Pill>}>
-        <div className="flex gap-3 items-end"><Field label="Địa chỉ máy chủ (cổng API)" className="flex-1"><input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="http://26.118.183.122:3001" /></Field>
+        <div className="flex gap-3 items-end"><Field label="Địa chỉ máy chủ (cổng API)" className="flex-1"><input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder={APP_CONFIG.server} /></Field>
           <button className="btn" disabled={!url || url === cfg?.serverUrl} onClick={save}>Lưu</button><button className="btn outline" onClick={() => n.ping()}>Kiểm tra</button></div>
         <p className="text-xs text-muted mb-0">Tài liệu Swagger của máy chủ chạy ở cổng 3002; ứng dụng gọi API ở cổng 3001. Đổi địa chỉ sẽ áp dụng cho các yêu cầu tiếp theo.</p>
       </Section>

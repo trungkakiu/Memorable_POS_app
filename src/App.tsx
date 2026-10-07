@@ -22,14 +22,15 @@ import { AdminSettings, Audit, Connection, ExportFull, ImportItems, Users } from
 import ReaderLayout from './reader/ReaderLayout'
 import { ReaderBrowse, ReaderHome, ReaderList, ReaderMe, ReaderSearch } from './reader/Pages'
 import ReaderRead from './reader/Read'
-import { AskPage } from './reader/Assistant'
-import ReaderMyFile from './reader/MyFile'
+import { LocalFileAsk } from './reader/MyFile'
+import { PrivateFilePage } from './reader/HomeChat'
 import ReaderCompare from './reader/Compare'
 import ReaderMemory from './reader/Memory'
 import { AdminTranscribePage, ReaderTranscribePage } from './components/Transcribe'
 import { CompareDocs, KnowledgeSearch, KnowledgeSources } from './pages/KnowledgePages'
 import ImportHub from './pages/ImportHub'
 import WebSources from './pages/WebSources'
+import { AdminAutofillPage, ReaderAutofillPage } from './components/Autofill'
 import { useUiMode } from './reader/common'
 
 function Guard({ cap, children }: { cap: Cap; children: ReactElement }) {
@@ -61,9 +62,11 @@ export default function App() {
               <Route path="browse/tag/:tag" element={<ReaderList />} />
               <Route path="items/:id" element={<ReaderRead />} />
               <Route path="read/:id" element={<ReaderRead />} />
-              <Route path="ai" element={<AskPage />} />
-              <Route path="my-file" element={<ReaderMyFile />} />
+              <Route path="ai" element={<Navigate to="/" replace />} />
+              <Route path="my-file" element={<Navigate to="/" replace />} />
+              <Route path="my-file/private" element={<PrivateFilePage><LocalFileAsk /></PrivateFilePage>} />
               <Route path="transcribe" element={<ReaderTranscribePage />} />
+              <Route path="autofill" element={<ReaderAutofillPage />} />
               <Route path="compare" element={<ReaderCompare />} />
               <Route path="memory" element={<ReaderMemory />} />
             </Route>
@@ -75,6 +78,7 @@ export default function App() {
               <Route path="items/new" element={g('write', <ItemForm />)} />
               <Route path="import-knowledge" element={g('write', <ImportHub />)} />
               <Route path="transcribe" element={g('ask', <AdminTranscribePage />)} />
+              <Route path="autofill" element={g('ask', <AdminAutofillPage />)} />
               <Route path="web-sources" element={g('moderate', <WebSources />)} />
               <Route path="items/:id" element={<ItemDetail />} />
               <Route path="items/:id/edit" element={g('write', <ItemForm />)} />

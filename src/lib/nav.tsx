@@ -23,6 +23,7 @@ export const NAV: NavGroup[] = [
   { id: 'ai', label: 'Trợ lý AI', icon: <Sparkles size={20} />, items: [
     { to: '/ai', label: 'Hỏi đáp có trích nguồn', cap: 'read' },
     { to: '/transcribe', label: 'Chép lời ghi âm', cap: 'ask' },
+    { to: '/autofill', label: 'Điền mẫu tự động', cap: 'ask' },
     { to: '/web-sources', label: 'Nguồn Internet & câu trả lời đã học', cap: 'moderate' },
     { to: '/agents', label: 'Agent của tôi', cap: 'ask' },
     { to: '/agents/new', label: 'Tạo Agent mới', cap: 'ask' },

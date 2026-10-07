@@ -1,0 +1,140 @@
+@use "tokens" as *;
+
+// =====================================================================
+//  Responsive toàn hệ thống: điện thoại, máy tính bảng, laptop, màn rộng.
+//  Mốc: ≤480 điện thoại nhỏ · ≤640 điện thoại · ≤1023 máy tính bảng (thanh bên thành menu trượt)
+//        ≤1099 laptop nhỏ (giao diện Người đọc) · ≤1279 laptop (trợ lý nổi đè thay vì ép nội dung) · ≥1280 màn rộng
+//  Nạp SAU CÙNG trong main.scss để ghi đè đúng thứ tự.
+// =====================================================================
+
+// ---- Chung ----
+img, video, canvas, svg { max-width: 100%; }
+.md-body { overflow-wrap: anywhere; table { display: block; max-width: 100%; overflow-x: auto; } pre { max-width: 100%; overflow-x: auto; } }
+.tbl-wrap { max-width: 100%; }
+.rd-burger, .app-burger, .rd-rail-head, .sb-mobile-head { display: none; }
+.rd-nav-backdrop, .app-nav-backdrop { position: fixed; inset: 0; z-index: 85; background: rgba(24, 16, 48, .45); backdrop-filter: blur(2px); animation: fadeIn .15s ease both; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.hdr-simple-short { display: none; }
+
+// =====================================================================
+//  Giao diện Người đọc
+// =====================================================================
+.rd .rd-burger { align-items: center; justify-content: center; width: 46px; height: 46px; flex-shrink: 0; border: 1px solid $line; border-radius: $r-md; background: #fff; color: $brand-dark; cursor: pointer;
+  &:hover { background: $brand-soft; } }
+.rd .rd-rail-head { align-items: center; justify-content: space-between; padding: 10px 12px 12px; border-bottom: 1px solid $line-soft;
+  b { font-size: 1.05em; color: $brand-deep; }
+  button { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: $r-md; background: $brand-tint; color: $ink-2; cursor: pointer; } }
+
+// Laptop: trợ lý nổi đè bên phải, nội dung không bị bóp
+@media (max-width: 1279px) {
+  .rd.rd-shell .rd-dock { position: fixed; right: 0; top: 76px; bottom: 0; z-index: 75; width: min(430px, 100vw); box-shadow: -18px 0 40px -18px rgba(40, 10, 100, .45); }
+  .rd.rd-shell .rd-wrap { padding: 0 24px; }
+}
+
+// Laptop nhỏ, máy tính bảng: thanh bên thành menu trượt
+@media (max-width: 1099px) {
+  .rd .rd-burger { display: inline-flex; }
+  .rd.rd-shell .rd-rail { position: fixed; top: 0; bottom: 0; left: 0; z-index: 90; width: min(300px, 86vw); transform: translateX(-102%); transition: transform .22s ease; box-shadow: 18px 0 40px -18px rgba(40, 10, 100, .5); }
+  .rd.rd-shell.nav-open .rd-rail { transform: none; }
+  .rd .rd-rail-head { display: flex; }
+  .rd.rd-shell .rd-top .rd-logo { width: auto; }
+  .rd.rd-shell .rd-top .rd-top-in { gap: 12px; padding: 0 16px; }
+}
+
+// Máy tính bảng dọc, điện thoại lớn
+@media (max-width: 860px) {
+  .rd.rd-shell .rd-top .rd-logo .t2 { display: none; }
+  .rd .rd-hide-sm { display: none; }
+  .rd .rd-search input { padding-right: 84px; }
+  .rd .rd-search button { padding: 0 12px; }
+  .rd.rd-shell .rd-wrap { padding: 0 16px; }
+  .rd.rd-shell .rd-main { padding: 18px 0 72px; }
+  .rd .rd-card.p-6, .rd .rd-card.p-5 { padding: 16px; }
+  .rd .rd-callout { padding: 12px 14px; }
+  .rd .rd-hero { padding: 28px 20px 24px; h1 { font-size: 1.6em; } }
+}
+
+// Điện thoại: ô tìm kiếm xuống hàng riêng, thanh trên gọn
+@media (max-width: 640px) {
+  .rd.rd-shell .rd-top .rd-top-in { flex-wrap: wrap; height: auto; padding: 10px 12px; row-gap: 10px; }
+  .rd.rd-shell .rd-top .rd-logo .t1 { font-size: 1em; }
+  .rd.rd-shell .rd-top .rd-logo .mark { width: 38px; height: 38px; }
+  .rd .rd-search-wrap { order: 10; flex: 1 1 100%; min-width: 0; }
+  .rd .rd-search { min-width: 0; input { height: 46px; } button { height: 34px; } }
+  .rd-top-in > .rd-btn.sm { margin-left: auto; padding: 0 12px; min-height: 44px; }
+  .rd.rd-shell .rd-dock { top: 0; width: 100vw; z-index: 95; }
+  .rd .rd-suggest { top: 52px; }
+  .rd .rd-h2 { font-size: 1.2em; }
+  .rd .rd-btn { padding: 0 18px; }
+  .rd .rd-btn.lg { min-height: 52px; padding: 0 20px; }
+  .rd .rd-chip { padding: 6px 10px; }
+  .rd .rd-intent { padding: 14px; }
+}
+@media (max-width: 480px) {
+  .rd.rd-shell .rd-top .rd-logo .t1 { display: none; }
+  .rd.rd-shell .rd-wrap { padding: 0 12px; }
+}
+
+// =====================================================================
+//  Giao diện quản trị
+// =====================================================================
+.app-burger { flex-shrink: 0; }
+.sidebar .sb-mobile-head { align-items: center; justify-content: space-between; padding: 12px 12px 4px 16px;
+  b { font-size: 14px; font-weight: 800; color: $brand-deep; } }
+
+// Laptop: menu trên cùng trùng với thanh bên nên ẩn bớt để header không chật
+// (menu trên cùng cần khoảng 1.400px; dưới mức đó ẩn đi vì thanh bên đã có đủ các mục)
+@media (max-width: 1599px) {
+  .topnav .nav-item > button { padding: 0 7px; font-size: 12px; }
+}
+@media (max-width: 1439px) {
+  .topnav { display: none; }
+  .hdr-right { margin-left: auto; }
+}
+@media (max-width: 1279px) {
+  .app-header { gap: 10px; padding: 0 12px; }
+  .user-chip > div { display: none; }
+  .user-chip { padding: 4px; }
+}
+
+// Máy tính bảng, điện thoại: thanh bên thành menu trượt
+@media (max-width: 1023px) {
+  .app-burger { display: grid; }
+  .sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: 90; width: min(300px, 86vw) !important; transform: translateX(-102%); transition: transform .22s ease; box-shadow: 18px 0 40px -18px rgba(40, 10, 100, .5); }
+  .sidebar.mobile-open { transform: none; }
+  .sidebar .sb-mobile-head { display: flex; }
+  .sidebar .sb-toggle { display: none; }
+  .app-main { padding: 14px !important; }
+  .brand .t2 { display: none; }
+  .hdr-simple { display: none; }
+  .hdr-simple-short { display: inline; }
+  .page-head { padding: 14px 16px; h1 { font-size: 18px; } }
+  .chat-panel, .chat-panel.wide { right: 12px; left: 12px; width: auto; bottom: 84px; }
+  .chat-fab { right: 16px; bottom: 16px; }
+}
+
+@media (max-width: 640px) {
+  .app-header { height: 56px; gap: 6px; padding: 0 8px; }
+  .brand { gap: 8px; .logo { width: 34px; height: 34px; } .t1 { font-size: 15px; } }
+  .hdr-right { gap: 2px; > .btn.outline.sm { padding: 0 8px; } }
+  .hdr-right .icon-btn[title^="Toàn màn hình"], .hdr-right .icon-btn[title="Trợ giúp"] { display: none; }
+  .app-main { padding: 10px !important; }
+  .card { padding: 14px; }
+  .chat-panel, .chat-panel.wide { left: 0; right: 0; bottom: 0; top: 0; height: 100%; border-radius: 0; }
+}
+@media (max-width: 420px) {
+  .brand > div:not(.logo) { display: none; }
+}
+
+// =====================================================================
+//  Hộp thoại, thông báo, bảng: vừa màn hình nhỏ
+// =====================================================================
+@media (max-width: 640px) {
+  .modal-backdrop { padding: 0 !important; align-items: flex-end; }
+  .modal { max-height: 94vh; border-radius: $r-lg $r-lg 0 0; max-width: 100% !important; }
+  .modal .modal-body { padding: 14px; }
+  .modal .modal-foot { padding: 10px 14px; flex-wrap: wrap; > .btn { flex: 1 1 auto; justify-content: center; } }
+  .toasts { left: 12px; right: 12px; bottom: 12px; }
+  .toast { min-width: 0; max-width: none; }
+  .tbl { font-size: 12.5px; }
+}

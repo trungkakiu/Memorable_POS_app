@@ -2,7 +2,7 @@ import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'reac
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  AudioLines, BookMarked, Brain, ChevronDown, FileSearch, GitCompare, Clock, Compass, FolderOpen, History, Home, LayoutDashboard, LogOut, MessageCircleQuestion, Minus, PlayCircle, Plus, Search, Star, Timer, Type,
+  AudioLines, Wand2, BookMarked, Brain, ChevronDown, FileSearch, GitCompare, Clock, Compass, FolderOpen, History, Home, LayoutDashboard, LogOut, Menu, MessageCircleQuestion, Minus, PlayCircle, Plus, Search, Star, Timer, Type, X,
 } from 'lucide-react'
 import { ApiError, get, post } from '../lib/api'
 import { ROLE_LABEL, WORK_TYPE, num, todayStr } from '../lib/format'
@@ -61,7 +61,7 @@ function RailLink({ to, icon, label, badge, onClick, active }: { to?: string; ic
     </button>)
 }
 
-function Rail({ onTime }: { onTime: () => void }) {
+function Rail({ onTime, onClose }: { onTime: () => void; onClose: () => void }) {
   const spaces = useAuth((s) => s.spaces)
   const runs = useWorkspace((s) => Object.keys(s.runs).length)
   const favs = useWorkspace((s) => s.favs.length)
@@ -72,6 +72,7 @@ function Rail({ onTime }: { onTime: () => void }) {
   const shown = allSpaces ? spaces : spaces.slice(0, 5)
   return (
     <aside className="rd-rail" aria-label="Điều hướng">
+      <div className="rd-rail-head"><b>Menu</b><button onClick={onClose} aria-label="Đóng menu"><X size={20} /></button></div>
       <div className="grp"><div className="cap">Bắt đầu</div>
         <RailLink to="/" icon={<Home size={19} />} label="Trang chủ" />
       </div>
@@ -90,8 +91,9 @@ function Rail({ onTime }: { onTime: () => void }) {
         {spaces.length === 0 && <div className="px-3 py-2 text-[0.85em] text-muted">Chưa có chủ đề</div>}
       </div>
       <div className="grp"><div className="cap">Công cụ</div>
-        <RailLink onClick={() => chat.setOpen(!chat.open)} active={chat.open} icon={<MessageCircleQuestion size={19} />} label="Hỏi trợ lý" />
-        <RailLink to="/my-file" icon={<FileSearch size={19} />} label="Hỏi về tệp của tôi" />
+        <RailLink onClick={() => { if (location.hash === '#/' || location.hash === '') window.dispatchEvent(new CustomEvent('rd:focus-chat')); else chat.setOpen(!chat.open) }} active={chat.open} icon={<MessageCircleQuestion size={19} />} label="Hỏi trợ lý" />
+        <RailLink onClick={() => { window.location.hash = '#/'; setTimeout(() => window.dispatchEvent(new CustomEvent('rd:focus-chat')), 150) }} icon={<FileSearch size={19} />} label="Hỏi về tệp của tôi" />
+        <RailLink to="/autofill" icon={<Wand2 size={19} />} label="Điền mẫu tự động" />
         <RailLink to="/transcribe" icon={<AudioLines size={19} />} label="Chép lời ghi âm" />
         <RailLink to="/compare" icon={<GitCompare size={19} />} label="So sánh các bài" />
         <RailLink onClick={onTime} icon={<Timer size={19} />} label="Ghi giờ làm" />
@@ -156,36 +158,43 @@ export default function ReaderLayout() {
   const nav = useNavigate(); const loc = useLocation()
   const [menu, setMenu] = useState(false)
   const [time, setTime] = useState(false)
+  // Màn hẹp: thanh bên thành menu trượt, đóng khi chuyển trang
+  const [navOpen, setNavOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const pageAsk = loc.pathname === '/ai'
+  // Trang chủ có sẵn khung trợ lý lớn: không mở thêm cửa sổ trợ lý nhỏ
+  const onHome = loc.pathname === '/'
+  const pageAsk = loc.pathname === '/ai' || onHome
   const dockOpen = chat.open && !pageAsk
+  const toggleAssistant = () => { if (onHome) window.dispatchEvent(new CustomEvent('rd:focus-chat')); else chat.toggle() }
 
   useEffect(() => { init(user.id) }, [user.id]) // eslint-disable-line
   useEffect(() => { const h = () => setTime(true); window.addEventListener('rd:time', h); return () => window.removeEventListener('rd:time', h) }, [])
-  useEffect(() => { document.querySelector('.rd-scroll')?.scrollTo({ top: 0 }) }, [loc.pathname])
+  useEffect(() => { document.querySelector('.rd-scroll')?.scrollTo({ top: 0 }); setNavOpen(false) }, [loc.pathname, loc.search])
   useEffect(() => {
     const h = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(false) }
     document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h)
   }, [])
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') { e.preventDefault(); chat.toggle() }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') { e.preventDefault(); toggleAssistant() }
+      if (e.key === 'Escape') setNavOpen(false)
       if (e.key === 'Escape' && chat.open && !document.querySelector('.modal-backdrop') && document.activeElement?.tagName !== 'INPUT') chat.setOpen(false)
     }
     window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k)
-  }, [chat.open]) // eslint-disable-line
+  }, [chat.open, onHome]) // eslint-disable-line
   const initials = useMemo(() => user.name.trim().charAt(0).toUpperCase(), [user.name])
 
   return (
-    <div className="rd rd-shell" style={{ ['--rd-scale' as string]: scale }}>
+    <div className={clsx('rd rd-shell', navOpen && 'nav-open', dockOpen && 'dock-open')} style={{ ['--rd-scale' as string]: scale }}>
       <header className="rd-top">
         <div className="rd-top-in">
+          <button className="rd-burger" onClick={() => setNavOpen(true)} aria-label="Mở menu" aria-expanded={navOpen}><Menu size={22} /></button>
           <button className="rd-logo" onClick={() => nav('/')} aria-label="Về trang chủ">
             <span className="mark"><BookMarked size={24} /></span>
             <span><span className="t1 block">Thư viện tri thức</span><span className="t2 block">Tìm · Làm theo · Hỏi trợ lý</span></span>
           </button>
           <SearchBox />
-          <button className={clsx('rd-btn sm', !chat.open && 'secondary')} onClick={() => chat.toggle()} aria-pressed={chat.open} title="Mở / đóng trợ lý (Ctrl+J)"><MessageCircleQuestion size={19} />Hỏi trợ lý</button>
+          <button className={clsx('rd-btn sm', !(chat.open && !onHome) && 'secondary')} onClick={toggleAssistant} aria-pressed={chat.open && !onHome} title="Mở / đóng trợ lý (Ctrl+J)" aria-label="Hỏi trợ lý"><MessageCircleQuestion size={19} /><span className="rd-hide-sm">Hỏi trợ lý</span></button>
           <div className="relative" ref={menuRef}>
             <button className="flex items-center gap-2.5 h-[50px] pl-1.5 pr-3 rounded-lg border border-line bg-white cursor-pointer hover:bg-brand-50" onClick={() => setMenu(!menu)} aria-haspopup="menu" aria-expanded={menu}>
               <span className="w-9 h-9 rounded-md bg-gradient-to-br from-brand-500 to-brand-700 text-white font-extrabold grid place-items-center">{initials}</span>
@@ -210,7 +219,8 @@ export default function ReaderLayout() {
         </div>
       </header>
       <div className="rd-body">
-        <Rail onTime={() => setTime(true)} />
+        <Rail onTime={() => setTime(true)} onClose={() => setNavOpen(false)} />
+        {navOpen && <div className="rd-nav-backdrop" onClick={() => setNavOpen(false)} aria-hidden />}
         <main className="rd-scroll"><div className="rd-main"><div className="rd-wrap"><Outlet /></div></div></main>
         {dockOpen && <aside className="rd-dock" aria-label="Trợ lý"><AssistantPanel onClose={() => chat.setOpen(false)} /></aside>}
       </div>

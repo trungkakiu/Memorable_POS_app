@@ -44,6 +44,10 @@
    "description": "Xuất toàn bộ dữ liệu."
   },
   {
+   "name": "fill",
+   "description": "**Điền mẫu tự động**: lưu mẫu Word, Excel, CSV; AI hiểu chỗ cần điền, lấy giá trị từ thông tin và tệp gửi kèm; bạn xem lại rồi tải tệp đã điền giữ nguyên định dạng."
+  },
+  {
    "name": "import",
    "description": "Nhập hàng loạt."
   },
@@ -648,7 +652,7 @@
             "example": {
              "type": "string",
              "maxLength": 500,
-             "description": "Ví dụ giá trị của biến."
+             "description": "Ví dụ giá trị của biến. Với trường của mẫu điền tự động: ví dụ giá trị giúp AI và người điền hiểu đúng."
             }
            },
            "required": [
@@ -1471,7 +1475,7 @@
             "example": {
              "type": "string",
              "maxLength": 500,
-             "description": "Ví dụ giá trị của biến."
+             "description": "Ví dụ giá trị của biến. Với trường của mẫu điền tự động: ví dụ giá trị giúp AI và người điền hiểu đúng."
             }
            },
            "required": [
@@ -3400,7 +3404,7 @@
          "values": {
           "type": "object",
           "additionalProperties": true,
-          "description": "Giá trị điền vào biến của prompt, dạng `{\"ten_bien\": \"giá trị\"}`."
+          "description": "Giá trị điền vào biến của prompt, dạng `{\"ten_bien\": \"giá trị\"}`. Với điền mẫu (`POST /fill/templates/{id}/runs`): giá trị từng trường của mẫu theo `key`, dạng `{\"ho_ten\": \"Nguyễn Văn An\"}` (mẫu dạng bảng dùng `rows`)."
          }
         }
        },
@@ -13131,7 +13135,7 @@
            "community",
            "other"
           ],
-          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`."
+          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`. Với mẫu điền tự động (`/fill`): nhóm tự đặt, ví dụ `hợp đồng`, `hóa đơn`, `nhân sự` (AI tự gợi ý khi tải mẫu lên)."
          },
          "note": {
           "type": "string",
@@ -13506,7 +13510,7 @@
            "community",
            "other"
           ],
-          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`."
+          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`. Với mẫu điền tự động (`/fill`): nhóm tự đặt, ví dụ `hợp đồng`, `hóa đơn`, `nhân sự` (AI tự gợi ý khi tải mẫu lên)."
          },
          "note": {
           "type": "string",
@@ -14612,6 +14616,269 @@
     ]
    }
   },
+  "/ai/file-chat": {
+   "post": {
+    "tags": [
+     "ai"
+    ],
+    "summary": "TRÒ CHUYỆN KÈM TỆP kiểu ChatGPT: gửi ảnh (cả jfif, heic), PDF, Word, ghi âm... AI nhìn và trả lời về chính tệp, nhiều lượt",
+    "operationId": "post_ai_file_chat",
+    "parameters": [
+     {
+      "name": "X-Filename",
+      "in": "header",
+      "required": false,
+      "description": "Chỉ cần khi gửi thân thô (octet-stream): tên file mã hóa bằng encodeURIComponent. Không cần với form-data.",
+      "schema": {
+       "type": "string"
+      },
+      "example": "huong-dan.pdf"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "conversation_id": 37,
+          "answer": "Đây là **phiếu nhập kho** số PN-2026-0457, ngày 05/10/2026, kho Hà Nội (KHO-4471).\n\n1. Giấy A4 Double A: 50 ram x 72.000 = 3.600.000\n2. Mực in HP 107A: 4 hộp x 450.000 = 1.800.000\n\n**Tổng tiền: 5.400.000 đồng.**",
+          "files": [
+           {
+            "filename": "phieu-nhap.jfif",
+            "kind": "image",
+            "filetype": "jfif",
+            "size": 50341,
+            "method": "vision"
+           }
+          ],
+          "skipped": [],
+          "kb": false,
+          "sources": [],
+          "model": "gpt-5.4-2026-03-05",
+          "cost_usd": 0.0145
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Không có tệp nào",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 400,
+         "RM": "Không có tệp nào"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có hội thoại này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có hội thoại này"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Hội thoại đã đầy",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 409,
+         "RM": "Hội thoại đã đầy"
+        }
+       }
+      }
+     },
+     "413": {
+      "description": "Quá 5 tệp hoặc tệp quá lớn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 413,
+         "RM": "Quá 5 tệp hoặc tệp quá lớn"
+        }
+       }
+      }
+     },
+     "415": {
+      "description": "Loại tệp không được phép",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 415,
+         "RM": "Loại tệp không được phép"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Không tệp nào đọc được, câu hỏi chứa bí mật/dữ liệu cá nhân, hoặc tham số sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Không tệp nào đọc được, câu hỏi chứa bí mật/dữ liệu cá nhân, hoặc tham số sai"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Hết hạn mức",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 429,
+         "RM": "Hết hạn mức"
+        }
+       }
+      }
+     },
+     "503": {
+      "description": "AI chưa bật hoặc tính năng file_chat bị tắt",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 503,
+         "RM": "AI chưa bật hoặc tính năng file_chat bị tắt"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Trò chuyện kèm tệp, như ChatGPT.** Gửi ảnh (png, jpg/jfif, webp, gif, bmp, avif, tiff, heic), PDF, Word, Excel, PowerPoint, văn bản hoặc file ghi âm (tối đa 5 tệp) kèm câu hỏi; AI trả lời **trực tiếp về chính các tệp đó**.\n\n- **Ảnh và PDF** được gửi thẳng cho mô hình thị giác **nhìn** (đọc chữ, bảng, ảnh chụp màn hình, chữ viết tay, mô tả hình), không qua bước OCR trung gian; ảnh định dạng mô hình không nhận (jfif, heic, tiff, avif, bmp) được máy chủ tự chuyển đổi.\n- **Word, Excel, PowerPoint, văn bản**: hệ thống tự đọc thành chữ. **Ghi âm**: AI chép lời (kết quả được giữ tạm 3 giờ theo nội dung tệp nên gửi lại cùng tệp không phải chép lại).\n- **Nhiều lượt:** lượt đầu trả `conversation_id`; lượt sau gửi lại `conversation_id` **và gửi lại các tệp** để AI vẫn nhìn thấy chúng (tệp không được lưu trên máy chủ, chỉ lưu nội dung hỏi đáp). Câu nối tiếp có thể rất ngắn.\n- **`kb=true`:** đối chiếu thêm với tài liệu đã duyệt của nhóm; câu trả lời trích dẫn `[doc:ID]` và `sources` chỉ gồm tài liệu được trích. Không có tài liệu liên quan thì AI chỉ trả lời theo tệp.\n\nKhác với `POST /ai/ask-file` (trả lời **từ kho tri thức**, tệp chỉ là dữ liệu để tìm), API này trả lời **về tệp**. Tệp chứa mật khẩu, khóa hay bí mật bị bỏ qua (`skipped`). Hội thoại này không được dùng để chắt lọc ký ức dài hạn. Tắt bằng `ai_feature_file_chat=false`.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật (`GET /ai/status`), tính năng `file_chat` không bị tắt.\n- Vai trò `reader` trở lên (không gồm sponsor).\n- Tệp đúng loại cho phép: tối đa 10 MB (ghi âm 25 MB).\n\n**Lỗi thường gặp:**\n- `400`: Không có tệp nào\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có hội thoại này\n- `409`: Hội thoại đã đầy\n- `413`: Quá 5 tệp hoặc tệp quá lớn\n- `415`: Loại tệp không được phép\n- `422`: Không tệp nào đọc được, câu hỏi chứa bí mật/dữ liệu cá nhân, hoặc tham số sai\n- `429`: Hết hạn mức\n- `503`: AI chưa bật hoặc tính năng file_chat bị tắt\n\n**Cách gửi:** `multipart/form-data`, trường `file` (lặp lại để gửi tối đa 5 tệp) cùng các trường tùy chọn bên dưới. Hoặc gửi **một tệp** dạng thân thô (`Content-Type: application/octet-stream`, header `X-Filename`) và đặt các trường ở tham số truy vấn.\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/ai/file-chat\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -F \"file=@phieu-nhap.jfif\" \\\n  -F \"message=Ảnh này là gì? Tổng tiền bao nhiêu?\"\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "file"
+        ],
+        "properties": {
+         "file": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "format": "binary"
+          },
+          "maxItems": 5,
+          "description": "Ảnh, PDF, tài liệu hoặc ghi âm cần hỏi (tối đa 5 tệp)."
+         },
+         "message": {
+          "type": "string",
+          "description": "Câu hỏi về tệp (tối đa 2000 ký tự). Bỏ trống thì AI cho biết tệp là gì và tóm tắt nội dung chính."
+         },
+         "conversation_id": {
+          "type": "integer",
+          "description": "Mã hội thoại từ lượt trước để hỏi nối tiếp (nhớ cùng gửi lại các tệp)."
+         },
+         "kb": {
+          "type": "boolean",
+          "description": "`true` để đối chiếu thêm với tài liệu đã duyệt của nhóm (mặc định `false`)."
+         },
+         "source_policy": {
+          "type": "string",
+          "enum": [
+           "official",
+           "reviewed",
+           "all"
+          ],
+          "description": "Khi `kb=true`: chỉ dùng tài liệu chính thống, đã kiểm duyệt, hoặc tất cả."
+         }
+        }
+       }
+      },
+      "application/octet-stream": {
+       "schema": {
+        "type": "string",
+        "format": "binary",
+        "description": "Nội dung file thô (một tệp), kèm header X-Filename."
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
   "/ai/transcribe": {
    "post": {
     "tags": [
@@ -15392,7 +15659,7 @@
           "type": "string",
           "minLength": 20,
           "maxLength": 100000,
-          "description": "Nội dung văn bản. Với ký ức (`PUT /agents/memory/{id}`): một câu tự đủ nghĩa (8 đến 300 ký tự). Với nhập tri thức (`POST /ai/draft-item/text`): văn bản nguồn cần AI soạn thành mục (20 đến 100.000 ký tự). Không được chứa mật khẩu, khóa; email và số điện thoại sẽ bị che hoặc từ chối."
+          "description": "Nội dung văn bản. Với ký ức (`PUT /agents/memory/{id}`): một câu tự đủ nghĩa (8 đến 300 ký tự). Với nhập tri thức (`POST /ai/draft-item/text`): văn bản nguồn cần AI soạn thành mục (20 đến 100.000 ký tự). Không được chứa mật khẩu, khóa; email và số điện thoại sẽ bị che hoặc từ chối. Với điền mẫu (`POST /fill/templates/{id}/extract`): thông tin bạn dán vào để AI lấy giá trị điền mẫu (tên, ngày, số tiền, bảng kê...), tối đa 20.000 ký tự."
          },
          "type": {
           "type": "string",
@@ -15930,7 +16197,7 @@
       "name": "category",
       "in": "query",
       "required": false,
-      "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`.",
+      "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`. Với mẫu điền tự động (`/fill`): nhóm tự đặt, ví dụ `hợp đồng`, `hóa đơn`, `nhân sự` (AI tự gợi ý khi tải mẫu lên).",
       "schema": {
        "type": "string",
        "enum": [
@@ -16175,7 +16442,7 @@
            "quality",
            "task"
           ],
-          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`."
+          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`. Với mẫu điền tự động (`/fill`): nhóm tự đặt, ví dụ `hợp đồng`, `hóa đơn`, `nhân sự` (AI tự gợi ý khi tải mẫu lên)."
          },
          "description": {
           "type": "string",
@@ -16356,7 +16623,7 @@
            "quality",
            "task"
           ],
-          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`."
+          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`. Với mẫu điền tự động (`/fill`): nhóm tự đặt, ví dụ `hợp đồng`, `hóa đơn`, `nhân sự` (AI tự gợi ý khi tải mẫu lên)."
          },
          "description": {
           "type": "string",
@@ -17146,7 +17413,7 @@
           "type": "string",
           "minLength": 8,
           "maxLength": 300,
-          "description": "Nội dung văn bản. Với ký ức (`PUT /agents/memory/{id}`): một câu tự đủ nghĩa (8 đến 300 ký tự). Với nhập tri thức (`POST /ai/draft-item/text`): văn bản nguồn cần AI soạn thành mục (20 đến 100.000 ký tự). Không được chứa mật khẩu, khóa; email và số điện thoại sẽ bị che hoặc từ chối."
+          "description": "Nội dung văn bản. Với ký ức (`PUT /agents/memory/{id}`): một câu tự đủ nghĩa (8 đến 300 ký tự). Với nhập tri thức (`POST /ai/draft-item/text`): văn bản nguồn cần AI soạn thành mục (20 đến 100.000 ký tự). Không được chứa mật khẩu, khóa; email và số điện thoại sẽ bị che hoặc từ chối. Với điền mẫu (`POST /fill/templates/{id}/extract`): thông tin bạn dán vào để AI lấy giá trị điền mẫu (tên, ngày, số tiền, bảng kê...), tối đa 20.000 ký tự."
          },
          "importance": {
           "type": "integer",
@@ -18139,7 +18406,7 @@
            "private",
            "team"
           ],
-          "description": "`private` (chỉ mình bạn) hoặc `team` (mọi thành viên dùng và nhân bản được; họ thấy cả skill và chỉ dẫn riêng của Agent; chỉ bạn sửa được)."
+          "description": "`private` (chỉ mình bạn) hoặc `team` (mọi thành viên dùng và nhân bản được; họ thấy cả skill và chỉ dẫn riêng của Agent; chỉ bạn sửa được). Với mẫu điền tự động (`/fill`): `private` (chỉ bạn thấy) hoặc `team` (cả nhóm dùng được; chỉ contributor trở lên được chia sẻ, chỉ bạn và admin sửa được)."
          }
         }
        },
@@ -18523,7 +18790,7 @@
            "private",
            "team"
           ],
-          "description": "`private` (chỉ mình bạn) hoặc `team` (mọi thành viên dùng và nhân bản được; họ thấy cả skill và chỉ dẫn riêng của Agent; chỉ bạn sửa được)."
+          "description": "`private` (chỉ mình bạn) hoặc `team` (mọi thành viên dùng và nhân bản được; họ thấy cả skill và chỉ dẫn riêng của Agent; chỉ bạn sửa được). Với mẫu điền tự động (`/fill`): `private` (chỉ bạn thấy) hoặc `team` (cả nhóm dùng được; chỉ contributor trở lên được chia sẻ, chỉ bạn và admin sửa được)."
          },
          "is_active": {
           "type": "boolean",
@@ -20377,6 +20644,2391 @@
     ]
    }
   },
+  "/fill/profile": {
+   "get": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "HỒ SƠ CỦA TÔI: thông tin cá nhân dùng để tự điền mẫu (lưu mã hóa)",
+    "operationId": "get_fill_profile",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "groups": [
+           {
+            "id": "personal",
+            "label": "Thông tin cá nhân"
+           },
+           {
+            "id": "id_card",
+            "label": "Căn cước công dân"
+           },
+           {
+            "id": "contact",
+            "label": "Liên hệ"
+           },
+           {
+            "id": "work",
+            "label": "Công việc"
+           },
+           {
+            "id": "bank",
+            "label": "Tài khoản ngân hàng"
+           },
+           {
+            "id": "defaults",
+            "label": "Khi làm đơn"
+           }
+          ],
+          "fields": [
+           {
+            "key": "ho_ten",
+            "group": "personal",
+            "label": "Họ và tên",
+            "type": "text"
+           },
+           {
+            "key": "so_cccd",
+            "group": "id_card",
+            "label": "Số CCCD",
+            "type": "id_number"
+           },
+           {
+            "key": "noi_lam_don",
+            "group": "defaults",
+            "label": "Nơi làm đơn (tỉnh/thành)",
+            "type": "text",
+            "hint": "Ghi ở dòng \"…, ngày … tháng … năm …\", VD: Hà Nội"
+           }
+          ],
+          "values": {
+           "ho_ten": "Phạm Thu Hà",
+           "so_cccd": "001190012345",
+           "noi_lam_don": "Hà Nội"
+          },
+          "sources": {
+           "ho_ten": "id_card",
+           "so_cccd": "id_card",
+           "noi_lam_don": "manual"
+          },
+          "filled": 3,
+          "total": 25,
+          "updated_at": "2026-10-07T08:00:00.000Z"
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Hồ sơ của tôi** dùng để **tự điền mẫu**: họ tên, ngày sinh, số CCCD, ngày cấp, nơi cấp, nơi thường trú, chỗ ở hiện tại, điện thoại, email, công ty, chức vụ, tài khoản ngân hàng, nơi làm đơn… `fields` là danh mục thông tin (theo nhóm `groups`), `values` là thông tin bạn đã lưu, `sources` cho biết thông tin lấy từ đâu (`manual` tự nhập, `id_card` quét CCCD, `fill` lưu lại từ một lần điền).\n\nHồ sơ là của riêng bạn (người khác, kể cả quản trị, không xem được qua API) và được **mã hóa AES-256-GCM** trước khi lưu vào CSDL; khóa nằm ngoài CSDL (`FILL_PROFILE_KEY` hoặc tệp khóa trong thư mục upload).\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên (không gồm sponsor).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/fill/profile\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "put": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "Lưu hoặc sửa thông tin trong hồ sơ của tôi",
+    "operationId": "put_fill_profile",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "groups": [
+           {
+            "id": "personal",
+            "label": "Thông tin cá nhân"
+           },
+           {
+            "id": "id_card",
+            "label": "Căn cước công dân"
+           },
+           {
+            "id": "contact",
+            "label": "Liên hệ"
+           },
+           {
+            "id": "work",
+            "label": "Công việc"
+           },
+           {
+            "id": "bank",
+            "label": "Tài khoản ngân hàng"
+           },
+           {
+            "id": "defaults",
+            "label": "Khi làm đơn"
+           }
+          ],
+          "fields": [
+           {
+            "key": "ho_ten",
+            "group": "personal",
+            "label": "Họ và tên",
+            "type": "text"
+           },
+           {
+            "key": "so_cccd",
+            "group": "id_card",
+            "label": "Số CCCD",
+            "type": "id_number"
+           },
+           {
+            "key": "noi_lam_don",
+            "group": "defaults",
+            "label": "Nơi làm đơn (tỉnh/thành)",
+            "type": "text",
+            "hint": "Ghi ở dòng \"…, ngày … tháng … năm …\", VD: Hà Nội"
+           }
+          ],
+          "values": {
+           "ho_ten": "Phạm Thu Hà",
+           "so_cccd": "001190012345",
+           "noi_lam_don": "Hà Nội"
+          },
+          "sources": {
+           "ho_ten": "id_card",
+           "so_cccd": "id_card",
+           "noi_lam_don": "manual"
+          },
+          "filled": 3,
+          "total": 25,
+          "updated_at": "2026-10-07T08:00:00.000Z"
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Thiếu `values`",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Thiếu values"
+        }
+       }
+      }
+     }
+    },
+    "description": "Lưu thông tin vào hồ sơ. Chỉ các thông tin gửi trong `values` bị thay đổi (khóa theo `fields` của `GET /fill/profile`, khóa lạ bị bỏ qua); gửi chuỗi rỗng để **xóa** một thông tin. `source`: `manual` (tự nhập, mặc định), `id_card` (sau khi quét CCCD bằng `POST /fill/profile/scan`), `fill` (lưu lại giá trị vừa điền vào mẫu). Nhật ký kiểm toán chỉ ghi tên các thông tin được đổi, không ghi giá trị.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên (không gồm sponsor).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Thiếu `values`\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PUT \"http://localhost:3001/fill/profile\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"values\":{\"ho_ten\":\"Phạm Thu Hà\",\"noi_lam_don\":\"Hà Nội\",\"dien_thoai\":\"\"},\"source\":\"manual\"}'\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "values": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Giá trị điền vào biến của prompt, dạng `{\"ten_bien\": \"giá trị\"}`. Với điền mẫu (`POST /fill/templates/{id}/runs`): giá trị từng trường của mẫu theo `key`, dạng `{\"ho_ten\": \"Nguyễn Văn An\"}` (mẫu dạng bảng dùng `rows`)."
+         },
+         "source": {
+          "type": "string",
+          "enum": [
+           "manual",
+           "id_card",
+           "fill"
+          ],
+          "default": "manual",
+          "description": "Nguồn của số liệu, ví dụ tên hóa đơn."
+         }
+        },
+        "required": [
+         "values"
+        ]
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "values": {
+           "ho_ten": "Phạm Thu Hà",
+           "noi_lam_don": "Hà Nội",
+           "dien_thoai": ""
+          },
+          "source": "manual"
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "delete": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "Xóa toàn bộ hồ sơ của tôi",
+    "operationId": "delete_fill_profile",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "deleted": true
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     }
+    },
+    "description": "Xóa **toàn bộ** hồ sơ của tôi (không khôi phục được). Mẫu và các lần điền đã lưu không bị ảnh hưởng.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên (không gồm sponsor).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X DELETE \"http://localhost:3001/fill/profile\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/fill/profile/scan": {
+   "post": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "AI đọc ảnh CCCD (mặt trước, mặt sau) để điền hồ sơ; ảnh không được lưu",
+    "operationId": "post_fill_profile_scan",
+    "parameters": [
+     {
+      "name": "X-Filename",
+      "in": "header",
+      "required": false,
+      "description": "Chỉ cần khi gửi thân thô (octet-stream): tên file mã hóa bằng encodeURIComponent. Không cần với form-data.",
+      "schema": {
+       "type": "string"
+      },
+      "example": "huong-dan.pdf"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "values": {
+           "so_cccd": "001190012345",
+           "ho_ten": "Phạm Thu Hà",
+           "ngay_sinh": "12/03/1990",
+           "gioi_tinh": "Nữ",
+           "quoc_tich": "Việt Nam",
+           "que_quan": "Nam Định",
+           "noi_thuong_tru": "25 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+           "ngay_het_han_cccd": "12/03/2030"
+          },
+          "document_type": "Căn cước công dân",
+          "unclear": [],
+          "warnings": [
+           "Chưa có ngày cấp và nơi cấp: thêm ảnh mặt sau của thẻ để đọc nốt."
+          ],
+          "fields": [
+           {
+            "key": "so_cccd",
+            "label": "Số CCCD"
+           },
+           {
+            "key": "ho_ten",
+            "label": "Họ và tên"
+           }
+          ],
+          "model": "gpt-5.6-terra",
+          "cost_usd": 0.004
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Không có tệp nào",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 400,
+         "RM": "Không có tệp nào"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "413": {
+      "description": "Tệp quá lớn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 413,
+         "RM": "Tệp quá lớn"
+        }
+       }
+      }
+     },
+     "415": {
+      "description": "Không phải ảnh hoặc PDF",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 415,
+         "RM": "Không phải ảnh hoặc PDF"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Ảnh không phải giấy tờ tùy thân, hoặc quá 2 ảnh",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Ảnh không phải giấy tờ tùy thân, hoặc quá 2 ảnh"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Hết hạn mức",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 429,
+         "RM": "Hết hạn mức"
+        }
+       }
+      }
+     },
+     "503": {
+      "description": "AI chưa bật hoặc tính năng fill_profile_scan bị tắt",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 503,
+         "RM": "AI chưa bật hoặc tính năng fill_profile_scan bị tắt"
+        }
+       }
+      }
+     }
+    },
+    "description": "**AI đọc ảnh căn cước công dân** (CCCD, căn cước, CMND) để điền hồ sơ: gửi ảnh **mặt trước** (họ tên, số, ngày sinh, giới tính, quốc tịch, quê quán, nơi thường trú, có giá trị đến) và tùy chọn ảnh **mặt sau** (ngày cấp, nơi cấp). **Không lưu gì**: kết quả để bạn xem lại, sửa rồi lưu bằng `PUT /fill/profile` với `source: \"id_card\"`. **Ảnh không được lưu** trên máy chủ; ảnh được gửi cho mô hình AI để đọc (đây là thao tác bạn chủ động chọn). AI không đoán: chỗ mờ hoặc bị che để trống và nằm trong `unclear`; `warnings` nhắc những điểm cần kiểm tra (số CCCD không đủ 12 số, thiếu mặt sau...).\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật, tính năng `fill_profile_scan` không bị tắt.\n- Vai trò `reader` trở lên (không gồm sponsor).\n- Ảnh (jpg, png, heic...) hoặc PDF, tối đa 2 tệp.\n\n**Lỗi thường gặp:**\n- `400`: Không có tệp nào\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `413`: Tệp quá lớn\n- `415`: Không phải ảnh hoặc PDF\n- `422`: Ảnh không phải giấy tờ tùy thân, hoặc quá 2 ảnh\n- `429`: Hết hạn mức\n- `503`: AI chưa bật hoặc tính năng fill_profile_scan bị tắt\n\n**Cách gửi:** `multipart/form-data`, trường `file` (1 hoặc 2 tệp: mặt trước, mặt sau). Hoặc gửi một ảnh dạng thân thô (`Content-Type: application/octet-stream`, header `X-Filename`).\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/fill/profile/scan\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -F \"file=@cccd-mat-truoc.jpg\" \\\n  -F \"file=@cccd-mat-sau.jpg\"\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "file"
+        ],
+        "properties": {
+         "file": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "format": "binary"
+          },
+          "maxItems": 2,
+          "description": "Ảnh hoặc PDF của CCCD (mặt trước và/hoặc mặt sau)."
+         }
+        }
+       }
+      },
+      "application/octet-stream": {
+       "schema": {
+        "type": "string",
+        "format": "binary",
+        "description": "Nội dung file thô (một tệp), kèm header X-Filename."
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/fill/templates": {
+   "get": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "ĐIỀN MẪU TỰ ĐỘNG: thư viện mẫu Word, Excel, CSV, mẫu bạn hay dùng xếp trước, tìm mẫu theo nội dung",
+    "operationId": "get_fill_templates",
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "description": "Từ khóa tìm kiếm. Gõ tiếng Việt có hoặc không dấu đều được, hoặc mã lỗi nguyên văn như `ERR_504`.",
+      "schema": {
+       "type": "string",
+       "maxLength": 300
+      },
+      "example": "hợp đồng mua bán"
+     },
+     {
+      "name": "scope",
+      "in": "query",
+      "required": false,
+      "description": "Phạm vi danh sách: `mine` (của tôi), `team` (do đồng nghiệp chia sẻ), `all` (cả hai, mặc định). Với tìm trên Internet (`POST /ai/web/ask`): `official` (chỉ trang chính thống), `balanced` (chính thống trước, thiếu thì mở rộng), `open` (toàn Internet trừ trang bị chặn).",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "all",
+        "mine",
+        "team"
+       ],
+       "default": "all"
+      },
+      "example": "all"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": [
+          {
+           "id": 8,
+           "name": "Hợp đồng mua bán hàng hóa",
+           "description": "Hợp đồng giữa bên bán và bên mua, có giá trị và số tiền bằng chữ",
+           "category": "hợp đồng",
+           "kind": "docx",
+           "mode": "placeholders",
+           "filename": "hop-dong-mua-ban.docx",
+           "filesize": 18342,
+           "visibility": "private",
+           "owner_id": 7,
+           "fields": [
+            {
+             "key": "ben_mua",
+             "label": "Tên bên mua",
+             "type": "text",
+             "type_label": "Chữ",
+             "hint": "Tên công ty hoặc cá nhân",
+             "example": "Công ty TNHH An Phát"
+            },
+            {
+             "key": "ngay_ky",
+             "label": "Ngày ký",
+             "type": "date",
+             "type_label": "Ngày",
+             "hint": "dd/mm/yyyy",
+             "example": "06/10/2026"
+            },
+            {
+             "key": "gia_tri",
+             "label": "Giá trị hợp đồng",
+             "type": "money",
+             "type_label": "Số tiền",
+             "hint": "",
+             "example": "5.400.000"
+            },
+            {
+             "key": "gia_tri_bang_chu",
+             "label": "Số tiền bằng chữ",
+             "type": "money_words",
+             "type_label": "Số tiền bằng chữ",
+             "hint": "Tự tính từ giá trị hợp đồng",
+             "example": "",
+             "derived_from": "gia_tri"
+            }
+           ],
+           "use_count": 3,
+           "last_used_at": "2026-10-06T09:00:00.000Z",
+           "created_at": "2026-10-01T08:00:00.000Z",
+           "updated_at": "2026-10-06T09:00:00.000Z",
+           "my_uses": 3,
+           "my_last_used": "2026-10-06T09:00:00.000Z",
+           "reason": "Bạn đã dùng 3 lần, lần cuối 6/10/2026",
+           "match": 0.82
+          }
+         ],
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Thư viện mẫu điền tự động** (Word, Excel, CSV) bạn dùng được: mẫu của bạn và mẫu nhóm chia sẻ. **Không có `q`**: mẫu bạn hay dùng và dùng gần đây đứng đầu (`my_uses`, `my_last_used`, `reason` như \"Bạn đã dùng 3 lần\"). **Có `q`** (ví dụ \"hợp đồng thuê nhà\", \"bảng lương tháng\"): tìm theo **nghĩa** (AI so khớp ý, kể cả khi khác chữ) và theo **từ khóa** trong tên, mô tả, nhóm, tên các trường; điểm khớp ở `match` (0 đến 1), mẫu bạn từng dùng được cộng thêm điểm.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên (không gồm sponsor).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/fill/templates?q=h%E1%BB%A3p%20%C4%91%E1%BB%93ng%20mua%20b%C3%A1n&scope=all\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "Thêm mẫu Word, Excel hoặc CSV vào thư viện: AI nhận ra các chỗ cần điền (mẫu trùng được dùng lại)",
+    "operationId": "post_fill_templates",
+    "parameters": [
+     {
+      "name": "X-Filename",
+      "in": "header",
+      "required": false,
+      "description": "Chỉ cần khi gửi thân thô (octet-stream): tên file mã hóa bằng encodeURIComponent. Không cần với form-data.",
+      "schema": {
+       "type": "string"
+      },
+      "example": "huong-dan.pdf"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "template": {
+           "id": 8,
+           "name": "Hợp đồng mua bán hàng hóa",
+           "description": "Hợp đồng giữa bên bán và bên mua, có giá trị và số tiền bằng chữ",
+           "category": "hợp đồng",
+           "kind": "docx",
+           "mode": "placeholders",
+           "filename": "hop-dong-mua-ban.docx",
+           "filesize": 18342,
+           "visibility": "private",
+           "owner_id": 7,
+           "fields": [
+            {
+             "key": "ben_mua",
+             "label": "Tên bên mua",
+             "type": "text",
+             "type_label": "Chữ",
+             "hint": "Tên công ty hoặc cá nhân",
+             "example": "Công ty TNHH An Phát"
+            },
+            {
+             "key": "ngay_ky",
+             "label": "Ngày ký",
+             "type": "date",
+             "type_label": "Ngày",
+             "hint": "dd/mm/yyyy",
+             "example": "06/10/2026"
+            },
+            {
+             "key": "gia_tri",
+             "label": "Giá trị hợp đồng",
+             "type": "money",
+             "type_label": "Số tiền",
+             "hint": "",
+             "example": "5.400.000"
+            },
+            {
+             "key": "gia_tri_bang_chu",
+             "label": "Số tiền bằng chữ",
+             "type": "money_words",
+             "type_label": "Số tiền bằng chữ",
+             "hint": "Tự tính từ giá trị hợp đồng",
+             "example": "",
+             "derived_from": "gia_tri"
+            }
+           ],
+           "use_count": 3,
+           "last_used_at": "2026-10-06T09:00:00.000Z",
+           "created_at": "2026-10-01T08:00:00.000Z",
+           "updated_at": "2026-10-06T09:00:00.000Z"
+          },
+          "duplicate": false,
+          "ai": true,
+          "cost_usd": 0.0021
+         },
+         "RC": 201,
+         "RM": "Template added"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Không có tệp nào",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 400,
+         "RM": "Không có tệp nào"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Chỉ contributor trở lên được chia sẻ mẫu cho nhóm",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Chỉ contributor trở lên được chia sẻ mẫu cho nhóm"
+        }
+       }
+      }
+     },
+     "413": {
+      "description": "Tệp quá 10 MB",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 413,
+         "RM": "Tệp quá 10 MB"
+        }
+       }
+      }
+     },
+     "415": {
+      "description": "Không phải tệp Word (.docx), Excel (.xlsx) hoặc CSV, hoặc tệp hỏng",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 415,
+         "RM": "Không phải tệp Word (.docx), Excel (.xlsx) hoặc CSV, hoặc tệp hỏng"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Không tìm thấy chỗ cần điền hoặc dòng tiêu đề cột",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Không tìm thấy chỗ cần điền hoặc dòng tiêu đề cột"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Hết hạn mức",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 429,
+         "RM": "Hết hạn mức"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Thêm mẫu vào thư viện.** Gửi một tệp Word (`.docx`), Excel (`.xlsx`) hoặc `.csv` (tối đa 10 MB). Hệ thống tự nhận ra **chỗ cần điền**:\n\n- **Word có đánh dấu**: `{{ten_truong}}`, `«ten_truong»`, `[[ten_truong]]` hoặc `<<ten_truong>>` (kể cả khi Word tách chữ thành nhiều đoạn định dạng), cả ở đầu trang và chân trang.\n- **Word không đánh dấu**: chỗ trống dạng `........`, `____`, `…` sau nhãn (ví dụ \"Họ và tên: ........\") và ô bảng trống bên phải ô nhãn.\n- **Excel, CSV dạng bảng**: dòng đầu là tên cột, mỗi dòng sau là một bản ghi (AI điền nhiều dòng). Excel có `{{ten_truong}}` trong ô thì điền theo ô.\n\nAI đọc ngữ cảnh để đặt **nhãn dễ hiểu, kiểu dữ liệu** (ngày, số tiền, số tiền bằng chữ, điện thoại, CCCD/MST...), gợi ý, ví dụ, tên và nhóm mẫu (`ai: true`); AI không dùng được thì dùng nhãn suy ra từ tệp (`ai: false`). **Tệp đã có trong thư viện** (cùng nội dung) không được thêm lần nữa: trả về mẫu cũ với `duplicate: true` (mã 200).\n\nTrường form tùy chọn: `name`, `category`, `visibility` (`team` để chia sẻ cho nhóm, cần vai trò contributor trở lên). Gửi thân thô (`X-Filename`) thì đặt các trường ở tham số truy vấn.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên (không gồm sponsor).\n- Có chỗ cần điền: đánh dấu `{{...}}`, chỗ trống `....`/`____`, hoặc dòng tiêu đề cột.\n\n**Lỗi thường gặp:**\n- `400`: Không có tệp nào\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Chỉ contributor trở lên được chia sẻ mẫu cho nhóm\n- `413`: Tệp quá 10 MB\n- `415`: Không phải tệp Word (.docx), Excel (.xlsx) hoặc CSV, hoặc tệp hỏng\n- `422`: Không tìm thấy chỗ cần điền hoặc dòng tiêu đề cột\n- `429`: Hết hạn mức\n\n**Cách gửi:** `multipart/form-data`, trường `file` (một tệp mẫu) cùng các trường tùy chọn bên dưới. Hoặc gửi tệp dạng thân thô (`Content-Type: application/octet-stream`, header `X-Filename`) và đặt các trường ở tham số truy vấn.\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/fill/templates\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -F \"file=@hop-dong-mua-ban.docx\" \\\n  -F \"name=Hợp đồng mua bán hàng hóa\"\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "file"
+        ],
+        "properties": {
+         "file": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "format": "binary"
+          },
+          "maxItems": 1,
+          "description": "Tệp mẫu .docx, .xlsx hoặc .csv (tối đa 10 MB)."
+         },
+         "name": {
+          "type": "string",
+          "description": "Tên mẫu (bỏ trống thì AI đặt)."
+         },
+         "category": {
+          "type": "string",
+          "description": "Nhóm mẫu, ví dụ `hợp đồng` (bỏ trống thì AI gợi ý)."
+         },
+         "visibility": {
+          "type": "string",
+          "enum": [
+           "private",
+           "team"
+          ],
+          "description": "`private` (mặc định) hoặc `team` để cả nhóm dùng."
+         }
+        }
+       }
+      },
+      "application/octet-stream": {
+       "schema": {
+        "type": "string",
+        "format": "binary",
+        "description": "Nội dung file thô (một tệp), kèm header X-Filename."
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/fill/templates/{id}": {
+   "get": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "Xem một mẫu và các trường cần điền",
+    "operationId": "get_fill_templates_id",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 8,
+          "name": "Hợp đồng mua bán hàng hóa",
+          "description": "Hợp đồng giữa bên bán và bên mua, có giá trị và số tiền bằng chữ",
+          "category": "hợp đồng",
+          "kind": "docx",
+          "mode": "placeholders",
+          "filename": "hop-dong-mua-ban.docx",
+          "filesize": 18342,
+          "visibility": "private",
+          "owner_id": 7,
+          "fields": [
+           {
+            "key": "ben_mua",
+            "label": "Tên bên mua",
+            "type": "text",
+            "type_label": "Chữ",
+            "hint": "Tên công ty hoặc cá nhân",
+            "example": "Công ty TNHH An Phát"
+           },
+           {
+            "key": "ngay_ky",
+            "label": "Ngày ký",
+            "type": "date",
+            "type_label": "Ngày",
+            "hint": "dd/mm/yyyy",
+            "example": "06/10/2026"
+           },
+           {
+            "key": "gia_tri",
+            "label": "Giá trị hợp đồng",
+            "type": "money",
+            "type_label": "Số tiền",
+            "hint": "",
+            "example": "5.400.000"
+           },
+           {
+            "key": "gia_tri_bang_chu",
+            "label": "Số tiền bằng chữ",
+            "type": "money_words",
+            "type_label": "Số tiền bằng chữ",
+            "hint": "Tự tính từ giá trị hợp đồng",
+            "example": "",
+            "derived_from": "gia_tri"
+           }
+          ],
+          "use_count": 3,
+          "last_used_at": "2026-10-06T09:00:00.000Z",
+          "created_at": "2026-10-01T08:00:00.000Z",
+          "updated_at": "2026-10-06T09:00:00.000Z",
+          "can_edit": true,
+          "last_run": {
+           "id": 31,
+           "title": "Hợp đồng An Phát 06/10/2026",
+           "created_at": "2026-10-06T09:00:00.000Z"
+          }
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có mẫu này hoặc bạn không xem được",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có mẫu này hoặc bạn không xem được"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Thông tin một mẫu: các trường cần điền (nhãn, kiểu, gợi ý, ví dụ), số lần đã dùng, `can_edit` (bạn sửa được không) và `last_run` (lần điền gần nhất của bạn, để \"điền lại như lần trước\").\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Mẫu của bạn hoặc mẫu nhóm chia sẻ.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có mẫu này hoặc bạn không xem được\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/fill/templates/12\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "patch": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "Sửa tên, nhóm, chia sẻ và nhãn, kiểu, gợi ý của các trường",
+    "operationId": "patch_fill_templates_id",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 8,
+          "name": "Hợp đồng mua bán hàng hóa",
+          "description": "Hợp đồng giữa bên bán và bên mua, có giá trị và số tiền bằng chữ",
+          "category": "hợp đồng",
+          "kind": "docx",
+          "mode": "placeholders",
+          "filename": "hop-dong-mua-ban.docx",
+          "filesize": 18342,
+          "visibility": "private",
+          "owner_id": 7,
+          "fields": [
+           {
+            "key": "ben_mua",
+            "label": "Tên bên mua",
+            "type": "text",
+            "type_label": "Chữ",
+            "hint": "Tên công ty hoặc cá nhân",
+            "example": "Công ty TNHH An Phát"
+           },
+           {
+            "key": "ngay_ky",
+            "label": "Ngày ký",
+            "type": "date",
+            "type_label": "Ngày",
+            "hint": "dd/mm/yyyy",
+            "example": "06/10/2026"
+           },
+           {
+            "key": "gia_tri",
+            "label": "Giá trị hợp đồng",
+            "type": "money",
+            "type_label": "Số tiền",
+            "hint": "",
+            "example": "5.400.000"
+           },
+           {
+            "key": "gia_tri_bang_chu",
+            "label": "Số tiền bằng chữ",
+            "type": "money_words",
+            "type_label": "Số tiền bằng chữ",
+            "hint": "Tự tính từ giá trị hợp đồng",
+            "example": "",
+            "derived_from": "gia_tri"
+           }
+          ],
+          "use_count": 3,
+          "last_used_at": "2026-10-06T09:00:00.000Z",
+          "created_at": "2026-10-01T08:00:00.000Z",
+          "updated_at": "2026-10-06T09:00:00.000Z"
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Không phải người tạo mẫu",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Không phải người tạo mẫu"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có mẫu này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có mẫu này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Sửa tên, mô tả, nhóm, chia sẻ (`visibility`) của mẫu, và **nhãn, kiểu, gợi ý, ví dụ** của từng trường (chỉ ra trường bằng `key`; khóa và vị trí điền không đổi). Gửi trường nào thì sửa trường đó.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Người tạo mẫu hoặc admin.\n- Chia sẻ cho nhóm cần vai trò contributor trở lên.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Không phải người tạo mẫu\n- `404`: Không có mẫu này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PATCH \"http://localhost:3001/fill/templates/12\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"category\":\"hợp đồng\",\"fields\":[{\"key\":\"ben_mua\",\"label\":\"Tên bên mua (ghi đầy đủ)\",\"hint\":\"Theo giấy phép kinh doanh\"}]}'\n```",
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Tên."
+         },
+         "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Mô tả."
+         },
+         "category": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Nhóm skill: `role` (vai trò), `style` (văn phong), `reasoning` (cách suy luận), `format` (định dạng đầu ra), `quality` (kiểm soát chất lượng), `task` (tác vụ). Với nguồn Internet: `government`, `law`, `tax_finance`, `statistics`, `health`, `education`, `standards`, `international`, `tech_docs`, `news`, `reference`, `community`, `other`. Với mẫu điền tự động (`/fill`): nhóm tự đặt, ví dụ `hợp đồng`, `hóa đơn`, `nhân sự` (AI tự gợi ý khi tải mẫu lên)."
+         },
+         "visibility": {
+          "type": "string",
+          "enum": [
+           "private",
+           "team"
+          ],
+          "description": "`private` (chỉ mình bạn) hoặc `team` (mọi thành viên dùng và nhân bản được; họ thấy cả skill và chỉ dẫn riêng của Agent; chỉ bạn sửa được). Với mẫu điền tự động (`/fill`): `private` (chỉ bạn thấy) hoặc `team` (cả nhóm dùng được; chỉ contributor trở lên được chia sẻ, chỉ bạn và admin sửa được)."
+         },
+         "fields": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "key": {
+             "type": "string",
+             "maxLength": 80,
+             "description": "Tên cài đặt: chỉ gồm chữ thường, số, dấu gạch dưới và dấu chấm. Với trường của mẫu điền tự động: khóa cố định của trường (không đổi được, chỉ dùng để chỉ ra trường cần sửa)."
+            },
+            "label": {
+             "type": "string",
+             "maxLength": 200,
+             "description": "Tên trường hiển thị cho người điền, ví dụ \"Họ và tên bên mua\"."
+            },
+            "type": {
+             "type": "string",
+             "enum": [
+              "text",
+              "long_text",
+              "date",
+              "number",
+              "money",
+              "money_words",
+              "phone",
+              "email",
+              "id_number",
+              "choice",
+              "checkbox"
+             ],
+             "description": "Loại nội dung: `document` (tài liệu), `article` (bài viết tri thức), `prompt` (câu lệnh cho AI), `runbook` (quy trình xử lý lỗi)."
+            },
+            "hint": {
+             "type": "string",
+             "maxLength": 500,
+             "description": "Gợi ý cách điền trường (định dạng, nơi lấy thông tin)."
+            },
+            "example": {
+             "type": "string",
+             "maxLength": 300,
+             "description": "Ví dụ giá trị của biến. Với trường của mẫu điền tự động: ví dụ giá trị giúp AI và người điền hiểu đúng."
+            }
+           },
+           "required": [
+            "key"
+           ],
+           "description": "Các trường cần điền của mẫu (sửa nhãn, kiểu, gợi ý, ví dụ theo `key`). Kiểu: `text`, `long_text`, `date`, `number`, `money`, `money_words` (số tiền bằng chữ, tự tính), `phone`, `email`, `id_number`, `choice`, `checkbox`."
+          },
+          "maxItems": 200,
+          "description": "Các trường cần điền của mẫu (sửa nhãn, kiểu, gợi ý, ví dụ theo `key`). Kiểu: `text`, `long_text`, `date`, `number`, `money`, `money_words` (số tiền bằng chữ, tự tính), `phone`, `email`, `id_number`, `choice`, `checkbox`."
+         }
+        }
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "category": "hợp đồng",
+          "fields": [
+           {
+            "key": "ben_mua",
+            "label": "Tên bên mua (ghi đầy đủ)",
+            "hint": "Theo giấy phép kinh doanh"
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "delete": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "Xóa mẫu khỏi thư viện",
+    "operationId": "delete_fill_templates_id",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 8
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Không phải người tạo mẫu",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Không phải người tạo mẫu"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có mẫu này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có mẫu này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Xóa mẫu khỏi thư viện (cùng các lần điền đã lưu của mẫu).\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Người tạo mẫu hoặc admin.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Không phải người tạo mẫu\n- `404`: Không có mẫu này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X DELETE \"http://localhost:3001/fill/templates/12\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/fill/templates/{id}/download": {
+   "get": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "Tải tệp mẫu gốc",
+    "operationId": "get_fill_templates_id_download",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công: trả nội dung file",
+      "content": {
+       "application/octet-stream": {
+        "schema": {
+         "type": "string",
+         "format": "binary"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có mẫu này hoặc tệp đã mất",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có mẫu này hoặc tệp đã mất"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Tải **tệp mẫu gốc** (chưa điền). Tệp được kiểm tra toàn vẹn (mã băm) trước khi gửi. Thành công trả **nội dung file** (không phải JSON).\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Mẫu của bạn hoặc mẫu nhóm chia sẻ.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có mẫu này hoặc tệp đã mất\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Phản hồi:** Trả tệp mẫu gốc (.docx, .xlsx, .csv), không phải khung JSON.\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/fill/templates/12/download\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -o ket-qua\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/fill/templates/{id}/extract": {
+   "post": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "AI điền sẵn các trường từ thông tin bạn dán vào và tệp gửi kèm (ảnh, PDF, Word, ghi âm...)",
+    "operationId": "post_fill_templates_id_extract",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "template_id": 8,
+          "mode": "placeholders",
+          "values": {
+           "ben_mua": {
+            "value": "Công ty TNHH An Phát",
+            "confidence": 0.95,
+            "evidence": "Bên mua: Công ty TNHH An Phát"
+           },
+           "ngay_ky": {
+            "value": "06/10/2026",
+            "confidence": 0.9,
+            "evidence": "ký ngày 6/10/2026"
+           },
+           "gia_tri": {
+            "value": "5.400.000",
+            "confidence": 0.85,
+            "evidence": "tổng giá trị 5,4 triệu đồng"
+           },
+           "gia_tri_bang_chu": {
+            "value": "Năm triệu bốn trăm nghìn đồng",
+            "confidence": 0.85,
+            "evidence": "tính từ Giá trị hợp đồng",
+            "computed": true
+           }
+          },
+          "rows": [],
+          "missing": [],
+          "notes": "",
+          "model": "gpt-5.4-2026-03-05",
+          "sources": [],
+          "skipped": [],
+          "used_previous": true,
+          "masked_personal_data": 0,
+          "cost_usd": 0.0034
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có mẫu này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có mẫu này"
+        }
+       }
+      }
+     },
+     "413": {
+      "description": "Quá 5 tệp hoặc tệp quá lớn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 413,
+         "RM": "Quá 5 tệp hoặc tệp quá lớn"
+        }
+       }
+      }
+     },
+     "415": {
+      "description": "Loại tệp không được phép",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 415,
+         "RM": "Loại tệp không được phép"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Không có thông tin để điền, không tệp nào đọc được, hoặc nội dung chứa bí mật",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Không có thông tin để điền, không tệp nào đọc được, hoặc nội dung chứa bí mật"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Hết hạn mức",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 429,
+         "RM": "Hết hạn mức"
+        }
+       }
+      }
+     },
+     "503": {
+      "description": "AI chưa bật hoặc tính năng fill_extract bị tắt",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 503,
+         "RM": "AI chưa bật hoặc tính năng fill_extract bị tắt"
+        }
+       }
+      }
+     }
+    },
+    "description": "**AI điền sẵn các trường** từ thông tin bạn cung cấp. **Không lưu gì**: bạn xem lại, sửa, rồi lưu bằng `POST /fill/templates/{id}/runs`.\n\n- **Chỉ có chữ:** gửi JSON `{\"text\": \"...\"}` (dán email, tin nhắn, ghi chú...).\n- **Kèm tệp:** gửi `multipart/form-data`, trường `text` và trường `file` (tối đa 5 tệp): ảnh chụp CCCD, hóa đơn, danh thiếp (AI **nhìn** ảnh), PDF, Word, Excel, ghi âm (AI chép lời). Tệp không được lưu; tệp có mật khẩu hay khóa bí mật bị bỏ qua (`skipped`).\n- **Dữ liệu cá nhân được che:** số điện thoại, email, số định danh trong chữ và trong tài liệu được thay bằng mã (`PII_PHONE_1`...) trước khi gửi AI; AI chép mã vào ô cần điền rồi máy chủ đổi lại giá trị thật, nên nhà cung cấp AI không thấy giá trị thật (`masked_personal_data` cho biết số giá trị đã che). Ảnh gửi kèm thì AI nhìn trực tiếp. Chữ có mật khẩu, khóa bí mật bị từ chối (422).\n\nKết quả: `values` theo từng trường, mỗi trường có `value`, `confidence` (độ chắc chắn từ 0 đến 1) và `evidence` (đoạn chứng cứ trong tài liệu); `missing` là trường không tìm thấy thông tin (AI **không bịa**). Ngày đổi về dạng dd/mm/yyyy, số tiền viết kiểu 5.400.000, **số tiền bằng chữ được tính bằng chương trình** nên luôn đúng (`computed: true`). Mẫu dạng bảng trả `rows` (mỗi dòng là mảng giá trị theo thứ tự cột). AI tham khảo lần điền trước của bạn (`used_previous`) để giữ thông tin hay lặp lại (ví dụ tên công ty bạn).\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật, tính năng `fill_extract` không bị tắt.\n- Mẫu của bạn hoặc mẫu nhóm chia sẻ.\n- Có `text` hoặc ít nhất một tệp.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có mẫu này\n- `413`: Quá 5 tệp hoặc tệp quá lớn\n- `415`: Loại tệp không được phép\n- `422`: Không có thông tin để điền, không tệp nào đọc được, hoặc nội dung chứa bí mật\n- `429`: Hết hạn mức\n- `503`: AI chưa bật hoặc tính năng fill_extract bị tắt\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/fill/templates/12/extract\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"text\":\"Bên mua: Công ty TNHH An Phát, ký ngày 6/10/2026, tổng giá trị 5,4 triệu đồng.\"}'\n```",
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "text": {
+          "type": "string",
+          "maxLength": 20000,
+          "description": "Nội dung văn bản. Với ký ức (`PUT /agents/memory/{id}`): một câu tự đủ nghĩa (8 đến 300 ký tự). Với nhập tri thức (`POST /ai/draft-item/text`): văn bản nguồn cần AI soạn thành mục (20 đến 100.000 ký tự). Không được chứa mật khẩu, khóa; email và số điện thoại sẽ bị che hoặc từ chối. Với điền mẫu (`POST /fill/templates/{id}/extract`): thông tin bạn dán vào để AI lấy giá trị điền mẫu (tên, ngày, số tiền, bảng kê...), tối đa 20.000 ký tự."
+         }
+        }
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "text": "Bên mua: Công ty TNHH An Phát, ký ngày 6/10/2026, tổng giá trị 5,4 triệu đồng."
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/fill/templates/{id}/prefill": {
+   "post": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "Điền sẵn mẫu từ hồ sơ của tôi và ngày hôm nay, không dùng AI (không tốn chi phí)",
+    "operationId": "post_fill_templates_id_prefill",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "template_id": 8,
+          "mode": "slots",
+          "values": {
+           "ho_ten": {
+            "value": "Phạm Thu Hà",
+            "confidence": 1,
+            "evidence": "Hồ sơ của bạn",
+            "source": "profile",
+            "profile_key": "ho_ten"
+           },
+           "ngay": {
+            "value": "07",
+            "confidence": 1,
+            "evidence": "Hôm nay",
+            "source": "today"
+           }
+          },
+          "matches": {
+           "ho_ten": "ho_ten",
+           "dien_thoai": "dien_thoai"
+          },
+          "missing": [
+           "dien_thoai",
+           "noi_dung"
+          ],
+          "filled": 2,
+          "total": 4
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có mẫu này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có mẫu này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Điền sẵn không dùng AI** (không tốn chi phí): khớp tên từng ô của mẫu với **hồ sơ của tôi** (họ tên, CCCD, địa chỉ, điện thoại, công ty, tài khoản…), **ngày làm đơn** (hôm nay; cả các ô \"ngày\", \"tháng\", \"năm\" riêng), **nơi làm đơn** và tài khoản đăng nhập (họ tên, email khi hồ sơ chưa có). Ô nói về người khác (bên mua, bên bán, khách hàng, người thân…) không bao giờ được điền từ hồ sơ. Mỗi giá trị có `source` (`profile`, `today`, `account`); `matches` cho biết ô nào ứng với thông tin nào trong hồ sơ (để đề nghị lưu lại vào hồ sơ khi bạn tự nhập). Không lưu gì.\n\n`POST /fill/templates/{id}/extract` cũng tự làm bước này: khi không gửi chữ hay tệp thì chỉ điền từ hồ sơ (không gọi AI); khi có thì AI điền phần còn lại và giữ giá trị hồ sơ cho ô AI không tìm thấy.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Mẫu của bạn hoặc mẫu nhóm chia sẻ.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có mẫu này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/fill/templates/12/prefill\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/fill/templates/{id}/runs": {
+   "post": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "Lưu lần điền (giá trị đã xem lại) để tải tệp đã điền",
+    "operationId": "post_fill_templates_id_runs",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 31,
+          "template_id": 8,
+          "title": "Hợp đồng An Phát 06/10/2026",
+          "created_at": "2026-10-06T09:00:00.000Z",
+          "filename": "Hợp đồng An Phát 06 10 2026.docx"
+         },
+         "RC": 201,
+         "RM": "Fill saved"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có mẫu này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có mẫu này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Mọi giá trị đều rỗng",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Mọi giá trị đều rỗng"
+        }
+       }
+      }
+     }
+    },
+    "description": "Lưu một **lần điền** với các giá trị bạn đã xem lại (`values` theo `key`, hoặc `rows` với mẫu dạng bảng). Trả `id` để tải tệp đã điền bằng `GET /fill/runs/{id}/download`. Mỗi lần lưu tăng số lần dùng của mẫu, giúp mẫu này được gợi ý trước lần sau; lần điền gần nhất được AI tham khảo khi điền lần sau.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Mẫu của bạn hoặc mẫu nhóm chia sẻ.\n- Ít nhất một giá trị không rỗng (hoặc một dòng với mẫu dạng bảng).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có mẫu này\n- `422`: Mọi giá trị đều rỗng\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/fill/templates/12/runs\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"title\":\"Hợp đồng An Phát 06/10/2026\",\"values\":{\"ben_mua\":\"Công ty TNHH An Phát\",\"ngay_ky\":\"06/10/2026\",\"gia_tri\":\"5.400.000\",\"gia_tri_bang_chu\":\"Năm triệu bốn trăm nghìn đồng\"}}'\n```",
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "values": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Giá trị điền vào biến của prompt, dạng `{\"ten_bien\": \"giá trị\"}`. Với điền mẫu (`POST /fill/templates/{id}/runs`): giá trị từng trường của mẫu theo `key`, dạng `{\"ho_ten\": \"Nguyễn Văn An\"}` (mẫu dạng bảng dùng `rows`)."
+         },
+         "rows": {
+          "type": "array",
+          "items": {
+           "type": "array",
+           "items": {},
+           "maxItems": 200,
+           "description": "Mẫu dạng bảng (CSV, Excel có dòng tiêu đề): các dòng dữ liệu, mỗi dòng là mảng giá trị theo thứ tự cột của mẫu (tối đa 2000 dòng)."
+          },
+          "maxItems": 2000,
+          "description": "Mẫu dạng bảng (CSV, Excel có dòng tiêu đề): các dòng dữ liệu, mỗi dòng là mảng giá trị theo thứ tự cột của mẫu (tối đa 2000 dòng)."
+         },
+         "title": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Tiêu đề. Nên theo quy ước \"Hệ thống hoặc chủ đề: việc cần làm hoặc triệu chứng\", ví dụ \"Cổng thanh toán: lỗi timeout khi gọi bên thứ ba\". Tối thiểu 3 ký tự."
+         },
+         "sources": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "filename": {
+             "type": "string",
+             "maxLength": 255,
+             "description": "Tên tệp."
+            },
+            "method": {
+             "type": "string",
+             "maxLength": 50,
+             "description": "Cách hệ thống đọc tệp: `vision` (AI nhìn ảnh/PDF), `native` (hệ thống tự đọc chữ Word, Excel, văn bản), `transcribe` (chép lời ghi âm)."
+            }
+           },
+           "required": [
+            "filename"
+           ],
+           "description": "Tệp đã dùng để điền (lấy từ `sources` của bước AI điền), lưu kèm lần điền để xem lại."
+          },
+          "maxItems": 10,
+          "description": "Tệp đã dùng để điền (lấy từ `sources` của bước AI điền), lưu kèm lần điền để xem lại."
+         }
+        }
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "title": "Hợp đồng An Phát 06/10/2026",
+          "values": {
+           "ben_mua": "Công ty TNHH An Phát",
+           "ngay_ky": "06/10/2026",
+           "gia_tri": "5.400.000",
+           "gia_tri_bang_chu": "Năm triệu bốn trăm nghìn đồng"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "get": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "Các lần điền trước của bạn với mẫu này (điền lại như lần trước)",
+    "operationId": "get_fill_templates_id_runs",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": [
+          {
+           "id": 31,
+           "title": "Hợp đồng An Phát 06/10/2026",
+           "values": {
+            "ben_mua": "Công ty TNHH An Phát",
+            "ngay_ky": "06/10/2026"
+           },
+           "rows": null,
+           "row_count": null,
+           "sources": [
+            {
+             "filename": "email.png",
+             "method": "vision"
+            }
+           ],
+           "created_at": "2026-10-06T09:00:00.000Z"
+          }
+         ],
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có mẫu này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có mẫu này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Các lần điền trước **của bạn** với mẫu này (mới nhất trước, tối đa 30), kèm giá trị đã điền để \"điền lại như lần trước\" hoặc tải lại tệp.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Mẫu của bạn hoặc mẫu nhóm chia sẻ.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có mẫu này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/fill/templates/12/runs\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/fill/runs/{id}/download": {
+   "get": {
+    "tags": [
+     "fill"
+    ],
+    "summary": "Tải tệp đã điền (giữ nguyên định dạng của mẫu)",
+    "operationId": "get_fill_runs_id_download",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công: trả nội dung file",
+      "content": {
+       "application/octet-stream": {
+        "schema": {
+         "type": "string",
+         "format": "binary"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có lần điền này hoặc mẫu đã bị xóa",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có lần điền này hoặc mẫu đã bị xóa"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Tải **tệp đã điền**. Word giữ nguyên phông chữ, in đậm, bảng, đầu trang và chân trang của mẫu (giá trị nhiều dòng xuống dòng đúng chỗ). Excel giữ định dạng ô của dòng mẫu, số được ghi là số. CSV có BOM để Excel mở đúng tiếng Việt; ô bắt đầu bằng `=`, `+`, `-`, `@` được chặn để không chạy công thức. Thành công trả **nội dung file** (không phải JSON).\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Lần điền của chính bạn.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có lần điền này hoặc mẫu đã bị xóa\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Phản hồi:** Trả tệp đã điền (.docx, .xlsx, .csv), không phải khung JSON.\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/fill/runs/12/download\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -o ket-qua\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
   "/admin/users": {
    "get": {
     "tags": [
@@ -20889,7 +23541,7 @@
       "name": "key",
       "in": "path",
       "required": true,
-      "description": "Tên cài đặt: chỉ gồm chữ thường, số, dấu gạch dưới và dấu chấm.",
+      "description": "Tên cài đặt: chỉ gồm chữ thường, số, dấu gạch dưới và dấu chấm. Với trường của mẫu điền tự động: khóa cố định của trường (không đổi được, chỉ dùng để chỉ ra trường cần sửa).",
       "schema": {
        "type": "string",
        "maxLength": 100,
@@ -20977,7 +23629,7 @@
       }
      }
     },
-    "description": "Đặt giá trị một cài đặt, có hiệu lực ngay. Các cài đặt đang dùng:\n\n| key | Ý nghĩa |\n|---|---|\n| `ai_enabled` | `true`/`false`: bật tắt toàn bộ AI |\n| `ai_transcribe_double_check` | `false` để chép lời chỉ bằng một mô hình (mặc định bật: hai mô hình rồi đối chiếu) |\n| `ai_ask_effort` | Mức suy luận của hỏi đáp: `low`, `medium`, `high` (mặc định `high`) |\n| `ai_ask_rewrite` | `false` để tắt bước viết lại câu hỏi nối tiếp (mặc định bật) |\n| `ai_agent_final_pass` | `false` để tắt lượt trả lời cuối có suy luận của Agent sau khi tra cứu (mặc định bật) |\n| `ai_agent_final_effort` | Mức suy luận của Agent: `low`, `medium`, `high` (mặc định `high`) |\n| `ai_data_policy_approved` | `true` khi công ty đã duyệt việc gửi nội dung ra nhà cung cấp AI |\n| `ai_monthly_budget_usd` | Ngân sách AI mỗi tháng (USD) |\n| `ai_daily_calls_per_user` | Số **lần gọi mô hình** tối đa mỗi người mỗi ngày (mặc định 150; một lượt chat với Agent có thể gọi 2 đến 5 lần) |\n| `ai_agents_per_user` | Số Agent tối đa mỗi người (mặc định 10) |\n| `ai_agent_turn_max_usd` | Chi phí tối đa của một lượt chat với Agent, USD (mặc định 0.5; quá mức thì Agent phải trả lời luôn) |\n| `ai_conversation_retention_days` | Số ngày lưu hội thoại với Agent (mặc định 30; `0` = giữ mãi) |\n| `ai_ask_file_double_check` | `true` để AI đọc ảnh/PDF hai lượt khi hỏi bằng tệp (`POST /ai/ask-file`); mặc định `false` cho nhanh |\n| `ai_auto_tag` | `false` để tắt việc AI tự gắn nhãn tài liệu (mặc định bật) |\n| `ai_auto_create_tags` | `false` để AI chỉ dùng thẻ có sẵn, không tự tạo thẻ mới (mặc định bật) |\n| `ai_max_new_tags_per_item` | Số thẻ mới AI được tạo cho mỗi mục (mặc định 3) |\n| `ai_max_tags_per_item` | Tổng số thẻ tối đa của một mục, tính cả thẻ người gắn (mặc định 8) |\n| `ai_rag_tag_expansion` | `false` để tắt mở rộng tìm kiếm qua thẻ chung (mặc định bật) |\n| `ai_memory_enabled` | `false` để tắt trí nhớ dài hạn của mọi Agent (mặc định bật) |\n| `ai_memory_max_per_user` | Số ký ức tối đa mỗi người (mặc định 500; quá thì xóa ký ức ít quan trọng và cũ nhất, không xóa ký ức ghim) |\n| `ai_memory_retention_days` | Số ngày giữ ký ức lâu không dùng (mặc định 365; `0` = giữ mãi; ký ức ghim không bị xóa) |\n| `ai_auto_ingest` | `false` để tắt việc tự đọc và ghi nhớ tệp mới tải lên (mặc định bật) |\n| `ai_web_scope_default` | Phạm vi mặc định khi tìm trên Internet: `balanced` (mặc định), `official`, `open` |\n| `ai_web_auto_learn` | `false` để tắt việc tự học câu trả lời Internet có nguồn tốt |\n| `ai_web_learn_min_level` | Mức xác minh tối thiểu để tự học: `high` (mặc định) hoặc `medium` |\n| `ai_web_learned_days` | Số ngày tối đa một câu trả lời đã học được dùng để gợi ý (mặc định 30) |\n| `ai_web_hide_after_unhelpful` | Số lượt \"không hữu ích\" để tự ẩn câu trả lời đã học (mặc định 2) |\n| `ai_transcribe_max_minutes` | Độ dài tối đa của một file ghi âm được chép lời, phút (mặc định 60) |\n| `ai_transcribe_language` | Ngôn ngữ mặc định khi chép lời: `vi` (mặc định), `en` hoặc `auto` (AI tự nhận biết) |\n| `ai_ocr_double_check` | `false` để bỏ lượt soát lại lần hai khi AI đọc ảnh/PDF (mặc định bật: chính xác hơn, tốn gấp đôi) |\n| `ai_rag_expansion` | `false` để tắt mở rộng câu hỏi khi hỏi đáp (mặc định bật) |\n| `ai_rag_rerank` | `false` để tắt bước AI chấm lại độ phù hợp của các đoạn (mặc định bật) |\n| `ai_source_policy_default` | Chính sách nguồn mặc định khi người hỏi không chọn: `all` (mặc định), `reviewed` hoặc `official` |\n| `ai_feature_ask`, `ai_feature_ask_general`, `ai_feature_ask_hybrid`, `ai_feature_suggest`, `ai_feature_duplicates`, `ai_feature_prompt_test`, `ai_feature_vision`, `ai_feature_vision_extract`, `ai_feature_agent`, `ai_feature_auto_tag`, `ai_feature_chat_memory`, `ai_feature_ask_file`, `ai_feature_ask_file_read`, `ai_feature_ingest_ocr`, `ai_feature_ingest_enrich`, `ai_feature_conflict_scan`, `ai_feature_embed`, `ai_feature_embed_query`, `ai_feature_rag_expand`, `ai_feature_rag_rerank`, `ai_feature_compare`, `ai_feature_smart_import`, `ai_feature_transcribe`, `ai_feature_web_search`, `ai_feature_web_learn` | `false` để tắt riêng từng tính năng (ví dụ tắt `ai_feature_ask_general` nếu không muốn cho hỏi ngoài tài liệu) |\n| `secret_allowlist` | Mảng JSON các giá trị được bỏ qua khi quét bí mật |\n\n**Ai gọi được:** `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PUT \"http://localhost:3001/admin/settings/ai_enabled\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"value\":\"true\",\"description\":\"Bật AI\"}'\n```",
+    "description": "Đặt giá trị một cài đặt, có hiệu lực ngay. Các cài đặt đang dùng:\n\n| key | Ý nghĩa |\n|---|---|\n| `ai_enabled` | `true`/`false`: bật tắt toàn bộ AI |\n| `ai_transcribe_double_check` | `false` để chép lời chỉ bằng một mô hình (mặc định bật: hai mô hình rồi đối chiếu) |\n| `ai_ask_effort` | Mức suy luận của hỏi đáp: `low`, `medium`, `high` (mặc định `high`) |\n| `ai_ask_rewrite` | `false` để tắt bước viết lại câu hỏi nối tiếp (mặc định bật) |\n| `ai_agent_final_pass` | `false` để tắt lượt trả lời cuối có suy luận của Agent sau khi tra cứu (mặc định bật) |\n| `ai_agent_final_effort` | Mức suy luận của Agent: `low`, `medium`, `high` (mặc định `high`) |\n| `ai_data_policy_approved` | `true` khi công ty đã duyệt việc gửi nội dung ra nhà cung cấp AI |\n| `ai_monthly_budget_usd` | Ngân sách AI mỗi tháng (USD) |\n| `ai_daily_calls_per_user` | Số **lần gọi mô hình** tối đa mỗi người mỗi ngày (mặc định 150; một lượt chat với Agent có thể gọi 2 đến 5 lần) |\n| `ai_agents_per_user` | Số Agent tối đa mỗi người (mặc định 10) |\n| `ai_agent_turn_max_usd` | Chi phí tối đa của một lượt chat với Agent, USD (mặc định 0.5; quá mức thì Agent phải trả lời luôn) |\n| `ai_conversation_retention_days` | Số ngày lưu hội thoại với Agent (mặc định 30; `0` = giữ mãi) |\n| `ai_ask_file_double_check` | `true` để AI đọc ảnh/PDF hai lượt khi hỏi bằng tệp (`POST /ai/ask-file`); mặc định `false` cho nhanh |\n| `ai_auto_tag` | `false` để tắt việc AI tự gắn nhãn tài liệu (mặc định bật) |\n| `ai_auto_create_tags` | `false` để AI chỉ dùng thẻ có sẵn, không tự tạo thẻ mới (mặc định bật) |\n| `ai_max_new_tags_per_item` | Số thẻ mới AI được tạo cho mỗi mục (mặc định 3) |\n| `ai_max_tags_per_item` | Tổng số thẻ tối đa của một mục, tính cả thẻ người gắn (mặc định 8) |\n| `ai_rag_tag_expansion` | `false` để tắt mở rộng tìm kiếm qua thẻ chung (mặc định bật) |\n| `ai_memory_enabled` | `false` để tắt trí nhớ dài hạn của mọi Agent (mặc định bật) |\n| `ai_memory_max_per_user` | Số ký ức tối đa mỗi người (mặc định 500; quá thì xóa ký ức ít quan trọng và cũ nhất, không xóa ký ức ghim) |\n| `ai_memory_retention_days` | Số ngày giữ ký ức lâu không dùng (mặc định 365; `0` = giữ mãi; ký ức ghim không bị xóa) |\n| `ai_auto_ingest` | `false` để tắt việc tự đọc và ghi nhớ tệp mới tải lên (mặc định bật) |\n| `ai_web_scope_default` | Phạm vi mặc định khi tìm trên Internet: `balanced` (mặc định), `official`, `open` |\n| `ai_web_auto_learn` | `false` để tắt việc tự học câu trả lời Internet có nguồn tốt |\n| `ai_web_learn_min_level` | Mức xác minh tối thiểu để tự học: `high` (mặc định) hoặc `medium` |\n| `ai_web_learned_days` | Số ngày tối đa một câu trả lời đã học được dùng để gợi ý (mặc định 30) |\n| `ai_web_hide_after_unhelpful` | Số lượt \"không hữu ích\" để tự ẩn câu trả lời đã học (mặc định 2) |\n| `ai_transcribe_max_minutes` | Độ dài tối đa của một file ghi âm được chép lời, phút (mặc định 60) |\n| `ai_transcribe_language` | Ngôn ngữ mặc định khi chép lời: `vi` (mặc định), `en` hoặc `auto` (AI tự nhận biết) |\n| `ai_ocr_double_check` | `false` để bỏ lượt soát lại lần hai khi AI đọc ảnh/PDF (mặc định bật: chính xác hơn, tốn gấp đôi) |\n| `ai_rag_expansion` | `false` để tắt mở rộng câu hỏi khi hỏi đáp (mặc định bật) |\n| `ai_rag_rerank` | `false` để tắt bước AI chấm lại độ phù hợp của các đoạn (mặc định bật) |\n| `ai_source_policy_default` | Chính sách nguồn mặc định khi người hỏi không chọn: `all` (mặc định), `reviewed` hoặc `official` |\n| `ai_feature_ask`, `ai_feature_ask_general`, `ai_feature_ask_hybrid`, `ai_feature_suggest`, `ai_feature_duplicates`, `ai_feature_prompt_test`, `ai_feature_vision`, `ai_feature_vision_extract`, `ai_feature_agent`, `ai_feature_auto_tag`, `ai_feature_chat_memory`, `ai_feature_ask_file`, `ai_feature_ask_file_read`, `ai_feature_ingest_ocr`, `ai_feature_ingest_enrich`, `ai_feature_conflict_scan`, `ai_feature_embed`, `ai_feature_embed_query`, `ai_feature_rag_expand`, `ai_feature_rag_rerank`, `ai_feature_compare`, `ai_feature_smart_import`, `ai_feature_transcribe`, `ai_feature_web_search`, `ai_feature_web_learn`, `ai_feature_file_chat`, `ai_feature_fill_template`, `ai_feature_fill_extract`, `ai_feature_fill_profile_scan` | `false` để tắt riêng từng tính năng (ví dụ tắt `ai_feature_ask_general` nếu không muốn cho hỏi ngoài tài liệu) |\n| `secret_allowlist` | Mảng JSON các giá trị được bỏ qua khi quét bí mật |\n\n**Ai gọi được:** `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PUT \"http://localhost:3001/admin/settings/ai_enabled\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"value\":\"true\",\"description\":\"Bật AI\"}'\n```",
     "requestBody": {
      "required": true,
      "content": {

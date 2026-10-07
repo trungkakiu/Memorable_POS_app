@@ -2,7 +2,7 @@ import { ClipboardEvent, DragEvent, KeyboardEvent, useEffect, useRef, useState }
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { Camera, CheckCircle2, ClipboardCheck, FileQuestion, ImagePlus, ListChecks, Loader2, Paperclip, Plus, Send, Trash2, UploadCloud, X } from 'lucide-react'
-import { ApiError, LocalFile, askWithFiles, checkFile, fromBrowserFile, isImageName, pickLocalFiles } from '../lib/api'
+import { ApiError, LocalFile, askWithFiles, checkFile, fromBrowserFile, isImageName, pickLocalFiles, AUDIO_MB, UPLOAD_MB } from '../lib/api'
 import { bytes as fmtBytes, FILE_ICON } from '../lib/format'
 import { extOf } from '../lib/preview'
 import type { AskFileInfo } from '../lib/types'
@@ -36,7 +36,7 @@ const QUICK = [
 
 function friendlyErr(e: unknown) {
   const er = e as ApiError; const st = er?.status
-  if (st === 413) return 'Tệp quá lớn (mỗi tệp tối đa 10 MB, file ghi âm 25 MB) hoặc quá 5 tệp một lần.'
+  if (st === 413) return `Tệp quá lớn (mỗi tệp tối đa ${UPLOAD_MB} MB, file ghi âm ${AUDIO_MB} MB) hoặc quá 5 tệp một lần.`
   if (st === 415) return 'Loại tệp này trợ lý chưa đọc được. Hãy dùng ảnh, PDF, Word, Excel, PowerPoint, văn bản hoặc file ghi âm.'
   if (st === 422) return 'Trợ lý không dùng được tệp hoặc câu hỏi này — có thể tệp chứa mật khẩu, mã bí mật hoặc số điện thoại. ' + (er.message || '')
   if (st === 429) return 'Hôm nay trợ lý đã được dùng quá nhiều. Bạn thử lại sau ít phút nhé.'
@@ -103,7 +103,7 @@ export function ServerFileAsk() {
         <div className="flex items-center gap-3 flex-wrap">
           <span className="rd-ico md g"><UploadCloud size={24} /></span>
           <div className="flex-1 min-w-[220px]"><div className="font-black text-[1.1em]">1. Thêm tệp hoặc ảnh</div>
-            <div className="text-[0.88em] text-muted">Kéo thả vào đây, dán ảnh chụp màn hình (Ctrl+V) hoặc bấm nút. Tối đa {MAX} tệp, mỗi tệp 10 MB.</div></div>
+            <div className="text-[0.88em] text-muted">Kéo thả vào đây, dán ảnh chụp màn hình (Ctrl+V) hoặc bấm nút. Tối đa {MAX} tệp, mỗi tệp {UPLOAD_MB} MB.</div></div>
           <button className="rd-btn secondary sm" onClick={() => void pick(true)} disabled={files.length >= MAX}><ImagePlus size={18} />Thêm ảnh</button>
           <button className="rd-btn sm" onClick={() => void pick()} disabled={files.length >= MAX}><Paperclip size={18} />Chọn tệp</button>
         </div>

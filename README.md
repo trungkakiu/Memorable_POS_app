@@ -1,6 +1,8 @@
 # Memorable Desktop
 
-Ứng dụng máy tính (Windows) cho **Memorable API** – kho tri thức & vận hành nhóm. Chỉ có giao diện; toàn bộ dữ liệu lấy từ backend qua `http://26.118.183.122:3001` (đổi được ở màn đăng nhập hoặc mục *Kết nối & tài khoản*).
+Ứng dụng máy tính (Windows) cho **Memorable API** – kho tri thức & vận hành nhóm. Chỉ có giao diện; toàn bộ dữ liệu lấy từ backend qua `https://memorable.clearlink.io.vn` (đổi được ở màn đăng nhập hoặc mục *Kết nối & tài khoản*).
+
+**Cấu hình ở một chỗ:** địa chỉ máy chủ mặc định, địa chỉ cũ cần tự chuyển, thời gian chờ, giới hạn dung lượng tệp… nằm trong tệp `.env` ở thư mục gốc (chép từ `.env.example`). Đổi giá trị rồi chạy lại `npm run dev` hoặc `npm run dist`; thiếu tệp `.env` thì dùng mặc định trong `electron/appConfig.cjs`. Máy đang lưu địa chỉ cũ (ví dụ Radmin `http://26.118.183.122:3001`) tự chuyển sang địa chỉ mới khi mở ứng dụng.
 
 Stack: Electron + Vite + React 19 + TypeScript + Tailwind CSS 4 + SCSS (design tokens) + Recharts + Zustand.
 

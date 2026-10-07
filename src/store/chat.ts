@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { ApiError, LocalFile, askWithFiles, checkFile, get, isAiVisionName, post, uploadAttachments } from '../lib/api'
+import { ApiError, LocalFile, checkFile, get, isAiVisionName, post, postFiles, uploadAttachments, AUDIO_MB, UPLOAD_MB } from '../lib/api'
 import { can } from '../lib/permissions'
 import type { Agent, AgentMemoryUse, AgentToolUse, AskFileInfo } from '../lib/types'
 import { useAuth } from './auth'
@@ -46,7 +46,10 @@ export interface Ans {
   memory?: AgentMemoryUse
   // Tìm trên Internet: nguồn, xác minh, gợi ý
   web?: WebInfo
+  // Trò chuyện kèm tệp (AI nhìn ảnh/PDF, đọc tài liệu, chép lời ghi âm)
+  fileChat?: FileChatInfo
 }
+export interface FileChatInfo { files: { filename: string; kind: string; filetype: string; method: string; duration_sec?: number }[]; skipped: { filename: string; reason: string }[]; kb: boolean }
 export interface ChatFile { name: string; size: number; attId?: number; status: 'saving' | 'saved' | 'error'; error?: string }
 export interface Msg {
   id: number; role: 'user' | 'ai' | 'sys'; text: string; ans?: Ans; err?: string; mode?: AskMode; question?: string
@@ -115,6 +118,11 @@ interface ChatState {
   ask: (q: string, mode?: AskMode, display?: string, opts?: { item_ids?: number[] }) => Promise<void>
   /** Hỏi bằng tệp: gửi tệp + câu hỏi lên máy chủ, trả lời từ tài liệu của nhóm (tệp không được lưu). */
   askFile: (files: LocalFile[], q: string, opts?: { item_ids?: number[] }) => Promise<void>
+  /** Tệp đang nằm trong cuộc trò chuyện: các câu hỏi sau vẫn gửi kèm để AI "thấy" chúng (như ChatGPT) */
+  fileCtx: LocalFile[]
+  fileConvId: number | null
+  removeFileCtx: (i: number) => void
+  clearFileCtx: () => void
   send: (text: string) => Promise<void>
 }
 
@@ -248,7 +256,10 @@ export const useChat = create<ChatState>((set, getState) => {
       if (ok.length) set((s) => ({ draft: [...s.draft, ...ok].slice(0, 10) }))
     },
     removeDraft: (i) => set((s) => ({ draft: s.draft.filter((_, j) => j !== i) })),
-    clear: () => { save([]); chatBytes.clear(); set({ msgs: [], unseen: 0, convId: null, askConvId: null }); saveAgent(getState().agentId, null); saveAskConv(null) },
+    clear: () => { save([]); chatBytes.clear(); set({ msgs: [], unseen: 0, convId: null, askConvId: null, fileCtx: [], fileConvId: null }); saveAgent(getState().agentId, null); saveAskConv(null) },
+    fileCtx: [], fileConvId: null,
+    removeFileCtx: (i) => set((s) => { const f = s.fileCtx.filter((_, j) => j !== i); return { fileCtx: f, ...(f.length ? {} : { fileConvId: null }) } }),
+    clearFileCtx: () => set({ fileCtx: [], fileConvId: null }),
     loadStatus: async () => { try { set({ status: await get<AiStatus>('/ai/status') }) } catch { /* bỏ qua */ } },
     loadAgents: async () => {
       try {
@@ -258,25 +269,37 @@ export const useChat = create<ChatState>((set, getState) => {
       } catch { /* vai trò không dùng được Agent hoặc máy chủ cũ */ }
     },
     selectAgent: (id) => { set({ agentId: id, convId: null }); saveAgent(id, null) },
-    newConversation: () => { const ag = getState().agentId; set(ag ? { convId: null } : { askConvId: null }); if (ag) saveAgent(ag, null); else saveAskConv(null); push({ id: ++seq, role: 'sys', text: `Đã bắt đầu hội thoại mới — ${ag ? 'Agent' : 'trợ lý'} sẽ không nhớ nội dung trước đó.` }) },
-    askFile: async (files, q, opts) => {
-      const s = getState(); if (s.busy || !files.length) return
+    newConversation: () => { const ag = getState().agentId; set(ag ? { convId: null } : { askConvId: null, fileCtx: [], fileConvId: null }); if (ag) saveAgent(ag, null); else saveAskConv(null); push({ id: ++seq, role: 'sys', text: `Đã bắt đầu hội thoại mới — ${ag ? 'Agent' : 'trợ lý'} sẽ không nhớ nội dung trước đó.` }) },
+    // Hỏi kèm tệp kiểu ChatGPT (POST /ai/file-chat): tệp mới được thêm vào các tệp đang có trong cuộc trò chuyện (tối đa 5),
+    // mỗi lượt gửi lại toàn bộ để AI vẫn nhìn thấy; chế độ tài liệu thì đối chiếu thêm với tài liệu của công ty.
+    askFile: async (files, q) => {
+      const s = getState(); if (s.busy) return
+      const key = (f: LocalFile) => `${f.name}|${f.size}`
+      const fresh = files.filter((f) => f.bytes && !checkFile(f))
+      const ctx = [...s.fileCtx.filter((f) => !fresh.some((n) => key(n) === key(f))), ...fresh].slice(-5)
+      if (!ctx.length) return
       const question = q.trim()
-      const mode: AskMode = s.mode === 'hybrid' ? 'hybrid' : 'documents'
-      const um: Msg = { id: ++seq, role: 'user', text: question, mode, files: files.map((f) => ({ name: f.name, size: f.size, status: 'saved' as const })) }
-      files.forEach((f, i) => f.bytes && chatBytes.set(`${um.id}:${i}`, f.bytes))
-      push(um); set({ busy: true })
+      const mode: AskMode = s.mode === 'web' || s.mode === 'general' ? s.mode : s.mode === 'hybrid' ? 'hybrid' : 'documents'
+      const kb = mode === 'documents' || mode === 'hybrid'
+      const um: Msg = { id: ++seq, role: 'user', text: question, mode, files: fresh.map((f) => ({ name: f.name, size: f.size, status: 'saved' as const })) }
+      fresh.forEach((f, i) => f.bytes && chatBytes.set(`${um.id}:${i}`, f.bytes))
+      push(um); set({ busy: true, fileCtx: ctx })
+      const pol = s.policy
+      const call = (conv: number | null) => postFiles<{ conversation_id: number; answer: string; files: FileChatInfo['files']; skipped: FileChatInfo['skipped']; kb: boolean; sources: Src[]; model: string; cost_usd: number }>(
+        '/ai/file-chat', ctx, { message: question || undefined, conversation_id: conv || undefined, kb, ...(kb && pol !== 'auto' ? { source_policy: pol } : {}) }, 5)
       try {
-        const pol = s.policy
-        const r = await askWithFiles<Omit<Ans, 'fileAsk'> & AskFileInfo>(files, {
-          question: question.length >= 3 ? question.slice(0, 500) : undefined, mode, ...(pol !== 'auto' ? { source_policy: pol } : {}), ...(opts?.item_ids?.length ? { item_ids: opts.item_ids.join(',') } : {}),
-        })
-        const fileAsk: AskFileInfo = { uploaded: r.uploaded || [], skipped: r.skipped || [], need: r.need, key_facts: r.key_facts, search_queries: r.search_queries, discrepancies: r.discrepancies || [], related: r.related || [], searched: r.searched, note: r.note }
-        finish({ id: ++seq, role: 'ai', text: r.answer, mode, question: question || files.map((f) => f.name).join(', '), ans: { ...r, mode: r.mode ?? mode, sources: r.sources || [], fileAsk } })
+        let r
+        try { r = await call(s.fileConvId) } catch (e) {
+          if (!(e instanceof ApiError && s.fileConvId && (e.status === 404 || e.status === 409))) throw e
+          r = await call(null) // hội thoại cũ đã bị xóa hoặc đầy: bắt đầu hội thoại mới với cùng các tệp
+        }
+        set({ fileConvId: r.conversation_id })
+        finish({ id: ++seq, role: 'ai', text: r.answer, mode, question: question || ctx.map((f) => f.name).join(', '), ans: { mode, answer: r.answer, sources: r.sources || [], model: r.model, cost_usd: r.cost_usd, fileChat: { files: r.files, skipped: r.skipped || [], kb: r.kb } } })
       } catch (e) {
         const er = e as ApiError; const st = e instanceof ApiError ? er.status : 0
-        const msg = st === 413 ? 'Quá 5 tệp hoặc có tệp lớn hơn 10 MB.' : st === 422 ? `Không dùng được tệp hoặc câu hỏi: ${er.full}` : errText(st, e instanceof ApiError ? er.full : String(e), e)
+        const msg = st === 413 ? `Quá 5 tệp, hoặc có tệp quá lớn (${UPLOAD_MB} MB, ghi âm ${AUDIO_MB} MB).` : st === 422 ? `Không dùng được tệp hoặc câu hỏi: ${er.full}` : errText(st, e instanceof ApiError ? er.full : String(e), e)
         patchMsg(um.id, { files: um.files!.map((f) => ({ ...f, status: 'error' as const, error: msg })) })
+        set({ fileCtx: s.fileCtx })
         finish({ id: ++seq, role: 'ai', text: '', mode, err: msg })
       }
     },
@@ -285,6 +308,8 @@ export const useChat = create<ChatState>((set, getState) => {
       const minLen = getState().agentId || getState().askConvId ? 1 : 5
       if (question.length < minLen || getState().busy) return
       const mode = modeArg ?? getState().mode
+      // Đang trò chuyện về tệp: câu hỏi sau vẫn gửi kèm các tệp đó (trừ khi chuyển sang tìm trên Internet hoặc dùng Agent)
+      if (getState().fileCtx.length && !getState().agentId && mode !== 'web') { await getState().askFile([], question); return }
       push({ id: ++seq, role: 'user', text: display ?? question, mode })
       await runAsk(question, mode, opts)
     },

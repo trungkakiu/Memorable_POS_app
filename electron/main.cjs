@@ -5,8 +5,12 @@ const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 
+const { loadConfig } = require('./appConfig.cjs')
+
 const isDev = process.env.ELECTRON_DEV === '1'
-const DEFAULT_SERVER = process.env.MEMORABLE_SERVER || 'http://26.118.183.122:3001'
+// Mọi giá trị cấu hình (địa chỉ máy chủ, thời gian chờ, giới hạn tệp) lấy từ .env: xem electron/appConfig.cjs
+const CONFIG = loadConfig()
+const DEFAULT_SERVER = CONFIG.server
 let mainWin = null
 
 if (!app.requestSingleInstanceLock()) {
@@ -20,7 +24,15 @@ if (!app.requestSingleInstanceLock()) {
 // ---------- Cấu hình (địa chỉ máy chủ, email gần nhất) ----------
 const cfgFile = () => path.join(app.getPath('userData'), 'config.json')
 function readCfg() {
-  try { return { serverUrl: DEFAULT_SERVER, ...JSON.parse(fs.readFileSync(cfgFile(), 'utf8')) } } catch { return { serverUrl: DEFAULT_SERVER } }
+  let saved = {}
+  try { saved = JSON.parse(fs.readFileSync(cfgFile(), 'utf8')) } catch { /* chưa có cấu hình */ }
+  // Máy đang lưu địa chỉ cũ (MEMORABLE_LEGACY_SERVERS, ví dụ Radmin) thì tự chuyển sang địa chỉ mới
+  const cur = String(saved.serverUrl || '').trim().replace(/\/+$/, '')
+  if (cur && CONFIG.legacyServers.includes(cur)) {
+    saved.serverUrl = DEFAULT_SERVER
+    try { fs.writeFileSync(cfgFile(), JSON.stringify(saved, null, 2)) } catch { /* lần sau thử lại */ }
+  }
+  return { serverUrl: DEFAULT_SERVER, ...saved }
 }
 function writeCfg(patch) {
   const next = { ...readCfg(), ...patch }
@@ -38,7 +50,7 @@ function buildUrl(p, query) {
   }
   return u
 }
-async function doFetch(url, init, timeout = 30000) {
+async function doFetch(url, init, timeout = CONFIG.timeoutMs) {
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), timeout)
   try {
@@ -62,7 +74,7 @@ async function httpRequest({ method = 'GET', path: p, query, body, token }) {
 }
 
 async function httpDownload({ path: p, query, token, filename, filters }) {
-  const res = await doFetch(buildUrl(p, query), { headers: authHeaders(token) }, 120000)
+  const res = await doFetch(buildUrl(p, query), { headers: authHeaders(token) }, CONFIG.downloadTimeoutMs)
   if (!res.ok) {
     let msg = `HTTP ${res.status}`
     try { msg = (await res.json()).RM || msg } catch { /* ignore */ }
@@ -82,13 +94,14 @@ async function httpDownload({ path: p, query, token, filename, filters }) {
 // Ảnh: các biến thể JPEG (jfif, jpe, pjpeg, pjp) là cùng định dạng; TIFF/HEIC chỉ tải về nhưng AI vẫn đọc được
 const IMAGE_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', jfif: 'image/jpeg', jpe: 'image/jpeg', pjpeg: 'image/jpeg', pjp: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', avif: 'image/avif', tif: 'image/tiff', tiff: 'image/tiff', heic: 'image/heic', heif: 'image/heif' }
 const IMAGE_EXT = Object.keys(IMAGE_MIME)
-// File ghi âm: AI chép lời trên máy chủ; được tới 25 MB (cuộc họp dài)
+// File ghi âm: AI chép lời trên máy chủ; được lớn hơn tệp thường (MEMORABLE_MAX_AUDIO_MB, mặc định 25 MB)
 const AUDIO_MIME = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', webm: 'audio/webm', flac: 'audio/flac', amr: 'audio/amr', wma: 'audio/x-ms-wma', '3gp': 'audio/3gpp' }
 const AUDIO_EXT = Object.keys(AUDIO_MIME)
 const MIME = { ...IMAGE_MIME, ...AUDIO_MIME, pdf: 'application/pdf', txt: 'text/plain', md: 'text/markdown', csv: 'text/csv', json: 'application/json', zip: 'application/zip' }
 const ALLOWED = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf', ...IMAGE_EXT, ...AUDIO_EXT, 'txt', 'md', 'csv', 'tsv', 'log', 'json', 'xml', 'yaml', 'yml', 'zip']
-const MAX_UPLOAD = 10 * 1024 * 1024
-const MAX_AUDIO_UPLOAD = 25 * 1024 * 1024
+const MAX_UPLOAD = CONFIG.maxUploadBytes
+const MAX_AUDIO_UPLOAD = CONFIG.maxAudioBytes
+const mb = (b) => Math.round(b / 1048576)
 const extOfName = (n) => String(n || '').split('.').pop().toLowerCase()
 const maxFor = (name) => (AUDIO_EXT.includes(extOfName(name)) ? MAX_AUDIO_UPLOAD : MAX_UPLOAD)
 
@@ -100,12 +113,12 @@ async function httpUploadForm({ path: p, query, token, files, confirmMasked, fie
     if (!ALLOWED.includes(ext)) return { status: 415, ok: false, json: { RM: `Loại tệp .${ext} không được phép`, RD: null } }
     const buf = Buffer.from(f.bytes)
     if (buf.length === 0) return { status: 400, ok: false, json: { RM: 'Tệp rỗng', RD: null } }
-    if (buf.length > maxFor(f.name)) return { status: 413, ok: false, json: { RM: AUDIO_EXT.includes(ext) ? 'File ghi âm vượt quá 25 MB' : 'Tệp vượt quá 10 MB', RD: null } }
+    if (buf.length > maxFor(f.name)) return { status: 413, ok: false, json: { RM: AUDIO_EXT.includes(ext) ? `File ghi âm vượt quá ${mb(MAX_AUDIO_UPLOAD)} MB` : `Tệp vượt quá ${mb(MAX_UPLOAD)} MB`, RD: null } }
     form.append('file', new Blob([buf], { type: MIME[ext] || 'application/octet-stream' }), f.name)
   }
   if (confirmMasked) form.append('confirm_masked', 'true')
   for (const [k, v] of Object.entries(fields || {})) if (v !== undefined && v !== null && v !== '') form.append(k, String(v))
-  const res = await doFetch(buildUrl(p, query), { method: 'POST', headers: { Accept: 'application/json', ...authHeaders(token) }, body: form }, 900000)
+  const res = await doFetch(buildUrl(p, query), { method: 'POST', headers: { Accept: 'application/json', ...authHeaders(token) }, body: form }, CONFIG.uploadTimeoutMs)
   let json = null
   try { json = await res.json() } catch { /* ignore */ }
   return { status: res.status, ok: res.ok, json }
@@ -116,7 +129,7 @@ async function filePick({ imagesOnly, audioOnly }) {
   const exts = imagesOnly ? IMAGE_EXT : audioOnly ? AUDIO_EXT : ALLOWED
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWin, {
     properties: ['openFile', 'multiSelections'],
-    filters: [{ name: imagesOnly ? 'Ảnh' : audioOnly ? 'File ghi âm (tối đa 25 MB)' : 'Tệp cho phép (tối đa 10 MB, ghi âm 25 MB)', extensions: exts }],
+    filters: [{ name: imagesOnly ? 'Ảnh' : audioOnly ? `File ghi âm (tối đa ${mb(MAX_AUDIO_UPLOAD)} MB)` : `Tệp cho phép (tối đa ${mb(MAX_UPLOAD)} MB, ghi âm ${mb(MAX_AUDIO_UPLOAD)} MB)`, extensions: exts }],
   })
   if (canceled) return []
   return filePaths.slice(0, 20).map((f) => {
@@ -127,7 +140,7 @@ async function filePick({ imagesOnly, audioOnly }) {
 
 /** Tải nội dung tệp đính kèm về dạng base64 để xem trước (ảnh, văn bản). */
 async function httpBlob({ path: p, token }) {
-  const res = await doFetch(buildUrl(p), { headers: authHeaders(token) }, 120000)
+  const res = await doFetch(buildUrl(p), { headers: authHeaders(token) }, CONFIG.downloadTimeoutMs)
   if (!res.ok) {
     let msg = `HTTP ${res.status}`
     try { msg = (await res.json()).RM || msg } catch { /* ignore */ }
@@ -167,7 +180,7 @@ function createWindow() {
       await new Promise((r) => setTimeout(r, 1500))
       const r = await mainWin.webContents.executeJavaScript(`JSON.stringify({ desk: typeof window.desk, keys: Object.keys(window.desk||{}), text: document.body.innerText.slice(0, 120), ping: null })`)
       const ping = await httpRequest({ path: '/' }).then((x) => x.status).catch((e) => e.message)
-      console.log('SMOKE', r, 'serverStatus', ping)
+      console.log('SMOKE', r, 'server', baseUrl(), 'serverStatus', ping)
       if (process.env.ELECTRON_SMOKE === 'doc') {
         try { console.log('SMOKEDOC', await mainWin.webContents.executeJavaScript(fs.readFileSync(path.join(__dirname, 'smoke-doc.js'), 'utf8'))) } catch (e) { console.log('SMOKEDOC error', e && e.message) }
       }
@@ -204,7 +217,7 @@ function registerIpc() {
     const r = await httpRequest({ path: '/' })
     return { online: r.ok, ms: Date.now() - t0, message: r.json && r.json.RM }
   }))
-  ipcMain.handle('cfg:get', wrap(() => readCfg()))
+  ipcMain.handle('cfg:get', wrap(() => ({ ...readCfg(), defaultServer: DEFAULT_SERVER })))
   ipcMain.handle('cfg:set', wrap((patch) => {
     const out = {}
     if (typeof patch.serverUrl === 'string') {

@@ -4,6 +4,7 @@ import { ApiError, api, deskApi } from '../lib/api'
 import { useAuth } from '../store/auth'
 import { Seg } from '../components/ui'
 import { toast } from '../store/ui'
+import { APP_CONFIG } from '../lib/appConfig'
 
 export default function Login() {
   const login = useAuth((s) => s.login)
@@ -82,7 +83,7 @@ export default function Login() {
               <div className="flex items-center gap-2 text-sm text-muted"><Server size={15} /><span className="truncate flex-1">Máy chủ: <b className="text-ink">{server || '…'}</b></span>
                 <button type="button" className="btn ghost sm" onClick={() => setEditSrv(true)}>Đổi</button></div>
             ) : (
-              <div className="flex gap-2"><input className="input" value={server} onChange={(e) => setServer(e.target.value)} placeholder="http://26.118.183.122:3001" />
+              <div className="flex gap-2"><input className="input" value={server} onChange={(e) => setServer(e.target.value)} placeholder={APP_CONFIG.server} />
                 <button type="button" className="btn sm" onClick={saveServer}>Lưu</button></div>
             )}
           </div>
