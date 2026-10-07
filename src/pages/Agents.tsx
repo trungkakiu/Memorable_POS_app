@@ -337,13 +337,13 @@ export function AgentChat() {
   if (!agent) return null
   const mine = agent.is_mine || (me.role === 'admin' && false)
   return (
-    <div className="flex flex-col gap-3 h-[calc(100vh-136px)] min-h-[460px]">
+    <div className="chat-page flex flex-col gap-3">
       <div className="page-head">
         <div className="min-w-0 pl-2 flex items-center gap-3">
           <span className="w-11 h-11 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white grid place-items-center shrink-0"><Bot size={22} /></span>
           <div className="min-w-0"><h1 className="truncate">{agent.name}</h1>
             <div className="flex gap-1.5 flex-wrap mt-1"><Pill sm tone="soft">{KNOWLEDGE_LABEL[agent.knowledge_mode]}</Pill>{agent.visibility === 'team' && <Pill sm tone="ok"><Users size={11} />Chia sẻ</Pill>}
-              {agent.skills.map((s) => <SkillTag key={s.id} s={s} />)}{!agent.is_active && <Pill sm tone="bad">Đang tắt</Pill>}</div></div>
+              {agent.skills.slice(0, 3).map((s) => <SkillTag key={s.id} s={s} />)}{agent.skills.length > 3 && <Pill sm tone="gray"><span title={agent.skills.slice(3).map((s) => s.name).join(', ')}>+{agent.skills.length - 3} skill</span></Pill>}{!agent.is_active && <Pill sm tone="bad">Đang tắt</Pill>}</div></div>
         </div>
         <div className="actions">
           {convId && <button className="btn outline" disabled={summBusy} title="Tóm tắt và chắt lọc ký ức ngay thay vì đợi chạy nền" onClick={() => void summarize()}>{summBusy ? <Loader2 size={15} className="animate-spin" /> : <Brain size={15} />}Tóm tắt và ghi nhớ</button>}
@@ -354,8 +354,8 @@ export function AgentChat() {
         </div>
       </div>
       {!agentOn && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-900 p-2.5 text-sm font-semibold">Tính năng Agent đang bị tắt trên máy chủ — chưa chat được.</div>}
-      <div className="grid lg:grid-cols-[280px_1fr] gap-3 flex-1 min-h-0">
-        <div className="panel min-h-0">
+      <div className="grid grid-rows-[auto_minmax(0,1fr)] lg:grid-rows-1 lg:grid-cols-[280px_1fr] gap-3 flex-1 min-h-0">
+        <div className="panel min-h-0 max-lg:max-h-44">
           <div className="panel-head !py-2.5"><div className="panel-title">Hội thoại</div>
             <button className="btn sm" onClick={() => { setConvId(null); setMsgs([]) }}><Plus size={13} />Mới</button></div>
           <div className="flex-1 overflow-auto p-2 flex flex-col gap-1">
@@ -365,7 +365,7 @@ export function AgentChat() {
               <div key={c.id} className={clsx('group flex items-start gap-2 rounded-md p-2 cursor-pointer border', convId === c.id ? 'bg-brand-soft border-brand-300 bg-brand-50' : 'border-transparent hover:bg-brand-50')} onClick={() => void openConv(c.id)}>
                 <MessageSquare size={14} className="text-brand-600 mt-0.5 shrink-0" />
                 <div className="min-w-0 flex-1"><div className="text-[13px] font-bold truncate">{c.title}</div><div className="text-[11px] text-muted">{dt(c.updated_at)} · {c.messages} tin</div></div>
-                <button className="border-0 bg-transparent text-muted hover:text-red-600 cursor-pointer p-0.5 opacity-0 group-hover:opacity-100" aria-label="Xóa hội thoại" onClick={(e) => { e.stopPropagation(); void removeConv(c) }}><Trash2 size={13} /></button>
+                <button className="border-0 bg-transparent text-muted hover:text-red-600 cursor-pointer p-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 max-md:opacity-100" aria-label="Xóa hội thoại" onClick={(e) => { e.stopPropagation(); void removeConv(c) }}><Trash2 size={13} /></button>
               </div>))}
           </div>
         </div>

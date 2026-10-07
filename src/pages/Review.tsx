@@ -37,7 +37,7 @@ export function ReviewQueue() {
         {data && data.items.length === 0 && <tr><td colSpan={7}><Empty text="Hàng đợi trống — không có mục nào chờ duyệt" icon={<ClipboardCheck size={42} strokeWidth={1.4} />} /></td></tr>}
         {data?.items.map((it) => (
           <tr key={it.id}>
-            <td className="font-bold max-w-[360px] truncate cursor-pointer text-brand-800" onClick={() => nav(`/items/${it.id}`)}>{it.title} <span className="text-muted font-normal">v{it.version}</span></td>
+            <td className="font-bold cursor-pointer text-brand-800" onClick={() => nav(`/items/${it.id}`)}><div className="max-w-[360px] truncate">{it.title} <span className="text-muted font-normal">v{it.version}</span></div></td>
             <td><TypePill t={it.type} /></td><td><RiskPill r={it.risk_level} /></td><td>{it.owner?.name}</td>
             <td><Pill sm tone={it.sla_breached ? 'bad' : 'ok'}>{it.waiting_business_days}/{it.sla_days} ngày{it.sla_breached ? ' · quá SLA' : ''}</Pill></td>
             <td>{it.approvals}/{it.approvals_needed} {it.approved_by_me && <Pill sm tone="soft">bạn đã duyệt</Pill>}</td>

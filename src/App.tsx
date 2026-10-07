@@ -12,7 +12,9 @@ import ItemDetail from './pages/ItemDetail'
 import Search from './pages/Search'
 import Ai, { AiTools } from './pages/Ai'
 import { Notifications, ReviewQueue, Tasks } from './pages/Review'
-import Incidents from './pages/Incidents'
+import IncidentCenter from './pages/IncidentCenter'
+import RunbookImport from './pages/RunbookImport'
+import IncidentHelp from './reader/IncidentHelp'
 import { Benchmarks, Costs, TimeLogs } from './pages/Measure'
 import Reports from './pages/Reports'
 import { Synonyms, Spaces, Tags, Templates } from './pages/Catalog'
@@ -69,6 +71,7 @@ export default function App() {
               <Route path="autofill" element={<ReaderAutofillPage />} />
               <Route path="compare" element={<ReaderCompare />} />
               <Route path="memory" element={<ReaderMemory />} />
+              <Route path="su-co" element={<IncidentHelp />} />
             </Route>
           ) : (
             <Route element={user ? <Layout /> : <Navigate to="/login" replace />}>
@@ -97,7 +100,8 @@ export default function App() {
               <Route path="agents/:id/edit" element={g('ask', <AgentForm />)} />
               <Route path="reviews" element={g('moderate', <ReviewQueue />)} />
               <Route path="tasks" element={<Tasks />} />
-              <Route path="incidents" element={<Incidents />} />
+              <Route path="incidents" element={<IncidentCenter />} />
+              <Route path="runbooks/import" element={g('write', <RunbookImport />)} />
               <Route path="timelogs" element={g('timelog', <TimeLogs />)} />
               <Route path="costs" element={g('report', <Costs />)} />
               <Route path="benchmarks" element={g('report', <Benchmarks />)} />

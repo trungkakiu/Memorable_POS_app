@@ -78,7 +78,18 @@ function ReaderFiles({ atts }: { atts: Attachment[] }) {
 //  Làm theo từng bước (có nhớ tiến độ để làm tiếp)
 // ====================================================================
 interface RunData { run_id: number; steps: RunState['steps']; verification?: string; rollback?: string }
-function RunWizard({ itemId, title, verification, rollback, contact, resume, onExit }: { itemId: number; title: string; verification: string; rollback: string; contact: string; resume?: RunState; onExit: () => void }) {
+function RunWizard({ itemId, title, verification, rollback, contact, resume, incidentId, onExit }: { itemId: number; title: string; verification: string; rollback: string; contact: string; resume?: RunState; incidentId?: number | null; onExit: () => void }) {
+  const navTo = useNavigate()
+  // Đang xử lý một sự cố đã báo: hỏi kết quả sau khi làm xong để đóng sự cố hoặc báo cần hỗ trợ
+  const [outcome, setOutcome] = useState<null | 'fixed' | 'help' | 'saving'>(null)
+  async function report(fixed: boolean) {
+    if (!incidentId) return
+    setOutcome('saving')
+    try {
+      await patch(`/incidents/${incidentId}`, fixed ? { status: 'resolved', conclusion: `Đã khắc phục theo hướng dẫn “${title}”.` } : { description: `Đã làm theo hướng dẫn “${title}” nhưng lỗi vẫn còn, cần bộ phận kỹ thuật hỗ trợ.` })
+      setOutcome(fixed ? 'fixed' : 'help')
+    } catch (e) { setOutcome(null); setErr((e as ApiError).full) }
+  }
   const ws = useWorkspace()
   const [run, setRun] = useState<{ run_id: number; steps: RunState['steps'] } | null>(resume ? { run_id: resume.runId, steps: resume.steps } : null)
   const [idx, setIdx] = useState(resume?.idx ?? 0)
@@ -95,7 +106,7 @@ function RunWizard({ itemId, title, verification, rollback, contact, resume, onE
 
   useEffect(() => {
     if (resume) return
-    post<RunData>(`/items/${itemId}/runs`, {}).then((r) => { setRun({ run_id: r.run_id, steps: r.steps }); persist({ run_id: r.run_id, steps: r.steps }, 0, {}); void post('/usage-events', { event_type: 'run_runbook', item_id: itemId }).catch(() => undefined) })
+    post<RunData>(`/items/${itemId}/runs`, incidentId ? { incident_id: incidentId } : {}).then((r) => { setRun({ run_id: r.run_id, steps: r.steps }); persist({ run_id: r.run_id, steps: r.steps }, 0, {}); void post('/usage-events', { event_type: 'run_runbook', item_id: itemId }).catch(() => undefined) })
       .catch((e) => setErr(e instanceof ApiError && e.status === 409 ? 'Hướng dẫn này chưa có bước nào.' : (e as ApiError).full))
   }, [itemId]) // eslint-disable-line
 
@@ -111,7 +122,7 @@ function RunWizard({ itemId, title, verification, rollback, contact, resume, onE
     } catch (e) { setErr((e as ApiError).full) } finally { setBusy(false) }
   }
   function next() { setFailed(false); if (!run) return; if (idx + 1 >= run.steps.length) void finish(); else { setIdx(idx + 1); persist(run, idx + 1, res) } }
-  function restart() { ws.clearRun(itemId); setRun(null); setEnd(null); setRes({}); setIdx(0); setFailed(false); post<RunData>(`/items/${itemId}/runs`, {}).then((r) => { setRun({ run_id: r.run_id, steps: r.steps }); persist({ run_id: r.run_id, steps: r.steps }, 0, {}) }) }
+  function restart() { ws.clearRun(itemId); setRun(null); setEnd(null); setRes({}); setIdx(0); setFailed(false); setOutcome(null); post<RunData>(`/items/${itemId}/runs`, incidentId ? { incident_id: incidentId } : {}).then((r) => { setRun({ run_id: r.run_id, steps: r.steps }); persist({ run_id: r.run_id, steps: r.steps }, 0, {}) }) }
 
   if (err && !run) return <div className="rd-callout bad"><Frown size={22} /><div><b className="block">Chưa bắt đầu được</b>{err}<div className="mt-3"><button className="rd-btn secondary sm" onClick={onExit}>Quay lại</button></div></div></div>
   if (!run) return <div className="rd-card p-10 flex flex-col items-center gap-3 text-muted"><Loader2 size={30} className="animate-spin text-brand-500" />Đang chuẩn bị các bước…</div>
@@ -128,7 +139,20 @@ function RunWizard({ itemId, title, verification, rollback, contact, resume, onE
         {verification && <div className="rd-callout info"><CheckCircle2 size={22} className="shrink-0 mt-0.5" /><div><b className="block mb-1">Kiểm tra xem đã xử lý xong chưa</b><div className="whitespace-pre-wrap">{verification}</div></div></div>}
         {(bad > 0 && contact) && <div className="rd-callout warn"><Phone size={22} className="shrink-0 mt-0.5" /><div><b className="block mb-1">Cần hỗ trợ thêm? Hãy liên hệ</b>{contact}</div></div>}
         {rollback && <div className="rd-callout warn"><Undo2 size={22} className="shrink-0 mt-0.5" /><div><b className="block mb-1">Nếu bạn lỡ làm sai — cách quay lại như cũ</b><div className="whitespace-pre-wrap">{rollback}</div></div></div>}
-        <div className="flex gap-3 flex-wrap"><button className="rd-btn" onClick={onExit}>Hoàn tất</button><button className="rd-btn secondary" onClick={restart}><RotateCcw size={18} />Làm lại từ đầu</button></div>
+        {incidentId && (
+          <div className="rd-card p-5 flex flex-col gap-3 border-2 !border-[#7a2ee6]">
+            {outcome === 'fixed' ? <div className="flex gap-3 items-start"><CheckCircle2 size={24} className="text-emerald-600 shrink-0" /><div><b className="block text-[1.1em]">Tuyệt vời! Sự cố đã được đóng.</b>Cảm ơn bạn đã tự xử lý. Kết quả đã được ghi lại cho bộ phận kỹ thuật.</div></div>
+              : outcome === 'help' ? <div className="flex gap-3 items-start"><Phone size={24} className="text-amber-600 shrink-0" /><div><b className="block text-[1.1em]">Đã báo bộ phận kỹ thuật</b>Sự cố vẫn mở, người phụ trách sẽ tiếp tục xử lý. Bạn theo dõi ở mục <b>Sự cố của tôi</b>.</div></div>
+                : (<>
+                  <b className="text-[1.15em]">Lỗi đã hết chưa?</b>
+                  <div className="text-muted text-[0.92em]">Câu trả lời của bạn giúp đóng sự cố #{incidentId} hoặc báo bộ phận kỹ thuật vào hỗ trợ.</div>
+                  <div className="flex gap-3 flex-wrap">
+                    <button className="rd-btn good" disabled={outcome === 'saving'} onClick={() => void report(true)}>{outcome === 'saving' ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={20} />}Đã hết lỗi</button>
+                    <button className="rd-btn secondary" disabled={outcome === 'saving'} onClick={() => void report(false)}><Phone size={18} />Vẫn còn lỗi, cần hỗ trợ</button>
+                  </div>
+                </>)}
+          </div>)}
+        <div className="flex gap-3 flex-wrap"><button className="rd-btn" onClick={incidentId ? () => navTo('/su-co') : onExit}>{incidentId ? 'Về trang xử lý sự cố' : 'Hoàn tất'}</button><button className="rd-btn secondary" onClick={restart}><RotateCcw size={18} />Làm lại từ đầu</button></div>
       </div>)
   }
 
@@ -239,6 +263,7 @@ export default function ReaderRead() {
         .then((r) => setRelated((r.related || []).map((x) => ({ id: x.id, title: x.title, type: x.type, why: x.shared_tags.length ? `Cùng chủ đề: ${x.shared_tags.slice(0, 2).map((s) => s.name).join(', ')}` : x.semantic_score != null ? 'Nội dung gần giống' : undefined }))))
         .catch(() => get<{ results: ItemRow[] }>('/search', { q: d.title.slice(0, 80), limit: 6 }).then((r) => setRelated((r.results || []).filter((x) => x.id !== d.id).slice(0, 4))).catch(() => undefined))
       if (sp.get('resume') === '1' && useWorkspace.getState().runs[d.id]) setGuided(true)
+      if (sp.get('run') === '1' && d.type === 'runbook') setGuided(true) // mở từ trang Xử lý sự cố: vào thẳng chế độ làm theo từng bước
     }).catch((e) => {
       if (e instanceof ApiError && e.status === 404) {
         // bài đã bị gỡ: dọn khỏi các danh sách cá nhân để không gặp lại lỗi này
@@ -327,7 +352,7 @@ export default function ReaderRead() {
               </section>)}
             {steps.length > 0 && (
               <section className="flex flex-col gap-4">
-                {guided ? <RunWizard itemId={it.id} title={it.title} verification={str(x.verification)} rollback={str(x.rollback)} contact={str(x.contact_info)} resume={saved} onExit={() => setGuided(false)} /> : (<>
+                {guided ? <RunWizard itemId={it.id} title={it.title} verification={str(x.verification)} rollback={str(x.rollback)} contact={str(x.contact_info)} resume={sp.get('incident') ? undefined : saved} incidentId={Number(sp.get('incident')) || null} onExit={() => setGuided(false)} /> : (<>
                   {saved && (
                     <div className="rd-card rd-resume p-5 flex items-center gap-5 flex-wrap"><span className="rd-ico md g"><Play size={24} /></span>
                       <div className="flex-1 min-w-[220px]"><div className="font-black">Bạn đang làm dở hướng dẫn này</div><div className="text-[0.9em] text-muted mt-1">Đã làm {Object.keys(saved.results).length}/{saved.total} bước · {friendlyDate(new Date(saved.at).toISOString())}</div></div>

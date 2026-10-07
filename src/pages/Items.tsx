@@ -60,7 +60,7 @@ export default function Items() {
             {data?.items.map((it) => (
               <tr key={it.id} className="clickable" onClick={() => nav(`/items/${it.id}`)}>
                 <td className="max-w-[480px]"><div className="font-bold truncate">{it.title}</div>
-                  {it.summary && <div className="text-muted text-xs line-clamp-1">{it.summary}</div>}<Tags tags={it.tags} /></td>
+                  {it.summary && <div className="text-muted text-xs line-clamp-1">{it.summary}</div>}<Tags tags={it.tags} max={4} /></td>
                 <td>{it.space?.name}</td><td>{it.owner?.name}</td><td><div className="flex gap-1.5 flex-wrap"><ItemBadges it={it} /><OfficialPill id={it.id} /></div></td>
                 <td>{dt(it.next_review_date, false)}</td><td className="whitespace-nowrap">{dt(it.updated_at)}</td>
               </tr>))}

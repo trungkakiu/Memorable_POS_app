@@ -9,6 +9,8 @@ import { Empty, Field, Modal, PageHeader, Pill, Seg, Stat } from '../components/
 import { ErrorBox, Loading, useBusy } from '../components/shared'
 import { useAuth } from '../store/auth'
 import { confirmDialog, toast } from '../store/ui'
+import { useClientPage } from '../components/ShowMore'
+import { Pager } from '../components/shared'
 
 export const TAG_KIND_LABEL: Record<TagKind, string> = { category: 'Nhóm kiến thức', topic: 'Chủ đề' }
 const ORIGIN_LABEL: Record<string, string> = { manual: 'Người tạo', ai: 'AI tạo' }
@@ -131,6 +133,7 @@ export function Tags() {
   const all = data || []
   const list = all.filter((t) => (!kind || (t.kind || 'topic') === kind) && (!origin || t.origin === origin) && t.name.toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => (sort === 'uses' ? (b.uses ?? 0) - (a.uses ?? 0) : a.name.localeCompare(b.name, 'vi')))
+  const pg = useClientPage(list, 50)
   const stat = { total: all.length, cat: all.filter((t) => t.kind === 'category').length, ai: all.filter((t) => t.origin === 'ai').length, unused: all.filter((t) => !t.uses).length }
   const refresh = () => { reload(); void loadCatalog() }
 
@@ -163,13 +166,13 @@ export function Tags() {
         <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Thẻ</th><th>Loại</th><th>Nguồn gốc</th><th className="num">Số mục</th><th>Mô tả</th><th /></tr></thead><tbody>
           {loading && !data && <tr><td colSpan={6}><Loading /></td></tr>}
           {data && list.length === 0 && <tr><td colSpan={6}><Empty text="Không có thẻ khớp bộ lọc" /></td></tr>}
-          {list.map((t) => (
+          {pg.rows.map((t) => (
             <tr key={t.id}>
               <td className="font-extrabold text-brand-700 whitespace-nowrap">#{t.name}</td>
               <td><Pill sm tone={t.kind === 'category' ? 'soft' : 'gray'}>{TAG_KIND_LABEL[t.kind || 'topic']}</Pill></td>
               <td><span className={clsx('inline-flex items-center gap-1 text-xs font-semibold', t.origin === 'ai' ? 'text-amber-700' : 'text-muted')}>{t.origin === 'ai' ? <Bot size={13} /> : <User size={13} />}{ORIGIN_LABEL[t.origin || 'manual']}</span></td>
               <td className="num font-mono">{t.uses ?? '—'}</td>
-              <td className="text-sm text-muted max-w-[320px] truncate" title={t.description || ''}>{t.description || '—'}</td>
+              <td className="text-sm text-muted" title={t.description || ''}><div className="max-w-[320px] truncate">{t.description || '—'}</div></td>
               <td className="num"><div className="flex gap-1 justify-end">
                 <button className="btn ghost sm icon" title="Xem mục gắn thẻ" onClick={() => window.location.assign(`#/items?tag=${t.id}`)}><Share2 size={14} /></button>
                 <button className="btn ghost sm icon" title="Thẻ hay đi cùng" onClick={() => setRel(t)}><Network size={14} /></button>
@@ -180,6 +183,7 @@ export function Tags() {
               </div></td>
             </tr>))}
         </tbody></table></div>
+        <Pager page={pg.page} pages={pg.pages} total={pg.total} onPage={pg.setPage} />
       </>)}
       {f && <Modal title={f.id ? 'Sửa thẻ' : 'Tạo thẻ'} size="sm" onClose={() => setF(null)} footer={<><button className="btn outline" onClick={() => setF(null)}>Hủy</button><button className="btn" disabled={busy || !f.name.trim()} onClick={save}>Lưu</button></>}>
         <div className="grid gap-4">

@@ -1,0 +1,140 @@
+@use "tokens" as *;
+
+// =====================================================================
+//  Xử lý sự cố: Trung tâm sự cố (quản lý), Nhập quy trình, trang Gặp sự cố (người đọc)
+// =====================================================================
+
+// ---- Chấm mức độ ----
+.inc-sev { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--c); white-space: nowrap;
+  i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 18%, transparent); flex-shrink: 0; } }
+
+// ---- Thẻ số liệu ----
+.inc-stat { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: $r-lg; border: 1px solid $line; background: #fff; box-shadow: $shadow-card; text-align: left; font: inherit; color: inherit; transition: all .15s;
+  &:disabled { cursor: default; opacity: 1; }
+  &.click { cursor: pointer; &:hover { border-color: $brand-line; transform: translateY(-1px); } }
+  .ic { width: 36px; height: 36px; border-radius: $r-md; display: grid; place-items: center; background: $brand-soft; color: $brand-dark; flex-shrink: 0; }
+  .v { display: block; font-size: 24px; font-weight: 900; line-height: 1.1; letter-spacing: -.01em; }
+  .l { display: block; font-size: 12.5px; color: $muted; font-weight: 600; margin-top: 2px; }
+  .h { display: block; font-size: 11.5px; color: $muted; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  &.bad .ic { background: #fee4e2; color: #b42318; } &.bad .v { color: #b42318; }
+  &.warn .ic { background: #fef0c7; color: #93370d; }
+  &.ok .ic { background: #dcfae6; color: #067647; } }
+
+// ---- Thanh lọc trạng thái ----
+.inc-tabs, .rb-seg, .inc-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: $r-md; background: $surface; border: 1px solid $line-soft; flex-wrap: wrap;
+  button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; padding: 6px 12px; border-radius: $r-sm; font: inherit; font-size: 13px; font-weight: 700; color: $ink-2; cursor: pointer; white-space: nowrap;
+    &:hover:not(:disabled) { color: $brand-dark; }
+    &.on { background: #fff; color: $brand-dark; box-shadow: $shadow-xs; }
+    &:disabled { cursor: not-allowed; opacity: .55; }
+    b { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: $danger; color: #fff; font-size: 11px; display: inline-grid; place-items: center; } } }
+.inc-seg button.on.open { color: #b42318; } .inc-seg button.on.investigating { color: #93370d; } .inc-seg button.on.resolved { color: #067647; }
+
+.inc-tbl td { vertical-align: middle; }
+
+// ---- Báo sự cố ----
+.inc-sev-pick { display: flex; gap: 6px; flex-wrap: wrap;
+  button { flex: 1 1 auto; padding: 8px 10px; border-radius: $r-md; border: 1px solid $line; background: #fff; font: inherit; font-size: 13px; font-weight: 700; color: $ink-2; cursor: pointer; transition: all .12s;
+    &:hover { border-color: var(--c); }
+    &.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 10%, #fff); color: var(--c); box-shadow: inset 0 0 0 1px var(--c); } } }
+.inc-hint { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: $r-lg; background: $brand-tint; border: 1px solid $brand-line; }
+
+// ---- Chi tiết sự cố ----
+.inc-detail { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start;
+  @media (max-width: 900px) { grid-template-columns: 1fr; } }
+.inc-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: $r-lg; background: $surface; border: 1px solid $line-soft; }
+.inc-h { display: flex; align-items: center; gap: 7px; margin: 0 0 8px; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: $ink-2; }
+.inc-empty { padding: 14px; border-radius: $r-lg; border: 1px dashed $line; color: $muted; font-size: 13px; }
+.inc-rb { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: $r-lg; border: 1px solid $line; background: #fff; transition: border-color .12s;
+  &:hover { border-color: $brand-line; }
+  &.on { border-color: $brand; background: $brand-tint; } }
+.inc-reason { display: inline-block; padding: 1px 8px; border-radius: 999px; background: $brand-soft; color: $brand-dark; font-size: 11px; font-weight: 700; }
+.inc-run { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: $r-lg; border: 1px solid $line; background: #fff; }
+.inc-progress { position: relative; height: 7px; border-radius: 999px; background: #eceaf3; overflow: hidden; display: flex;
+  i { display: block; height: 100%; background: $success; border-radius: 999px 0 0 999px; }
+  em { display: block; height: 100%; background: $danger; } }
+.inc-close { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: $r-lg; border: 1px solid #abefc6; background: #f6fef9; }
+.inc-done { display: flex; gap: 10px; padding: 12px 14px; border-radius: $r-lg; background: #ecfdf3; border: 1px solid #abefc6; color: #05603a; }
+.inc-timeline { position: sticky; top: 0; padding: 12px 14px; border-radius: $r-lg; background: $surface; border: 1px solid $line-soft; max-height: 70vh; overflow-y: auto;
+  ol { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid $line; display: flex; flex-direction: column; gap: 12px; }
+  li { position: relative; display: flex; flex-direction: column; gap: 1px; font-size: 12.5px; line-height: 1.45;
+    &::before { content: ""; position: absolute; left: -20px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 2px solid $muted; }
+    &.reported::before, &.detected::before { border-color: $danger; }
+    &.run_started::before { border-color: $brand; }
+    &.run_finished::before { border-color: $brand; background: $brand; }
+    &.resolved::before { border-color: $success; background: $success; }
+    time { font-size: 11px; color: $muted; font-weight: 600; } } }
+
+// =====================================================================
+//  Nhập quy trình xử lý
+// =====================================================================
+.rb-tpl { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; border: 1px solid $line; transition: all .15s; font: inherit; color: inherit; background: #fff;
+  &:hover { border-color: var(--c); transform: translateY(-1px); box-shadow: 0 10px 22px -16px var(--c); }
+  .ic { width: 42px; height: 42px; border-radius: $r-md; display: grid; place-items: center; flex-shrink: 0; color: var(--c); background: color-mix(in srgb, var(--c) 10%, #fff); }
+  .dl { display: inline-flex; align-items: center; gap: 5px; align-self: center; flex-shrink: 0; padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 800; color: var(--c); background: color-mix(in srgb, var(--c) 10%, #fff); white-space: nowrap; } }
+.rb-tip { display: flex; flex-direction: column; gap: 6px; background: $brand-tint !important; border-color: $brand-line !important; }
+.rb-drop { border: 2px dashed $brand-line; border-radius: $r-lg; background: $brand-tint; transition: all .15s; display: flex;
+  &.over { border-color: $brand; background: $brand-soft; }
+  &.has { border-style: solid; padding: 12px 14px; background: #fff; } }
+.rb-drop-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 26px 16px; border: 0; background: transparent; cursor: pointer; font: inherit; color: $ink-2; text-align: center;
+  svg { color: $brand; }
+  small { color: $muted; font-size: 12px; max-width: 560px; line-height: 1.5; } }
+.rb-file-ic { width: 42px; height: 42px; border-radius: $r-md; display: grid; place-items: center; background: $brand-soft; color: $brand-dark; flex-shrink: 0; }
+.rb-done { display: flex; gap: 10px; padding: 12px 14px; border-radius: $r-lg; background: #ecfdf3; border: 1px solid #abefc6; color: #05603a; font-size: 13.5px; }
+.rb-card { border: 1px solid $line; border-left: 4px solid $success; border-radius: $r-lg; background: #fff; overflow: hidden;
+  &.warn { border-left-color: $warn; }
+  &.open { box-shadow: $shadow-card; } }
+.rb-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border: 0; background: transparent; cursor: pointer; font: inherit; color: inherit;
+  &:hover { background: $brand-tint; }
+  small { display: block; font-size: 12px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+.rb-fail { display: flex; gap: 8px; margin: 0 14px 10px; padding: 8px 12px; border-radius: $r-md; background: #fef3f2; border: 1px solid #fecdca; color: #912018; font-size: 12.5px; }
+.rb-body { display: flex; flex-direction: column; gap: 14px; padding: 14px; border-top: 1px solid $line-soft; background: #fcfbff; }
+.rb-notes { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: $r-md; background: $brand-soft; color: $brand-deep; font-size: 12.5px; }
+.rb-miss { border-color: #f5b041 !important; background: #fffcf5 !important; }
+.rb-steps { display: flex; flex-direction: column; gap: 8px; counter-reset: step; }
+.rb-step { display: grid; grid-template-columns: 30px minmax(0, 1.3fr) minmax(0, 1fr) 104px; gap: 8px; align-items: start; padding: 8px; border-radius: $r-md; border: 1px solid $line; background: #fff;
+  .n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: $brand-soft; color: $brand-dark; font-weight: 800; font-size: 13px; margin-top: 4px; }
+  &.danger { border-color: #fecdca; background: #fffbfa; .n { background: #fee4e2; color: #b42318; } }
+  @media (max-width: 760px) { grid-template-columns: 30px minmax(0, 1fr); > :nth-child(3) { grid-column: 2; } > :nth-child(4) { grid-column: 2; flex-direction: row !important; align-items: center !important; gap: 10px !important; } } }
+.rb-commit { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid $line-soft;
+  > :first-child { min-width: 220px; } }
+
+// =====================================================================
+//  Người đọc: Gặp sự cố?
+// =====================================================================
+.rd {
+  .ih-hero { display: flex; align-items: center; gap: 18px; padding: 22px 24px; border-radius: $r-lg; border: 1px solid #fedf89;
+    background: linear-gradient(120deg, #fffaeb 0%, #ffffff 60%, #fdf6ff 100%); }
+  .ih-hero-ic { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #f97316, #dc2626); color: #fff; flex-shrink: 0; box-shadow: 0 10px 22px -12px rgba(220, 38, 38, .9); }
+  .ih-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px; align-items: start;
+    @media (max-width: 1100px) { grid-template-columns: 1fr; } }
+  .ih-form { padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+  .ih-step { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.05em; margin-top: 4px;
+    b { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: $gradient; color: #fff; font-size: .85em; flex-shrink: 0; } }
+  .ih-text { min-height: 120px; padding: 12px 14px; font-size: 1em; line-height: 1.6; resize: vertical; }
+  .ih-pick { cursor: pointer; border: 1px solid transparent; font-size: .82em;
+    &.on { background: $brand; color: #fff; } }
+  .ih-impact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
+    @media (max-width: 520px) { grid-template-columns: 1fr; } }
+  .ih-imp { --c: #12b76a; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: $r-lg; border: 2px solid $line; background: #fff; text-align: left; font: inherit; cursor: pointer; transition: all .12s;
+    b { color: $ink; } span { font-size: .85em; color: $muted; }
+    &.s-medium { --c: #f79009; } &.s-high { --c: #f04438; } &.s-critical { --c: #b42318; }
+    &:hover { border-color: color-mix(in srgb, var(--c) 50%, #fff); }
+    &.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 8%, #fff); b { color: var(--c); } } }
+  .ih-side-h { display: flex; align-items: center; gap: 8px; font-weight: 800; color: $brand-dark; }
+  .ih-empty { padding: 32px 22px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: $muted;
+    b { color: $ink; font-size: 1.08em; } span { max-width: 380px; line-height: 1.55; } }
+  .ih-sugg { padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  .ih-sugg > .min-w-0 { flex-basis: 220px; }
+  .ih-sugg-act { display: flex; flex-direction: column; gap: 8px; align-items: stretch;
+    @media (max-width: 640px) { flex-direction: row; width: 100%; > * { flex: 1; } } }
+  .ih-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; font-size: .82em; color: $muted; font-weight: 600;
+    span { display: inline-flex; align-items: center; gap: 4px; }
+    .ok { color: #067647; } .warn { color: #b54708; }
+    .why { padding: 1px 9px; border-radius: 999px; background: $brand-soft; color: $brand-dark; } }
+  .ih-report { padding: 16px 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; border-style: dashed; }
+  .ih-mine { padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  .ih-mine > .min-w-0 { flex-basis: 240px; }
+  .ih-st { padding: 5px 12px; border-radius: 999px; font-size: .8em; font-weight: 800; white-space: nowrap; flex-shrink: 0;
+    &.bad { background: #fee4e2; color: #b42318; } &.warn { background: #fef0c7; color: #93370d; } &.ok { background: #dcfae6; color: #067647; } }
+  .ih-concl { display: flex; gap: 6px; align-items: flex-start; margin-top: 8px; padding: 8px 12px; border-radius: $r-md; background: #ecfdf3; color: #05603a; font-size: .9em; line-height: 1.5; svg { flex-shrink: 0; margin-top: 2px; } }
+}

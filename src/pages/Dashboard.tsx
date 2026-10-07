@@ -112,9 +112,10 @@ export default function Dashboard() {
           <div className="grid xl:grid-cols-2 gap-4">
             <Section title="Việc rà soát định kỳ giao cho tôi" right={<Pill tone="soft" sm>{tasks.length}</Pill>}>
               {tasks.length === 0 ? <Empty text="Không có việc rà soát nào" icon={<CalendarClock size={34} strokeWidth={1.5} />} /> : (
-                <div className="flex flex-col gap-2">{tasks.map((t) => (
+                <div className="flex flex-col gap-2">{tasks.slice(0, 6).map((t) => (
                   <button key={t.id} className="flex items-center gap-3 p-3 rounded-lg border border-line bg-white hover:bg-brand-50 cursor-pointer text-left" onClick={() => nav(`/items/${t.item.id}`)}>
-                    <b className="flex-1 truncate">{t.item.title}</b><Pill sm tone="warn">Hạn {dt(t.due_date, false)}</Pill><ArrowRight size={15} className="text-muted" /></button>))}</div>)}
+                    <b className="flex-1 truncate">{t.item.title}</b><Pill sm tone="warn">Hạn {dt(t.due_date, false)}</Pill><ArrowRight size={15} className="text-muted" /></button>))}
+                  {tasks.length > 6 && <button className="btn outline sm self-start" onClick={() => nav('/tasks')}>Xem tất cả {tasks.length} việc<ArrowRight size={13} /></button>}</div>)}
             </Section>
             <Section title="Thông báo gần đây" right={<button className="btn outline sm" onClick={() => nav('/notifications')}>Xem tất cả</button>}>
               {notices.items.length === 0 ? <Empty text="Không có thông báo" icon={<Bell size={34} strokeWidth={1.5} />} /> : (
@@ -185,7 +186,7 @@ export default function Dashboard() {
                 {recent.length === 0 && <tr><td colSpan={5}><Empty text="Chưa có mục nào" /></td></tr>}
                 {recent.map((it) => (
                   <tr key={it.id} className="clickable" onClick={() => nav(`/items/${it.id}`)}>
-                    <td className="font-bold max-w-[420px] truncate">{it.title}</td><td>{it.space?.name}</td><td>{it.owner?.name}</td>
+                    <td className="font-bold"><div className="max-w-[420px] truncate">{it.title}</div></td><td>{it.space?.name}</td><td>{it.owner?.name}</td>
                     <td><ItemBadges it={it} /></td><td className="whitespace-nowrap">{dt(it.updated_at)}</td></tr>))}
               </tbody></table></div>
           </Section>

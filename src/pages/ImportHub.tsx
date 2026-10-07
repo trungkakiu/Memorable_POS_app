@@ -466,8 +466,8 @@ export default function ImportHub() {
             {res.split_reason && <div className="text-[12.5px] text-ink-2 bg-brand-50 border border-brand-200 rounded-md px-3 py-2"><b>Lý do tách:</b> {res.split_reason}</div>}
             {(res.files.length > 0 || res.skipped.length > 0) && (
               <div className="flex gap-1.5 flex-wrap text-[11.5px]">
-                {res.files.map((f) => <span key={f.filename} className="inline-flex items-center gap-1 border border-line rounded-md px-2 py-1 bg-white"><FileText size={12} />{f.filename} · {METHOD[f.method] || f.method}{f.pages ? ` · ${f.pages} trang` : ''}{f.uncertain ? <span className="text-amber-700"> · {f.uncertain} chỗ chưa chắc</span> : null}</span>)}
-                {res.skipped.map((s, i) => <span key={i} className="inline-flex items-center gap-1 border border-red-200 rounded-md px-2 py-1 bg-red-50 text-red-800"><ShieldAlert size={12} />{s.filename}: {s.reason}</span>)}
+                {res.files.map((f) => <span key={f.filename} className="inline-flex items-center gap-1 border border-line rounded-md px-2 py-1 bg-white max-w-full min-w-0" title={f.filename}><FileText size={12} className="shrink-0" /><span className="truncate">{f.filename}</span> · {METHOD[f.method] || f.method}{f.pages ? ` · ${f.pages} trang` : ''}{f.uncertain ? <span className="text-amber-700"> · {f.uncertain} chỗ chưa chắc</span> : null}</span>)}
+                {res.skipped.map((s, i) => <span key={i} className="inline-flex items-center gap-1 border border-red-200 rounded-md px-2 py-1 bg-red-50 text-red-800 max-w-full min-w-0" title={`${s.filename}: ${s.reason}`}><ShieldAlert size={12} className="shrink-0" /><span className="truncate">{s.filename}: {s.reason}</span></span>)}
               </div>)}
           </div>
 

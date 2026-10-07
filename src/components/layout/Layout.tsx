@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import { Bell, BookMarked, Menu, X, Sparkles, ChevronDown, Cloud, CloudOff, HelpCircle, LogOut, Maximize2, Plus, Search, PanelLeftClose, PanelLeftOpen, ArrowRight, CheckCheck } from 'lucide-react'
 import { NAV } from '../../lib/nav'
 import { can } from '../../lib/permissions'
-import { deskApi, post } from '../../lib/api'
+import { deskApi, post , get } from '../../lib/api'
 import { dt, NOTICE_TYPE, ROLE_LABEL } from '../../lib/format'
 import { useAuth } from '../../store/auth'
 import { itemIdOf, useNotices } from '../../store/notices'
@@ -16,7 +16,12 @@ function useGroups() {
   const user = useAuth((s) => s.user)!
   return useMemo(() => NAV.map((g) => ({ ...g, items: g.items.filter((i) => can(user.role, i.cap)) })).filter((g) => g.items.length), [user.role])
 }
-const isOn = (path: string, to: string) => (to === '/' ? path === '/' : to === '/items' ? /^\/items(\/\d+.*)?$/.test(path) : to === '/agents' ? /^\/agents(\/\d+.*)?$/.test(path) : to === '/ai' ? path === '/ai' : path === to || path.startsWith(to + '/'))
+// Mục có query (vd /items?type=runbook) chỉ sáng khi đúng query; /items không sáng khi đang lọc quy trình
+const isOn = (path: string, to: string, search = '') => {
+  if (to.includes('?')) { const [p, q] = to.split('?'); const want = new URLSearchParams(q); const got = new URLSearchParams(search); return path === p && [...want].every(([k, v]) => got.get(k) === v) }
+  if (to === '/items' && new URLSearchParams(search).get('type') === 'runbook') return false
+  return to === '/' ? path === '/' : to === '/items' ? /^\/items(\/\d+.*)?$/.test(path) : to === '/agents' ? /^\/agents(\/\d+.*)?$/.test(path) : to === '/ai' ? path === '/ai' : path === to || path.startsWith(to + '/')
+}
 
 function Header({ onMenu }: { onMenu: () => void }) {
   const user = useAuth((s) => s.user)!
@@ -26,7 +31,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
   const n = useNotices()
   const [help, setHelp] = useState(false)
   const groups = useGroups()
-  const active = groups.find((g) => g.items.some((i) => isOn(loc.pathname, i.to)))?.id
+  const active = groups.find((g) => g.items.some((i) => isOn(loc.pathname, i.to, loc.search)))?.id
 
   return (
     <header className="app-header">
@@ -42,7 +47,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
         {groups.map((g) => (
           <div className="nav-item" key={g.id}>
             <button className={clsx(active === g.id && 'on')} onClick={() => nav(g.items[0].to)}>{g.short ?? g.label}<ChevronDown size={13} /></button>
-            <div className="menu">{g.items.map((i) => <a key={i.to} onClick={() => nav(i.to)}>{i.label}</a>)}</div>
+            <div className="menu">{g.items.map((i) => <a key={i.to} href={`#${i.to}`} onClick={(e) => { e.preventDefault(); nav(i.to) }}>{i.label}</a>)}</div>
           </div>
         ))}
       </nav>
@@ -90,7 +95,7 @@ function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => 
   const nav = useNavigate()
   const groups = useGroups()
   const n = useNotices()
-  const activeId = groups.find((g) => g.items.some((i) => isOn(loc.pathname, i.to)))?.id
+  const activeId = groups.find((g) => g.items.some((i) => isOn(loc.pathname, i.to, loc.search)))?.id
   const [collapsedPref, setCollapsed] = useState(() => localStorage.getItem(LS_COL) === '1')
   const narrow = useNarrow()
   const collapsed = collapsedPref && !narrow
@@ -100,7 +105,13 @@ function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => 
   useEffect(() => { try { localStorage.setItem(LS_COL, collapsedPref ? '1' : '0') } catch { /* bỏ qua */ } }, [collapsedPref])
 
   // Số đếm hiển thị cạnh từng mục
-  const badge = (to: string): number => (to === '/notifications' ? n.unread : to === '/reviews' ? n.queue : to === '/tasks' ? n.tasks : 0)
+  // Sự cố mới báo chưa ai nhận: làm mới mỗi phút và khi chuyển trang
+  const [newInc, setNewInc] = useState(0)
+  useEffect(() => {
+    const f = () => get<{ open: number }>('/incidents/stats').then((r) => setNewInc(r.open || 0)).catch(() => undefined)
+    void f(); const t = setInterval(f, 60000); return () => clearInterval(t)
+  }, [loc.pathname])
+  const badge = (to: string): number => (to === '/notifications' ? n.unread : to === '/reviews' ? n.queue : to === '/tasks' ? n.tasks : to === '/incidents' ? newInc : 0)
   const groupBadge = (g: (typeof groups)[number]) => g.items.reduce((a, i) => a + badge(i.to), 0)
   const toggle = (id: string) => setOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]))
 
@@ -139,7 +150,7 @@ function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => 
                   {g.items.map((i) => {
                     const b = badge(i.to)
                     return (
-                      <NavLink key={i.to} to={i.to} end className={clsx('sb-link', isOn(loc.pathname, i.to) && 'on')}>
+                      <NavLink key={i.to} to={i.to} end className={clsx('sb-link', isOn(loc.pathname, i.to, loc.search) && 'on')}>
                         <i className="dot" /><span className="txt">{i.label}</span>{b > 0 && <span className="sb-badge">{b > 99 ? '99+' : b}</span>}
                       </NavLink>)
                   })}

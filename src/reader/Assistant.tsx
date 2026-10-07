@@ -15,6 +15,7 @@ import { WebBlock, WebText } from '../components/WebAnswer'
 import { TIER_PLAIN } from '../lib/format'
 import { DOC_ACTIONS, runDocAction } from './aiAgent'
 import { useReaderCtx } from './workspace'
+import { LimitedList } from '../components/ShowMore'
 
 const STARTERS: Record<'documents' | 'web', string[]> = {
   documents: ['Máy in không in được thì làm thế nào?', 'Quy trình xử lý khi hệ thống báo lỗi timeout?', 'Hướng dẫn sao lưu dữ liệu hằng ngày'],
@@ -79,7 +80,7 @@ export function Bubble({ m, onOpen, onSearch, onAsk }: { m: Msg; onOpen: (id: nu
       {srcs.length > 0 && (
         <div className="flex flex-col gap-2 w-full">
           <div className="text-[0.82em] font-bold text-muted">Xem bài gốc để chắc chắn:</div>
-          {srcs.map((s) => {
+          <LimitedList items={srcs} first={3} noun="bài nguồn" className="flex flex-col gap-2 w-full" render={(s) => {
             const Ico = TYPE_ICON[s.type as ItemType] || TYPE_ICON.document
             return (
               <div key={s.id} className="flex flex-col gap-2">
@@ -90,13 +91,13 @@ export function Bubble({ m, onOpen, onSearch, onAsk }: { m: Msg; onOpen: (id: nu
                 </button>
                 {s.passages && s.passages.length > 0 && (
                   <details className="pl-2 text-[0.88em]"><summary className="cursor-pointer text-brand-700 font-bold">Xem đoạn gốc trong tài liệu ({s.passages.length})</summary>
-                    <div className="flex flex-col gap-2 mt-2">{s.passages.map((p, i) => (
-                      <div key={i} className="border border-line rounded-md bg-white px-3 py-2.5 leading-relaxed"><div className="text-[0.82em] text-muted mb-1">{[p.filename || 'Nội dung bài', p.page, p.section && `mục “${p.section}”`].filter(Boolean).join(' · ')}{p.ai_text_unverified && <span className="text-amber-700 font-bold"> · chữ do AI đọc, chưa ai kiểm tra</span>}</div>“{p.excerpt}”</div>))}</div></details>)}
+                    <LimitedList items={s.passages} first={3} noun="đoạn" maxHeight="320px" className="flex flex-col gap-2 mt-2" render={(p, i) => (
+                      <div key={i} className="border border-line rounded-md bg-white px-3 py-2.5 leading-relaxed"><div className="text-[0.82em] text-muted mb-1">{[p.filename || 'Nội dung bài', p.page, p.section && `mục “${p.section}”`].filter(Boolean).join(' · ')}{p.ai_text_unverified && <span className="text-amber-700 font-bold"> · chữ do AI đọc, chưa ai kiểm tra</span>}</div>“{p.excerpt}”</div>)} /></details>)}
                 <div className="pl-2"><AttachStrip itemId={s.id} size={52} max={5} label={false} /></div>
               </div>)
-          })}
+          }} />
         </div>)}
-      {srcs.length === 0 && cited.length > 0 && <div className="flex gap-2 flex-wrap items-center text-[0.85em] text-muted">Bài gốc: {cited.map((id) => <button key={id} className="rd-chip" onClick={() => onOpen(id)}>Mở bài #{id}</button>)}</div>}
+      {srcs.length === 0 && cited.length > 0 && <div className="flex gap-2 flex-wrap items-center text-[0.85em] text-muted">Bài gốc: <LimitedList items={cited} first={8} noun="bài" className="contents" render={(id) => <button key={id} className="rd-chip" onClick={() => onOpen(id)}>Mở bài #{id}</button>} /></div>}
     </div>)
 }
 

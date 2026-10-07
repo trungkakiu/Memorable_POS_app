@@ -18,6 +18,7 @@ import { Md } from '../shared'
 import { Pill, Seg } from '../ui'
 import { ConflictList, FileAskBlock, MemoryUsed, PolicySelect } from '../Knowledge'
 import { TIER_LABEL, TIER_TONE } from '../../lib/format'
+import { LimitedList } from '../ShowMore'
 
 const STARTERS = ['Quy trình xử lý lỗi ERR_504 là gì?', 'Sao lưu cơ sở dữ liệu chạy lúc mấy giờ?', 'Có prompt nào dịch văn bản không?']
 const routeItemId = (p: string) => { const m = /^\/items\/(\d+)/.exec(p); return m ? Number(m[1]) : undefined }
@@ -78,12 +79,13 @@ export function Messages({ msgs, busy, onOpenItem, onPick, onAsk, compact }: { m
                     ? <Pill sm tone="soft"><Eye size={11} />{m.ans.analysis.kind === 'image' ? 'AI đọc ảnh' : 'AI đọc PDF'}: {m.ans.analysis.filename}</Pill>
                     : <Pill sm tone={m.ans?.mode === 'general' ? 'warn' : 'soft'}>{m.ans?.agentName ? KNOWLEDGE_LABEL[m.ans?.mode ?? 'documents'] : MODE_LABEL[m.ans?.mode ?? 'documents']}</Pill>}
                   {m.ans?.agentName && <Pill sm tone="soft"><Bot size={11} />Agent: {m.ans.agentName}</Pill>}
-                  {m.ans?.fileChat && <Pill sm tone="soft"><Paperclip size={11} />AI đã xem {m.ans.fileChat.files.map((f) => f.filename).join(', ')}{m.ans.fileChat.kb ? ' · đối chiếu tài liệu' : ''}</Pill>}
+                  {m.ans?.fileChat && <Pill sm tone="soft"><Paperclip size={11} /><span className="truncate max-w-[320px]" title={m.ans.fileChat.files.map((f) => f.filename).join(', ')}>AI đã xem {m.ans.fileChat.files.slice(0, 2).map((f) => f.filename).join(', ')}{m.ans.fileChat.files.length > 2 ? ` +${m.ans.fileChat.files.length - 2} tệp` : ''}</span>{m.ans.fileChat.kb ? ' · đối chiếu tài liệu' : ''}</Pill>}
                   {m.ans?.cross_document && <Pill sm tone="soft">Đối chiếu nhiều tài liệu</Pill>}
                   {m.ans?.grounded === true && <Pill sm tone="ok"><ShieldCheck size={11} />Có nguồn tài liệu</Pill>}
                   {m.ans?.insufficient_info && <Pill tone="warn" sm><AlertTriangle size={11} />Không đủ thông tin trong kho tri thức</Pill>}
                 </div>
-                {m.ans?.fileChat?.skipped.map((s) => <div key={s.filename} className="mb-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5"><b>{s.filename}</b>: {s.reason}</div>)}
+                {m.ans?.fileChat?.skipped.slice(0, 3).map((s) => <div key={s.filename} className="mb-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5 break-words"><b>{s.filename}</b>: {s.reason}</div>)}
+                {(m.ans?.fileChat?.skipped.length || 0) > 3 && <div className="mb-2 text-xs text-amber-900">… và {m.ans!.fileChat!.skipped.length - 3} tệp khác bị bỏ qua</div>}
                 {m.ans?.mode === 'hybrid' && <div className="text-[10.5px] font-bold uppercase text-muted mb-1 tracking-wide">Từ tài liệu của nhóm</div>}
                 {m.ans?.web ? <WebText text={m.text} w={m.ans.web} /> : <Md citeIds={[...(m.ans?.sources || []).map((s) => s.id), ...(m.ans?.sourceIds || [])]}>{m.text}</Md>}
                 {m.ans?.caveats && <div className="text-xs text-amber-800 mt-2 pt-2 border-t border-line flex gap-1"><b className="shrink-0">Lưu ý:</b><div className="min-w-0 flex-1"><Md citeIds={(m.ans.sources || []).map((s) => s.id)}>{m.ans.caveats}</Md></div></div>}
@@ -94,9 +96,9 @@ export function Messages({ msgs, busy, onOpenItem, onPick, onAsk, compact }: { m
                 {m.ans?.tools_used && m.ans.tools_used.length > 0 && (
                   <details className="mt-3 text-xs rounded-md border border-line-soft bg-brand-50 px-2.5 py-2">
                     <summary className="cursor-pointer font-bold text-brand-700 flex items-center gap-1.5"><Wrench size={12} />Agent đã làm gì ({m.ans.tools_used.length} thao tác{m.ans.steps ? ` · ${m.ans.steps} vòng` : ''})</summary>
-                    <ol className="m-0 mt-2 pl-4 flex flex-col gap-1">{m.ans.tools_used.map((t, i) => (
-                      <li key={i}>{TOOL_LABEL[t.tool] || t.tool}: <code>{Object.values(t.args || {}).join(', ')}</code> {t.ok ? '✓' : <span className="text-red-600">✗ lỗi</span>}</li>))}</ol>
-                    {m.ans.consulted && m.ans.consulted.length > 0 && <div className="mt-2 text-muted flex flex-wrap gap-1.5 items-center">Đã đọc: {m.ans.consulted.map((id) => <button key={id} className="cat-chip !py-0.5 !px-2 !text-[11px]" onClick={() => onOpenItem(id)}>#{id}</button>)}</div>}
+                    <ol className="m-0 mt-2 pl-4 flex flex-col gap-1"><LimitedList items={m.ans.tools_used} first={5} noun="thao tác" className="contents" render={(t, i) => (
+                      <li key={i}>{TOOL_LABEL[t.tool] || t.tool}: <code className="break-all">{Object.values(t.args || {}).join(', ')}</code> {t.ok ? '✓' : <span className="text-red-600">✗ lỗi</span>}</li>)} /></ol>
+                    {m.ans.consulted && m.ans.consulted.length > 0 && <div className="mt-2 text-muted flex flex-wrap gap-1.5 items-center">Đã đọc: <LimitedList items={m.ans.consulted} first={12} noun="mục" className="contents" render={(id) => <button key={id} className="cat-chip !py-0.5 !px-2 !text-[11px]" onClick={() => onOpenItem(id)}>#{id}</button>} /></div>}
                   </details>)}
                 {m.ans?.warnings?.map((w, i) => <div key={i} className="mt-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-2 flex gap-1.5"><AlertTriangle size={13} className="shrink-0 mt-0.5" /><div className="min-w-0 flex-1"><Md>{w}</Md></div></div>)}
                 {m.ans?.analysis?.note && <div className="mt-2 text-[11px] text-muted flex items-start gap-1.5"><Info size={12} className="shrink-0 mt-0.5" />{m.ans.analysis.note}</div>}
@@ -116,7 +118,7 @@ export function Messages({ msgs, busy, onOpenItem, onPick, onAsk, compact }: { m
             {m.ans && m.ans.sources.length > 0 && (
               <div className="flex flex-col gap-2">
                 <div className="text-[10.5px] font-bold uppercase text-muted flex items-center gap-1 tracking-wide"><ShieldCheck size={12} />Nguồn trích dẫn ({m.ans.sources.length})</div>
-                {m.ans.sources.map((s) => (
+                <LimitedList items={m.ans.sources} first={3} noun="nguồn" className="flex flex-col gap-2" render={(s) => (
                   <div key={s.id} className="flex flex-col gap-1.5">
                     <button className="src" onClick={() => onOpenItem(s.id)}>
                       <Pill sm tone="soft">{TYPE_LABEL[s.type] || s.type}</Pill>{s.tier && <Pill sm tone={TIER_TONE[s.tier] || 'gray'}>{TIER_LABEL[s.tier] || s.tier}</Pill>}<b className="truncate flex-1">{s.title}</b>
@@ -125,14 +127,14 @@ export function Messages({ msgs, busy, onOpenItem, onPick, onAsk, compact }: { m
                     </button>
                     {s.passages && s.passages.length > 0 && (
                       <details className="pl-2 text-xs"><summary className="cursor-pointer text-brand-700 font-bold">Xem {s.passages.length} đoạn đã dùng (tệp, trang, mục)</summary>
-                        <div className="flex flex-col gap-1.5 mt-1.5">{s.passages.map((p, i) => (
-                          <div key={i} className="border border-line-soft rounded-md bg-white px-2.5 py-2"><div className="text-[11px] text-muted mb-0.5">{[p.filename || 'Nội dung bài', p.page, p.section && `mục “${p.section}”`].filter(Boolean).join(' · ')}{p.ai_text_unverified && <span className="text-amber-700 font-bold"> · chữ AI chưa kiểm chứng</span>}</div>{p.excerpt}</div>))}</div></details>)}
+                        <LimitedList items={s.passages} first={4} noun="đoạn" maxHeight="320px" className="flex flex-col gap-1.5 mt-1.5" render={(p, i) => (
+                          <div key={i} className="border border-line-soft rounded-md bg-white px-2.5 py-2"><div className="text-[11px] text-muted mb-0.5">{[p.filename || 'Nội dung bài', p.page, p.section && `mục “${p.section}”`].filter(Boolean).join(' · ')}{p.ai_text_unverified && <span className="text-amber-700 font-bold"> · chữ AI chưa kiểm chứng</span>}</div>{p.excerpt}</div>)} /></details>)}
                     {/* Tệp/ảnh của mục nguồn hiện ngay dưới câu trả lời, bấm để xem trước */}
                     <div className="pl-2"><AttachStrip itemId={s.id} size={compact ? 44 : 56} max={compact ? 5 : 8} label={false} /></div>
-                  </div>))}
+                  </div>)} />
               </div>)}
             {m.ans && m.ans.sources.length === 0 && m.ans.sourceIds && m.ans.sourceIds.length > 0 && (
-              <div className="flex gap-1.5 flex-wrap items-center text-xs text-muted"><ShieldCheck size={12} />Nguồn đã trích: {m.ans.sourceIds.map((id) => <button key={id} className="cat-chip !py-0.5 !px-2 !text-[11px]" onClick={() => onOpenItem(id)}>tài liệu #{id}</button>)}</div>)}
+              <div className="flex gap-1.5 flex-wrap items-center text-xs text-muted"><ShieldCheck size={12} />Nguồn đã trích: <LimitedList items={m.ans.sourceIds} first={10} noun="tài liệu" className="contents" render={(id) => <button key={id} className="cat-chip !py-0.5 !px-2 !text-[11px]" onClick={() => onOpenItem(id)}>tài liệu #{id}</button>} /></div>)}
             {m.ans && <div className="text-[10.5px] text-muted">{m.ans.model} · ${m.ans.cost_usd}</div>}
           </div></div>))}
       {busy && <div className="msg ai"><span className="av"><Bot size={15} /></span><div className="bubble a"><span className="typing"><i /><i /><i /></span></div></div>}

@@ -33,7 +33,7 @@ export function TimeLogs() {
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Ngày</th><th>Loại việc</th><th className="num">Số giờ</th><th>Có AI hỗ trợ</th><th>Ghi chú</th><th /></tr></thead><tbody>
         {loading && !data && <tr><td colSpan={6}><Loading /></td></tr>}
         {data && data.time_logs.length === 0 && <tr><td colSpan={6}><Empty text="Chưa có giờ công trong khoảng này" /></td></tr>}
-        {data?.time_logs.map((t) => (<tr key={t.id}><td className="font-bold">{dt(t.log_date, false)}</td><td>{WORK_TYPE[t.work_type] || t.work_type}</td><td className="num font-bold">{num(t.hours, 2)}</td><td>{t.claude_supported ? <Pill sm tone="ok">Có</Pill> : <Pill sm tone="gray">Không</Pill>}</td><td className="max-w-[320px] truncate">{t.notes || '—'}</td>
+        {data?.time_logs.map((t) => (<tr key={t.id}><td className="font-bold">{dt(t.log_date, false)}</td><td>{WORK_TYPE[t.work_type] || t.work_type}</td><td className="num font-bold">{num(t.hours, 2)}</td><td>{t.claude_supported ? <Pill sm tone="ok">Có</Pill> : <Pill sm tone="gray">Không</Pill>}</td><td><div className="max-w-[320px] truncate">{t.notes || '—'}</div></td>
           <td className="num"><button className="btn ghost icon" onClick={() => rm(t)}><Trash2 size={15} /></button></td></tr>))}
       </tbody></table></div>
       {data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
@@ -71,7 +71,7 @@ export function Costs() {
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Kỳ</th><th>Khoản mục</th><th className="num">Số tiền</th><th>Nguồn</th><th>Ghi chú</th><th /></tr></thead><tbody>
         {loading && !data && <tr><td colSpan={6}><Loading /></td></tr>}
         {data && data.costs.length === 0 && <tr><td colSpan={6}><Empty text="Chưa có chi phí" /></td></tr>}
-        {data?.costs.map((c) => (<tr key={c.id}><td className="font-bold">{c.period}</td><td><Pill sm tone="soft">{COST_ITEM[c.cost_item] || c.cost_item}</Pill></td><td className="num font-bold">{money(c.amount)}</td><td>{c.source}</td><td className="max-w-[260px] truncate">{c.notes || '—'}</td>
+        {data?.costs.map((c) => (<tr key={c.id}><td className="font-bold">{c.period}</td><td><Pill sm tone="soft">{COST_ITEM[c.cost_item] || c.cost_item}</Pill></td><td className="num font-bold">{money(c.amount)}</td><td>{c.source}</td><td><div className="max-w-[260px] truncate">{c.notes || '—'}</div></td>
           <td className="num">{w && <button className="btn outline sm" onClick={() => setF({ id: c.id, cost_item: c.cost_item, amount: Number(c.amount), period: c.period, source: c.source, notes: c.notes || '' })}><Pencil size={13} />Sửa</button>}</td></tr>))}
       </tbody></table></div>
       {data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
@@ -105,7 +105,7 @@ export function Benchmarks() {
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Đợt</th><th>Mã tác vụ</th><th>Người thực hiện</th><th className="num">Phút</th><th>Kết quả</th><th>Ghi chú</th><th>Đo lúc</th></tr></thead><tbody>
         {loading && !data && <tr><td colSpan={7}><Loading /></td></tr>}
         {data && data.benchmarks.length === 0 && <tr><td colSpan={7}><Empty text="Chưa có bài đo" /></td></tr>}
-        {data?.benchmarks.map((b) => (<tr key={b.id}><td><Pill sm tone="soft">{b.batch}</Pill></td><td className="font-bold">{b.task_code}</td><td>#{b.performer_id}</td><td className="num font-bold">{num(b.minutes, 2)}</td><td>{b.success ? <Pill sm tone="ok">Thành công</Pill> : <Pill sm tone="bad">Thất bại</Pill>}</td><td className="max-w-[240px] truncate">{b.notes || '—'}</td><td>{dt(b.measured_at)}</td></tr>))}
+        {data?.benchmarks.map((b) => (<tr key={b.id}><td><Pill sm tone="soft">{b.batch}</Pill></td><td className="font-bold">{b.task_code}</td><td>#{b.performer_id}</td><td className="num font-bold">{num(b.minutes, 2)}</td><td>{b.success ? <Pill sm tone="ok">Thành công</Pill> : <Pill sm tone="bad">Thất bại</Pill>}</td><td><div className="max-w-[240px] truncate">{b.notes || '—'}</div></td><td>{dt(b.measured_at)}</td></tr>))}
       </tbody></table></div>
       {data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
       {f && <Modal title="Ghi bài đo baseline" size="sm" onClose={() => setF(null)} footer={<><button className="btn outline" onClick={() => setF(null)}>Hủy</button><button className="btn" disabled={busy || !f.batch.trim() || !f.task_code.trim()} onClick={save}>Ghi</button></>}>

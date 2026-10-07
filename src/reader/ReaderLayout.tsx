@@ -2,7 +2,7 @@ import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'reac
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  AudioLines, Wand2, BookMarked, Brain, ChevronDown, FileSearch, GitCompare, Clock, Compass, FolderOpen, History, Home, LayoutDashboard, LogOut, Menu, MessageCircleQuestion, Minus, PlayCircle, Plus, Search, Star, Timer, Type, X,
+  AudioLines, Wand2, BookMarked, Brain, ChevronDown, FileSearch, GitCompare, Clock, Compass, FolderOpen, History, Home, LayoutDashboard, LifeBuoy, ListChecks, Siren, LogOut, Menu, MessageCircleQuestion, Minus, PlayCircle, Plus, Search, Star, Timer, Type, X,
 } from 'lucide-react'
 import { ApiError, get, post } from '../lib/api'
 import { ROLE_LABEL, WORK_TYPE, num, todayStr } from '../lib/format'
@@ -62,6 +62,7 @@ function RailLink({ to, icon, label, badge, onClick, active }: { to?: string; ic
 }
 
 function Rail({ onTime, onClose }: { onTime: () => void; onClose: () => void }) {
+  const loc = useLocation()
   const spaces = useAuth((s) => s.spaces)
   const runs = useWorkspace((s) => Object.keys(s.runs).length)
   const favs = useWorkspace((s) => s.favs.length)
@@ -76,6 +77,11 @@ function Rail({ onTime, onClose }: { onTime: () => void; onClose: () => void }) 
       <div className="grp"><div className="cap">Bắt đầu</div>
         <RailLink to="/" icon={<Home size={19} />} label="Trang chủ" />
       </div>
+      <div className="grp"><div className="cap">Gặp sự cố</div>
+        <RailLink to="/su-co" icon={<Siren size={19} />} label="Báo & xử lý sự cố" active={loc.pathname === '/su-co' && !loc.search.includes('tab=mine')} />
+        <RailLink to="/su-co?tab=mine" icon={<ListChecks size={19} />} label="Sự cố của tôi" />
+        <RailLink to="/browse/type/runbook" icon={<LifeBuoy size={19} />} label="Hướng dẫn xử lý" badge={counts.runbook} />
+      </div>
       <div className="grp"><div className="cap">Việc của tôi</div>
         <RailLink to="/me?tab=runs" icon={<PlayCircle size={19} />} label="Đang làm dở" badge={runs} />
         <RailLink to="/me?tab=saved" icon={<Star size={19} />} label="Đã lưu" badge={favs} />
@@ -83,7 +89,7 @@ function Rail({ onTime, onClose }: { onTime: () => void; onClose: () => void }) 
         <RailLink to="/memory" icon={<Brain size={19} />} label="Trợ lý ghi nhớ" />
       </div>
       <div className="grp"><div className="cap">Thư viện</div>
-        {TYPES.map((t) => { const Ico = TYPE_ICON[t]; return <RailLink key={t} to={`/browse/type/${t}`} icon={<Ico size={19} />} label={TYPE_RAIL[t]} badge={counts[t]} /> })}
+        {TYPES.filter((t) => t !== 'runbook').map((t) => { const Ico = TYPE_ICON[t]; return <RailLink key={t} to={`/browse/type/${t}`} icon={<Ico size={19} />} label={TYPE_RAIL[t]} badge={counts[t]} /> })}
       </div>
       <div className="grp"><div className="cap">Chủ đề</div>
         {shown.map((s, i) => <RailLink key={s.id} to={`/browse/space/${s.id}`} icon={<FolderOpen size={19} style={{ color: TOPIC_COLORS[i % TOPIC_COLORS.length] }} />} label={s.name} />)}

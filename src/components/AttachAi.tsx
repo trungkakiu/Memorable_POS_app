@@ -75,7 +75,7 @@ export function AnalyzeModal({ att, onClose, initialQuestion }: { att: Pick<Atta
       <div className="flex flex-col gap-4">
         <div className="text-xs text-muted leading-relaxed rounded-lg bg-brand-50 border border-line-soft px-3 py-2">AI nhìn trực tiếp vào ảnh/PDF (đọc chữ, bảng, biểu đồ, sơ đồ, ảnh chụp màn hình). Câu trả lời <b>không được lưu</b>; muốn lưu chữ để tìm kiếm hãy dùng “AI đọc chữ”. Tệp của mục “Hạn chế” không bao giờ gửi cho AI.</div>
         <div className="flex gap-2 flex-wrap">{PRESETS.map((p) => <button key={p} className="cat-chip" disabled={busy} onClick={() => void run(p)}>{p}</button>)}</div>
-        <div className="flex flex-col gap-3 max-h-[46vh] overflow-auto">
+        <div className="flex flex-col gap-3">
           {turns.map((t, i) => (
             <div key={i} className="flex flex-col gap-2">
               <div className="self-end bg-brand-600 text-white rounded-lg px-3 py-2 text-sm max-w-[85%]">{t.q}</div>

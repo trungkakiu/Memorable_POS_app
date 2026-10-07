@@ -221,7 +221,7 @@ export function Uploader({ itemId, onUploaded, compact }: { itemId: number; onUp
       <div className="flex items-start gap-2 text-xs rounded-lg bg-amber-50 border border-amber-200 text-amber-900 px-3 py-2"><Info size={14} className="shrink-0 mt-0.5" />
         <span>Hệ thống <b>tự đọc chữ</b> của docx, xlsx, pptx, odt/ods/odp, rtf, txt, md, csv, tsv, log, json, xml, yaml. <b>Ảnh và PDF</b> chỉ được lưu — bấm <b>“AI đọc chữ”</b> sau khi tải lên để tìm kiếm/AI dùng được. <b>File ghi âm</b> (mp3, m4a, wav…, tối đa {AUDIO_MB} MB) được AI chép lời. doc/xls/ppt bản cũ chưa đọc được (hãy chuyển sang bản mới).</span></div>
       {jobs.length > 0 && (
-        <div className="border border-line rounded-lg divide-y divide-line-soft bg-white">
+        <div className="border border-line rounded-lg divide-y divide-line-soft bg-white max-h-[320px] overflow-y-auto">
           {jobs.map((j) => (
             <div key={j.key} className="flex items-center gap-3 px-3 py-2 text-sm">
               <button className="shrink-0 border-0 bg-transparent p-0 cursor-pointer" title="Xem trước tệp" onClick={() => j.file.bytes && setLocal({ type: 'local', name: j.file.name, bytes: j.file.bytes })}><LocalThumb file={j.file} className="w-10 h-10" /></button>

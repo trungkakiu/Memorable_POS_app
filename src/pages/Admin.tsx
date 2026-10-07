@@ -10,14 +10,15 @@ import { useAuth } from '../store/auth'
 import { toast } from '../store/ui'
 import { useNotices } from '../store/notices'
 import { APP_CONFIG } from '../lib/appConfig'
+import { useClientPage } from '../components/ShowMore'
 
 export function Users() {
   const me = useAuth((s) => s.user)!
   const [page, setPage] = useState(1)
-  const { data, loading, error, reload } = useGet<{ users: AdminUser[]; total: number; page: number; pages: number }>('/admin/users', { page, limit: 20 })
+  const [q, setQ] = useState('')
+  const { data, loading, error, reload } = useGet<{ users: AdminUser[]; total: number; page: number; pages: number }>('/admin/users', q.trim() ? { page: 1, limit: 100 } : { page, limit: 20 })
   const { busy, run } = useBusy()
   const [f, setF] = useState<{ name: string; email: string; password: string; role: Role } | null>(null)
-  const [q, setQ] = useState('')
   async function create() { if (!f) return; const r = await run(() => post('/admin/users', f), 'Đã tạo người dùng'); if (r) { setF(null); reload() } }
   const upd = async (u: AdminUser, body: Partial<AdminUser>, ok: string) => { await run(() => patch(`/admin/users/${u.id}`, body), ok); reload() }
   const list = (data?.users || []).filter((u) => (u.name + u.email).toLowerCase().includes(q.toLowerCase()))
@@ -35,7 +36,8 @@ export function Users() {
           <td>{u.status === 'active' ? <Pill sm tone="ok">Hoạt động</Pill> : <Pill sm tone="bad"><Lock size={11} />Bị khóa</Pill>}</td><td>{u.totp_enabled ? <ShieldCheck size={17} className="text-green-600" /> : '—'}</td><td>{dt(u.created_at)}</td>
           <td className="num">{u.id !== me.id && (u.status === 'active' ? <button className="btn outline sm" disabled={busy} onClick={() => upd(u, { status: 'locked' }, 'Đã khóa tài khoản')}><Lock size={13} />Khóa</button> : <button className="btn sm" disabled={busy} onClick={() => upd(u, { status: 'active' }, 'Đã mở khóa')}><Unlock size={13} />Mở khóa</button>)}</td></tr>))}
       </tbody></table></div>
-      {data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
+      {data && !q.trim() && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
+      {data && q.trim() && data.total > 100 && <div className="text-xs text-muted">Đang lọc trong 100 người dùng đầu tiên ({data.total} người). Gõ cụ thể hơn để tìm nhanh.</div>}
       {f && <Modal title="Tạo người dùng" size="sm" onClose={() => setF(null)} footer={<><button className="btn outline" onClick={() => setF(null)}>Hủy</button><button className="btn" disabled={busy || !f.name.trim() || !f.email.includes('@') || pwBad} onClick={create}>Tạo</button></>}>
         <div className="grid gap-4"><Field label="Họ tên *"><input className="input" autoFocus value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
           <Field label="Email *"><input className="input" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
@@ -175,7 +177,7 @@ export function AdminSettings() {
       {others.length > 0 && (
         <Section title="Cài đặt khác">
           <div className="tbl-wrap !shadow-none"><table className="tbl"><thead><tr><th>Khóa</th><th>Giá trị</th><th>Mô tả</th><th /></tr></thead><tbody>
-            {others.map((s) => <tr key={s.key_name}><td className="font-mono font-bold">{s.key_name}</td><td><code>{s.value}</code></td><td>{s.description || '—'}</td>
+            {others.map((s) => <tr key={s.key_name}><td className="font-mono font-bold">{s.key_name}</td><td><code className="break-all inline-block max-w-[360px]">{s.value}</code></td><td>{s.description || '—'}</td>
               <td className="num"><button className="btn outline sm" onClick={() => setEdit({ key: s.key_name, value: s.value, description: s.description || '' })}>Sửa</button></td></tr>)}</tbody></table></div>
         </Section>)}
       <Section title="Tác vụ bảo trì">
@@ -228,7 +230,7 @@ export function Audit() {
         {loading && !data && <tr><td colSpan={5}><Loading /></td></tr>}
         {data && data.logs.length === 0 && <tr><td colSpan={5}><Empty /></td></tr>}
         {data?.logs.map((l) => <tr key={l.id}><td className="whitespace-nowrap">{dt(l.action_time)}</td><td>#{l.user_id}</td><td><Pill sm tone="soft">{l.action}</Pill></td><td>{l.target_table} #{l.target_id}</td>
-          <td className="max-w-[320px]"><button className="text-left truncate w-full font-mono text-xs text-muted cursor-pointer bg-transparent border-0 hover:text-brand-700" onClick={() => setView(pretty(l.details))}>{l.details}</button></td></tr>)}</tbody></table></div>
+          <td><div className="max-w-[320px]"><button className="text-left truncate w-full font-mono text-xs text-muted cursor-pointer bg-transparent border-0 hover:text-brand-700" onClick={() => setView(pretty(l.details))}>{l.details}</button></div></td></tr>)}</tbody></table></div>
       {data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
       {view && <Modal title="Chi tiết nhật ký" size="md" onClose={() => setView(null)}><pre className="m-0 text-xs whitespace-pre-wrap">{view}</pre></Modal>}
     </div>)
@@ -269,6 +271,9 @@ export function ImportItems() {
     const r = await run(() => post<ImportRes>('/import/items', b), dry ? undefined : 'Đã nhập — các mục ở trạng thái nháp chờ duyệt')
     if (r) { setRes(r); setDone(!dry) }
   }
+  const [onlyIssues, setOnlyIssues] = useState(false)
+  const resRows = (res?.rows || []).filter((r) => !onlyIssues || r.status !== 'ok' || (r.warnings || []).length > 0)
+  const resPg = useClientPage(resRows, 100)
   return (
     <div className="flex flex-col gap-5 max-w-[1200px]">
       <PageHeader title="Nhập hàng loạt" subtitle="Tối đa 500 dòng. Luôn chạy thử trước; mục nhập vào ở trạng thái nháp. Mảng, người sở hữu (owner_email) và thẻ phải tồn tại." actions={<button className="btn outline" onClick={load}><Upload size={15} />Nạp từ tệp</button>} />
@@ -282,9 +287,11 @@ export function ImportItems() {
       {res && (
         <Section title={res.dry_run ? 'Kết quả chạy thử' : 'Kết quả nhập thật'}>
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-4"><Stat label="Tổng dòng" value={res.total} /><Stat label="Hợp lệ" value={res.valid} /><Stat label="Lỗi" value={res.failed} /><Stat label="Trùng" value={res.duplicates} /></div>
+          <label className="flex items-center gap-2 text-sm font-semibold mb-2 cursor-pointer w-fit"><input type="checkbox" checked={onlyIssues} onChange={(e) => setOnlyIssues(e.target.checked)} />Chỉ hiện dòng có lỗi, trùng hoặc cảnh báo</label>
           <div className="tbl-wrap"><table className="tbl"><thead><tr><th>#</th><th>Tiêu đề</th><th>Trạng thái</th><th>Lỗi / cảnh báo</th><th>Mã mục</th></tr></thead><tbody>
-            {res.rows.map((r) => <tr key={r.index}><td>{r.index + 1}</td><td className="font-bold">{r.title}</td><td><Pill sm tone={r.status === 'ok' ? 'ok' : r.status === 'duplicate' ? 'warn' : 'bad'}>{r.status}</Pill></td>
+            {resPg.rows.map((r) => <tr key={r.index}><td>{r.index + 1}</td><td className="font-bold">{r.title}</td><td><Pill sm tone={r.status === 'ok' ? 'ok' : r.status === 'duplicate' ? 'warn' : 'bad'}>{r.status}</Pill></td>
               <td className="text-xs">{[...(r.errors || []), ...(r.warnings || [])].join(' · ') || '—'}</td><td>{r.item_id ?? '—'}</td></tr>)}</tbody></table></div>
+          <Pager page={resPg.page} pages={resPg.pages} total={resPg.total} onPage={resPg.setPage} />
         </Section>)}
     </div>)
 }

@@ -57,14 +57,17 @@ export function ItemBadges({ it }: { it: Pick<ItemRow, 'type' | 'status' | 'risk
   )
 }
 
-export function Tags({ tags }: { tags?: Tag[] }) {
+export function Tags({ tags, max }: { tags?: Tag[]; max?: number }) {
+  const [all, setAll] = useState(false)
   if (!tags?.length) return null
   // Nhóm kiến thức đứng trước; thẻ do AI gắn có viền nét đứt và độ tin cậy
   const sorted = [...tags].sort((a, b) => (a.kind === 'category' ? 0 : 1) - (b.kind === 'category' ? 0 : 1))
-  return <span className="inline-flex gap-1 flex-wrap">{sorted.map((t) => (
+  const hidden = max && !all ? Math.max(0, sorted.length - max) : 0
+  return <span className="inline-flex gap-1 flex-wrap">{(hidden ? sorted.slice(0, max) : sorted).map((t) => (
     <span key={t.id} title={t.source === 'ai' ? `AI gắn${t.confidence != null ? ` · độ tin cậy ${Math.round(Number(t.confidence) * 100)}%` : ''}` : t.kind === 'category' ? 'Nhóm kiến thức' : 'Chủ đề'}
       className={clsx('text-xs font-bold rounded-md px-2 py-0.5 inline-flex items-center gap-1', t.kind === 'category' ? 'text-white bg-brand-600 border border-brand-600' : 'text-brand-700 bg-brand-50 border border-brand-200', t.source === 'ai' && '!border-dashed')}>
-      {t.kind === 'category' ? '' : '#'}{t.name}{t.source === 'ai' && <Bot size={11} className="opacity-70" />}</span>))}</span>
+      {t.kind === 'category' ? '' : '#'}{t.name}{t.source === 'ai' && <Bot size={11} className="opacity-70" />}</span>))}
+    {hidden > 0 && <button type="button" className="text-xs font-bold rounded-md px-2 py-0.5 border border-dashed border-brand-300 text-brand-700 bg-white cursor-pointer" title={sorted.slice(max).map((t) => t.name).join(', ')} onClick={(e) => { e.stopPropagation(); setAll(true) }}>+{hidden}</button>}</span>
 }
 
 /** Chuẩn hóa trích dẫn nguồn trong câu trả lời AI thành liên kết mở bài:

@@ -53,7 +53,7 @@
   },
   {
    "name": "incidents",
-   "description": "Sổ sự cố và thời gian xử lý."
+   "description": "**Luồng xử lý sự cố**: báo sự cố, gợi ý quy trình phù hợp, làm theo từng bước gắn với sự cố, phân công, đóng sự cố, thống kê MTTR."
   },
   {
    "name": "items",
@@ -78,6 +78,10 @@
   {
    "name": "root",
    "description": "Kiểm tra dịch vụ."
+  },
+  {
+   "name": "runbooks",
+   "description": "**Nhập quy trình xử lý sự cố** theo bước từ tệp mẫu Word / CSV (không dùng AI) hoặc tệp tự do (AI đọc), xem lại rồi tạo hàng loạt."
   },
   {
    "name": "runs",
@@ -942,7 +946,7 @@
       "name": "status",
       "in": "query",
       "required": false,
-      "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
+      "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
       "schema": {
        "type": "string",
        "enum": [
@@ -4548,6 +4552,7 @@
         "example": {
          "RD": {
           "run_id": 3,
+          "incident_id": 5,
           "started_at": "2026-10-05T08:30:00.000Z",
           "steps": [
            {
@@ -4612,7 +4617,7 @@
       }
      },
      "409": {
-      "description": "Runbook chưa có bước nào",
+      "description": "Runbook chưa có bước nào, hoặc sự cố đã khắc phục",
       "content": {
        "application/json": {
         "schema": {
@@ -4621,13 +4626,13 @@
         "example": {
          "RD": null,
          "RC": 409,
-         "RM": "Runbook chưa có bước nào"
+         "RM": "Runbook chưa có bước nào, hoặc sự cố đã khắc phục"
         }
        }
       }
      },
      "422": {
-      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "description": "Không có sự cố này",
       "content": {
        "application/json": {
         "schema": {
@@ -4636,13 +4641,38 @@
         "example": {
          "RD": null,
          "RC": 422,
-         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+         "RM": "Không có sự cố này"
         }
        }
       }
      }
     },
-    "description": "Bắt đầu **chạy runbook** khi xử lý sự cố. Trả về các bước (đánh số từ 0) và `run_id`. Sau đó gọi `PATCH /runs/{run_id}` để ghi từng bước đã làm.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Cần có trước:**\n- Mục là loại `runbook` và bạn xem được.\n\n**Lỗi thường gặp:**\n- `400`: Mục không phải runbook\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `409`: Runbook chưa có bước nào\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/items/12/runs\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "description": "Bắt đầu **chạy runbook** khi xử lý sự cố. Trả về các bước (đánh số từ 0) và `run_id`. Sau đó gọi `PATCH /runs/{run_id}` để ghi từng bước đã làm. Gửi `incident_id` để **gắn lần chạy với sự cố đang xử lý**: sự cố chuyển sang \"đang xử lý\", ghi quy trình đang dùng và người xử lý (nếu chưa có); các bước hiện trong dòng thời gian của sự cố.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Cần có trước:**\n- Mục là loại `runbook` và bạn xem được.\n\n**Lỗi thường gặp:**\n- `400`: Mục không phải runbook\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `409`: Runbook chưa có bước nào, hoặc sự cố đã khắc phục\n- `422`: Không có sự cố này\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/items/12/runs\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"incident_id\":5}'\n```",
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "incident_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Mã sự cố đang xử lý: gắn lần chạy quy trình với sự cố đó (sự cố chuyển sang \"đang xử lý\")."
+         }
+        }
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "incident_id": 5
+         }
+        }
+       }
+      }
+     }
+    },
     "security": [
      {
       "bearerAuth": []
@@ -6416,7 +6446,7 @@
     "tags": [
      "incidents"
     ],
-    "summary": "Sổ sự cố (có MTTR)",
+    "summary": "Danh sách sự cố: lọc theo trạng thái, mức độ, hệ thống, của tôi (có MTTR)",
     "operationId": "get_incidents",
     "parameters": [
      {
@@ -6448,8 +6478,7 @@
       "schema": {
        "type": "string",
        "maxLength": 100
-      },
-      "example": "thanh-toan"
+      }
      },
      {
       "name": "system",
@@ -6459,6 +6488,56 @@
       "schema": {
        "type": "string",
        "maxLength": 100
+      }
+     },
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "open",
+        "investigating",
+        "resolved"
+       ]
+      },
+      "example": "investigating"
+     },
+     {
+      "name": "severity",
+      "in": "query",
+      "required": false,
+      "description": "Mức độ sự cố: `low` (thấp), `medium` (trung bình), `high` (cao), `critical` (nghiêm trọng).",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+       ]
+      },
+      "example": "high"
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "description": "Từ khóa tìm kiếm. Gõ tiếng Việt có hoặc không dấu đều được, hoặc mã lỗi nguyên văn như `ERR_504`.",
+      "schema": {
+       "type": "string",
+       "maxLength": 200
+      }
+     },
+     {
+      "name": "mine",
+      "in": "query",
+      "required": false,
+      "description": "`true` để chỉ xem sự cố bạn báo hoặc được giao xử lý.",
+      "schema": {
+       "type": "boolean"
       }
      }
     ],
@@ -6475,14 +6554,31 @@
           "incidents": [
            {
             "id": 5,
-            "title": "Thanh toán timeout",
+            "title": "Thanh toán timeout ERR_504",
+            "description": "Khách báo không thanh toán được từ 8h",
             "system": "payment",
             "error_group": "thanh-toan",
+            "status": "investigating",
+            "status_label": "Đang xử lý",
+            "severity": "high",
+            "severity_label": "Cao",
             "detected_at": "2026-10-05T08:00:00.000Z",
-            "resolved_at": "2026-10-05T08:25:00.000Z",
+            "resolved_at": null,
             "runbook_id": 12,
-            "conclusion": "Worker bị treo, đã khởi động lại.",
-            "mttr_minutes": 25
+            "conclusion": null,
+            "reporter": {
+             "id": 7,
+             "name": "Hà"
+            },
+            "assignee": {
+             "id": 3,
+             "name": "An"
+            },
+            "reporter_id": 7,
+            "assignee_id": 3,
+            "created_at": "2026-10-05T08:02:00.000Z",
+            "updated_at": "2026-10-05T08:10:00.000Z",
+            "mttr_minutes": null
            }
           ],
           "total": 1,
@@ -6527,7 +6623,7 @@
       }
      }
     },
-    "description": "Sổ sự cố, mới nhất trước. Mỗi sự cố có `mttr_minutes` (thời gian xử lý, phút) nếu đã xử lý xong.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/incidents?error_group=thanh-toan\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "description": "Danh sách sự cố, mới nhất trước. Lọc theo `status` (`open` mới báo, `investigating` đang xử lý, `resolved` đã khắc phục), `severity`, `system`, `error_group`, `q` (tên sự cố), `mine=true` (sự cố bạn báo hoặc được giao). Mỗi sự cố có người báo, người phụ trách và `mttr_minutes` (thời gian từ lúc phát hiện tới lúc khắc phục) khi đã xong.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/incidents?status=investigating&severity=high\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
     "security": [
      {
       "bearerAuth": []
@@ -6538,7 +6634,7 @@
     "tags": [
      "incidents"
     ],
-    "summary": "IN-06: Ghi sự cố",
+    "summary": "IN-06: Báo / ghi sự cố (người đọc cũng báo được)",
     "operationId": "post_incidents",
     "parameters": [],
     "responses": {
@@ -6553,13 +6649,33 @@
          "RD": {
           "id": 5,
           "title": "Thanh toán timeout ERR_504",
+          "description": "Khách báo không thanh toán được từ 8h",
           "system": "payment",
           "error_group": "thanh-toan",
+          "status": "resolved",
+          "status_label": "Đã khắc phục",
+          "severity": "high",
+          "severity_label": "Cao",
           "detected_at": "2026-10-05T08:00:00.000Z",
           "resolved_at": "2026-10-05T08:25:00.000Z",
           "runbook_id": 12,
           "conclusion": "Worker bị treo, đã khởi động lại.",
-          "mttr_minutes": 25
+          "reporter": {
+           "id": 7,
+           "name": "Hà"
+          },
+          "assignee": {
+           "id": 3,
+           "name": "An"
+          },
+          "reporter_id": 7,
+          "assignee_id": 3,
+          "created_at": "2026-10-05T08:02:00.000Z",
+          "updated_at": "2026-10-05T08:10:00.000Z",
+          "mttr_minutes": 25,
+          "runbook_title": "Cổng thanh toán: lỗi timeout ERR_504",
+          "runs": [],
+          "timeline": []
          },
          "RC": 201,
          "RM": "Incident recorded"
@@ -6598,7 +6714,7 @@
       }
      },
      "422": {
-      "description": "`resolved_at` sớm hơn `detected_at`, hoặc `runbook_id` không tồn tại",
+      "description": "`resolved_at` sớm hơn `detected_at`, `runbook_id` hoặc `assignee_id` không tồn tại, hoặc nội dung chứa bí mật",
       "content": {
        "application/json": {
         "schema": {
@@ -6607,13 +6723,13 @@
         "example": {
          "RD": null,
          "RC": 422,
-         "RM": "resolved_at sớm hơn detected_at, hoặc runbook_id không tồn tại"
+         "RM": "resolved_at sớm hơn detected_at, runbook_id hoặc assignee_id không tồn tại, hoặc nội dung chứa bí mật"
         }
        }
       }
      }
     },
-    "description": "Ghi một sự cố vào sổ sự cố. Làm trong vòng 1 ngày làm việc sau khi xử lý xong để có số liệu thời gian xử lý (KPI K3).\n\n**Ai gọi được:** `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `contributor` trở lên.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: `resolved_at` sớm hơn `detected_at`, hoặc `runbook_id` không tồn tại\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/incidents\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"title\":\"Thanh toán timeout ERR_504\",\"system\":\"payment\",\"error_group\":\"thanh-toan\",\"detected_at\":\"2026-10-05T08:00:00Z\",\"resolved_at\":\"2026-10-05T08:25:00Z\",\"runbook_id\":12,\"conclusion\":\"Worker bị treo, đã khởi động lại.\"}'\n```",
+    "description": "**Báo sự cố** hoặc ghi sự cố vào sổ. **Người đọc** báo được sự cố (tên, hệ thống, mô tả, mức độ; trạng thái \"mới báo\"), người báo được ghi lại. **Người quản lý** (contributor trở lên) ghi thêm được người phụ trách, trạng thái, thời điểm khắc phục, quy trình đã dùng và kết luận (ghi trong vòng 1 ngày làm việc sau khi xử lý xong để có số liệu MTTR, KPI K3). Bỏ trống `detected_at` thì lấy thời điểm hiện tại; bỏ trống `error_group` thì là \"Chưa phân loại\". Trả về chi tiết sự cố như `GET /incidents/{id}`.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên (không gồm sponsor).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: `resolved_at` sớm hơn `detected_at`, `runbook_id` hoặc `assignee_id` không tồn tại, hoặc nội dung chứa bí mật\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/incidents\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"title\":\"Thanh toán timeout ERR_504\",\"system\":\"payment\",\"error_group\":\"thanh-toan\",\"detected_at\":\"2026-10-05T08:00:00Z\",\"resolved_at\":\"2026-10-05T08:25:00Z\",\"runbook_id\":12,\"conclusion\":\"Worker bị treo, đã khởi động lại.\"}'\n```",
     "requestBody": {
      "required": true,
      "content": {
@@ -6637,6 +6753,21 @@
           "maxLength": 100,
           "description": "Nhóm lỗi trong danh mục của nhóm, để so sánh thời gian xử lý trước và sau khi có runbook."
          },
+         "description": {
+          "type": "string",
+          "maxLength": 5000,
+          "description": "Mô tả."
+         },
+         "severity": {
+          "type": "string",
+          "enum": [
+           "low",
+           "medium",
+           "high",
+           "critical"
+          ],
+          "description": "Mức độ sự cố: `low` (thấp), `medium` (trung bình), `high` (cao), `critical` (nghiêm trọng)."
+         },
          "detected_at": {
           "type": "string",
           "format": "date-time",
@@ -6646,6 +6777,20 @@
           "type": "string",
           "format": "date-time",
           "description": "Thời điểm xử lý xong. Không được sớm hơn lúc phát hiện."
+         },
+         "status": {
+          "type": "string",
+          "enum": [
+           "open",
+           "investigating",
+           "resolved"
+          ],
+          "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
+         },
+         "assignee_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Mã người phụ trách xử lý sự cố (xem `GET /admin/users`)."
          },
          "runbook_id": {
           "type": "integer",
@@ -6660,9 +6805,7 @@
         },
         "required": [
          "title",
-         "system",
-         "error_group",
-         "detected_at"
+         "system"
         ]
        },
        "examples": {
@@ -6689,24 +6832,125 @@
     ]
    }
   },
-  "/incidents/{id}": {
-   "patch": {
+  "/incidents/stats": {
+   "get": {
     "tags": [
      "incidents"
     ],
-    "summary": "Cập nhật / đóng sự cố",
-    "operationId": "patch_incidents_id",
+    "summary": "Thống kê sự cố: đang mở, đang xử lý, MTTR 30 ngày, nhóm lỗi hay gặp",
+    "operationId": "get_incidents_stats",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "open": 2,
+          "investigating": 1,
+          "resolved": 40,
+          "open_by_severity": {
+           "critical": 1,
+           "medium": 2
+          },
+          "last_30_days": {
+           "resolved": 12,
+           "mttr_minutes": 34.5,
+           "with_runbook": 9,
+           "top_error_groups": [
+            {
+             "name": "thanh-toan",
+             "count": 5
+            }
+           ]
+          }
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     }
+    },
+    "description": "Số liệu cho bảng điều khiển sự cố: số sự cố mới báo / đang xử lý / đã khắc phục, sự cố chưa xong theo mức độ, và trong 30 ngày qua: số đã khắc phục, MTTR trung bình (phút), số có dùng quy trình, 5 nhóm lỗi hay gặp nhất.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/incidents/stats\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/incidents/suggest-runbooks": {
+   "get": {
+    "tags": [
+     "incidents"
+    ],
+    "summary": "Gợi ý quy trình xử lý phù hợp với sự cố (không dùng AI, học từ sự cố đã khắc phục)",
+    "operationId": "get_incidents_suggest_runbooks",
     "parameters": [
      {
-      "name": "id",
-      "in": "path",
-      "required": true,
-      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "name": "text",
+      "in": "query",
+      "required": false,
+      "description": "Nội dung văn bản. Với ký ức (`PUT /agents/memory/{id}`): một câu tự đủ nghĩa (8 đến 300 ký tự). Với nhập tri thức (`POST /ai/draft-item/text`): văn bản nguồn cần AI soạn thành mục (20 đến 100.000 ký tự). Không được chứa mật khẩu, khóa; email và số điện thoại sẽ bị che hoặc từ chối. Với điền mẫu (`POST /fill/templates/{id}/extract`): thông tin bạn dán vào để AI lấy giá trị điền mẫu (tên, ngày, số tiền, bảng kê...), tối đa 20.000 ký tự.",
+      "schema": {
+       "type": "string",
+       "maxLength": 1000
+      },
+      "example": "thanh toán báo timeout"
+     },
+     {
+      "name": "system",
+      "in": "query",
+      "required": false,
+      "description": "Hệ thống xảy ra sự cố.",
+      "schema": {
+       "type": "string",
+       "maxLength": 100
+      },
+      "example": "payment"
+     },
+     {
+      "name": "error_group",
+      "in": "query",
+      "required": false,
+      "description": "Nhóm lỗi trong danh mục của nhóm, để so sánh thời gian xử lý trước và sau khi có runbook.",
+      "schema": {
+       "type": "string",
+       "maxLength": 100
+      },
+      "example": "thanh-toan"
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "description": "Số dòng mỗi trang (1 đến 100, mặc định 20).",
       "schema": {
        "type": "integer",
-       "minimum": 1
-      },
-      "example": 12
+       "minimum": 1,
+       "maximum": 20,
+       "default": 5
+      }
      }
     ],
     "responses": {
@@ -6718,19 +6962,27 @@
          "$ref": "#/components/schemas/Envelope"
         },
         "example": {
-         "RD": {
-          "id": 5,
-          "title": "Thanh toán timeout ERR_504",
-          "system": "payment",
-          "error_group": "thanh-toan",
-          "detected_at": "2026-10-05T08:00:00.000Z",
-          "resolved_at": "2026-10-05T08:25:00.000Z",
-          "runbook_id": 12,
-          "conclusion": "Worker bị treo, đã khởi động lại.",
-          "mttr_minutes": 25
-         },
+         "RD": [
+          {
+           "id": 12,
+           "title": "Cổng thanh toán: lỗi timeout ERR_504",
+           "summary": "Xử lý khi gọi nhà cung cấp bị timeout",
+           "status": "approved",
+           "affected_system": "payment",
+           "severity_level": "high",
+           "steps": 5,
+           "dangerous_steps": 1,
+           "used_for_similar": 3,
+           "reasons": [
+            "Khớp với mô tả sự cố",
+            "Đã dùng để khắc phục 3 sự cố tương tự",
+            "Cùng hệ thống"
+           ],
+           "score": 41.2
+          }
+         ],
          "RC": 200,
-         "RM": "Incident updated"
+         "RM": "OK"
         }
        }
       }
@@ -6765,8 +7017,150 @@
        }
       }
      },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Gợi ý quy trình xử lý** cho một sự cố (hoặc mô tả đang gõ), **không dùng AI**: tìm quy trình (runbook) khớp chữ với mô tả và hệ thống, cộng điểm cho quy trình **cùng hệ thống** và quy trình **đã khắc phục được sự cố tương tự** (cùng nhóm lỗi hoặc cùng hệ thống) trước đây. `reasons` giải thích vì sao gợi ý; `dangerous_steps` cho biết số bước cần xác nhận khi làm.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/incidents/suggest-runbooks?text=thanh%20to%C3%A1n%20b%C3%A1o%20timeout&system=payment&error_group=thanh-toan\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/incidents/{id}": {
+   "get": {
+    "tags": [
+     "incidents"
+    ],
+    "summary": "Chi tiết sự cố: người báo, người xử lý, các lần làm theo quy trình, dòng thời gian",
+    "operationId": "get_incidents_id",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 5,
+          "title": "Thanh toán timeout ERR_504",
+          "description": "Khách báo không thanh toán được từ 8h",
+          "system": "payment",
+          "error_group": "thanh-toan",
+          "status": "investigating",
+          "status_label": "Đang xử lý",
+          "severity": "high",
+          "severity_label": "Cao",
+          "detected_at": "2026-10-05T08:00:00.000Z",
+          "resolved_at": null,
+          "runbook_id": 12,
+          "conclusion": null,
+          "reporter": {
+           "id": 7,
+           "name": "Hà"
+          },
+          "assignee": {
+           "id": 3,
+           "name": "An"
+          },
+          "reporter_id": 7,
+          "assignee_id": 3,
+          "created_at": "2026-10-05T08:02:00.000Z",
+          "updated_at": "2026-10-05T08:10:00.000Z",
+          "mttr_minutes": null,
+          "runbook_title": "Cổng thanh toán: lỗi timeout ERR_504",
+          "runs": [
+           {
+            "id": 3,
+            "runbook_id": 12,
+            "runbook_title": "Cổng thanh toán: lỗi timeout ERR_504",
+            "user": {
+             "id": 3,
+             "name": "An"
+            },
+            "started_at": "2026-10-05T08:05:00.000Z",
+            "finished_at": null,
+            "duration_minutes": null,
+            "steps_total": 5,
+            "steps_done": 2,
+            "steps_failed": 0,
+            "log": [
+             {
+              "index": 0,
+              "status": "done",
+              "at": "2026-10-05T08:06:00.000Z",
+              "note": null,
+              "confirmed_dangerous": false,
+              "action": "Kiểm tra trạng thái nhà cung cấp"
+             }
+            ]
+           }
+          ],
+          "timeline": [
+           {
+            "at": "2026-10-05T08:00:00.000Z",
+            "kind": "detected",
+            "text": "Phát hiện sự cố"
+           },
+           {
+            "at": "2026-10-05T08:05:00.000Z",
+            "kind": "run_started",
+            "text": "An bắt đầu làm theo “Cổng thanh toán: lỗi timeout ERR_504”"
+           }
+          ]
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
      "404": {
-      "description": "Không tìm thấy, hoặc bạn không có quyền xem",
+      "description": "Không có sự cố này",
       "content": {
        "application/json": {
         "schema": {
@@ -6775,7 +7169,7 @@
         "example": {
          "RD": null,
          "RC": 404,
-         "RM": "Không tìm thấy, hoặc bạn không có quyền xem"
+         "RM": "Không có sự cố này"
         }
        }
       }
@@ -6796,7 +7190,155 @@
       }
      }
     },
-    "description": "Cập nhật sự cố: đóng sự cố (`resolved_at`), gắn runbook đã dùng, bổ sung kết luận.\n\n**Ai gọi được:** `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `contributor` trở lên.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PATCH \"http://localhost:3001/incidents/12\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"resolved_at\":\"2026-10-05T08:25:00Z\",\"conclusion\":\"Worker bị treo, đã khởi động lại.\"}'\n```",
+    "description": "Chi tiết một sự cố: mô tả, mức độ, trạng thái, người báo, người phụ trách, quy trình đang dùng, **các lần làm theo quy trình** (ai làm, bao nhiêu bước xong / lỗi, nhật ký từng bước) và **dòng thời gian** (phát hiện, bắt đầu xử lý, bước không thành công, khắc phục).\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `404`: Không có sự cố này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/incidents/12\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "patch": {
+    "tags": [
+     "incidents"
+    ],
+    "summary": "Cập nhật sự cố: phân công, đổi trạng thái, đóng sự cố, kết luận",
+    "operationId": "patch_incidents_id",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 5,
+          "title": "Thanh toán timeout ERR_504",
+          "description": "Khách báo không thanh toán được từ 8h",
+          "system": "payment",
+          "error_group": "thanh-toan",
+          "status": "resolved",
+          "status_label": "Đã khắc phục",
+          "severity": "high",
+          "severity_label": "Cao",
+          "detected_at": "2026-10-05T08:00:00.000Z",
+          "resolved_at": "2026-10-05T08:25:00.000Z",
+          "runbook_id": 12,
+          "conclusion": "Worker bị treo, đã khởi động lại.",
+          "reporter": {
+           "id": 7,
+           "name": "Hà"
+          },
+          "assignee": {
+           "id": 3,
+           "name": "An"
+          },
+          "reporter_id": 7,
+          "assignee_id": 3,
+          "created_at": "2026-10-05T08:02:00.000Z",
+          "updated_at": "2026-10-05T08:10:00.000Z",
+          "mttr_minutes": 25,
+          "runbook_title": "Cổng thanh toán: lỗi timeout ERR_504",
+          "runs": [],
+          "timeline": []
+         },
+         "RC": 200,
+         "RM": "Incident updated"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Không phải người quản lý hay người báo",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Không phải người quản lý hay người báo"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có sự cố này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có sự cố này"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Sự cố đã khắc phục (người báo không sửa được nữa)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 409,
+         "RM": "Sự cố đã khắc phục (người báo không sửa được nữa)"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Thời điểm không hợp lệ hoặc mã không tồn tại",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Thời điểm không hợp lệ hoặc mã không tồn tại"
+        }
+       }
+      }
+     }
+    },
+    "description": "Cập nhật sự cố. **Người quản lý** (contributor trở lên): phân công (`assignee_id`), đổi trạng thái, mức độ, nhóm lỗi, gắn quy trình đã dùng, kết luận. Đặt `status: \"resolved\"` mà không gửi `resolved_at` thì lấy thời điểm hiện tại; mở lại sự cố (trạng thái khác `resolved`) thì xóa thời điểm khắc phục. **Người báo** (không phải người quản lý) chỉ sửa được tên, mô tả, mức độ của sự cố mình báo, và tự xác nhận đã khắc phục (`status: \"resolved\"` kèm `conclusion`) khi chưa khắc phục; không mở lại hay phân công được.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Người quản lý (contributor trở lên), hoặc chính người báo sự cố.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Không phải người quản lý hay người báo\n- `404`: Không có sự cố này\n- `409`: Sự cố đã khắc phục (người báo không sửa được nữa)\n- `422`: Thời điểm không hợp lệ hoặc mã không tồn tại\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PATCH \"http://localhost:3001/incidents/12\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"status\":\"resolved\",\"conclusion\":\"Worker bị treo, đã khởi động lại.\"}'\n```",
     "requestBody": {
      "required": false,
      "content": {
@@ -6804,6 +7346,51 @@
        "schema": {
         "type": "object",
         "properties": {
+         "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 255,
+          "description": "Tiêu đề. Nên theo quy ước \"Hệ thống hoặc chủ đề: việc cần làm hoặc triệu chứng\", ví dụ \"Cổng thanh toán: lỗi timeout khi gọi bên thứ ba\". Tối thiểu 3 ký tự."
+         },
+         "description": {
+          "type": "string",
+          "maxLength": 5000,
+          "description": "Mô tả."
+         },
+         "system": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Hệ thống xảy ra sự cố."
+         },
+         "error_group": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Nhóm lỗi trong danh mục của nhóm, để so sánh thời gian xử lý trước và sau khi có runbook."
+         },
+         "severity": {
+          "type": "string",
+          "enum": [
+           "low",
+           "medium",
+           "high",
+           "critical"
+          ],
+          "description": "Mức độ sự cố: `low` (thấp), `medium` (trung bình), `high` (cao), `critical` (nghiêm trọng)."
+         },
+         "status": {
+          "type": "string",
+          "enum": [
+           "open",
+           "investigating",
+           "resolved"
+          ],
+          "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
+         },
+         "assignee_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Mã người phụ trách xử lý sự cố (xem `GET /admin/users`)."
+         },
          "resolved_at": {
           "type": "string",
           "format": "date-time",
@@ -6825,7 +7412,7 @@
         "Ví dụ": {
          "summary": "Ví dụ",
          "value": {
-          "resolved_at": "2026-10-05T08:25:00Z",
+          "status": "resolved",
           "conclusion": "Worker bị treo, đã khởi động lại."
          }
         }
@@ -6931,7 +7518,7 @@
       "name": "status",
       "in": "query",
       "required": false,
-      "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
+      "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
       "schema": {
        "type": "string",
        "enum": [
@@ -7318,7 +7905,7 @@
       "name": "status",
       "in": "query",
       "required": false,
-      "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
+      "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
       "schema": {
        "type": "string",
        "enum": [
@@ -12283,7 +12870,7 @@
       "name": "status",
       "in": "query",
       "required": false,
-      "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
+      "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
       "schema": {
        "type": "string",
        "enum": [
@@ -12711,7 +13298,7 @@
            "active",
            "hidden"
           ],
-          "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
+          "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
          },
          "extend_days": {
           "type": "integer",
@@ -23029,6 +23616,557 @@
     ]
    }
   },
+  "/runbooks/template": {
+   "get": {
+    "tags": [
+     "runbooks"
+    ],
+    "summary": "Tải tệp mẫu (Word hoặc CSV) để nhập quy trình xử lý sự cố theo bước",
+    "operationId": "get_runbooks_template",
+    "parameters": [
+     {
+      "name": "format",
+      "in": "query",
+      "required": false,
+      "description": "Định dạng trả về. Với `csv` hoặc `md` API trả về nội dung file để tải về thay vì khung JSON.",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "csv",
+        "docx"
+       ],
+       "default": "docx"
+      },
+      "example": "docx"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công: trả nội dung file",
+      "content": {
+       "application/octet-stream": {
+        "schema": {
+         "type": "string",
+         "format": "binary"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Tải tệp mẫu** để nhập quy trình xử lý sự cố theo bước. `format=docx` (mặc định): tệp Word, mỗi quy trình gồm dòng \"QUY TRÌNH: tên\", bảng thông tin 2 cột (hệ thống, mức độ, dấu hiệu, chuẩn bị trước, cách xác nhận, hoàn tác, liên hệ...) và bảng các bước 4 cột (Bước, Việc cần làm, Kết quả mong đợi, Nguy hiểm). `format=csv`: mỗi dòng một bước, thông tin chung ghi ở dòng đầu của mỗi quy trình (cùng \"Mã quy trình\"). Cả hai có sẵn 2 quy trình ví dụ. Thành công trả **nội dung file** (không phải JSON).\n\n**Ai gọi được:** `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `contributor` trở lên.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Phản hồi:** Trả tệp mẫu (.docx hoặc .csv), không phải khung JSON.\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/runbooks/template?format=docx\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -o ket-qua\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/runbooks/import/parse": {
+   "post": {
+    "tags": [
+     "runbooks"
+    ],
+    "summary": "Đọc quy trình xử lý sự cố từ tệp mẫu (không dùng AI) hoặc tệp tự do (AI đọc) để xem lại",
+    "operationId": "post_runbooks_import_parse",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "method": "template",
+          "source": "mau-quy-trinh.docx",
+          "cost_usd": 0,
+          "runbooks": [
+           {
+            "title": "Website bán hàng: báo lỗi 502 Bad Gateway",
+            "affected_system": "Website bán hàng",
+            "severity_level": "critical",
+            "error_group": "Gián đoạn dịch vụ",
+            "symptom": "Khách mở website thấy trang lỗi 502.",
+            "prerequisites": "Có quyền SSH vào máy chủ web.",
+            "verification": "Mở trang chủ không còn lỗi.",
+            "rollback": "Quay về bản triển khai trước.",
+            "contact_info": "Trực ca kỹ thuật",
+            "summary": "Khôi phục website khi gặp lỗi 502.",
+            "risk_level": "R3",
+            "steps": [
+             {
+              "action": "Xem log lỗi gần nhất",
+              "expected": "Tìm được nguyên nhân",
+              "dangerous": false
+             },
+             {
+              "action": "Khởi động lại dịch vụ ứng dụng trên máy chủ",
+              "expected": "Dịch vụ chạy lại",
+              "dangerous": true,
+              "auto_dangerous": true
+             }
+            ],
+            "code": "QT-02",
+            "missing": [],
+            "notes": [
+             "Đã tự đánh dấu \"nguy hiểm\" cho bước có thể làm mất dữ liệu hoặc gián đoạn dịch vụ; khi làm theo sẽ phải xác nhận."
+            ],
+            "ready": true
+           }
+          ]
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "413": {
+      "description": "Tệp quá lớn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 413,
+         "RM": "Tệp quá lớn"
+        }
+       }
+      }
+     },
+     "415": {
+      "description": "Loại tệp không được phép",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 415,
+         "RM": "Loại tệp không được phép"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Tệp không theo mẫu (khi use_ai=false), không có nội dung, không tìm thấy quy trình nào, hoặc nội dung chứa bí mật",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Tệp không theo mẫu (khi use_ai=false), không có nội dung, không tìm thấy quy trình nào, hoặc nội dung chứa bí mật"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Hết hạn mức",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 429,
+         "RM": "Hết hạn mức"
+        }
+       }
+      }
+     },
+     "503": {
+      "description": "AI chưa bật hoặc tính năng runbook_import bị tắt",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 503,
+         "RM": "AI chưa bật hoặc tính năng runbook_import bị tắt"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Đọc quy trình xử lý sự cố** để xem lại trước khi tạo. **Không lưu gì.**\n\n- **Tệp theo mẫu** (Word, CSV, Excel từ `GET /runbooks/template`; tên cột/nhãn tiếng Việt có dấu hay không dấu đều được): đọc thẳng, **không dùng AI**, không tốn chi phí (`method: \"template\"`).\n- **Tệp tự do** (tài liệu Word, PDF, ảnh chụp quy trình, ghi âm...) hoặc **văn bản dán vào** (`text`): AI đọc và tách thành từng quy trình theo bước (`method: \"ai\"`). Số điện thoại, email, số định danh được che trước khi gửi AI. Đặt `use_ai=false` để chỉ chấp nhận tệp đúng mẫu.\n\n**Làm giàu thông minh:** tự đánh dấu **bước nguy hiểm** (xóa, khởi động lại máy chủ, sửa dữ liệu thật... `auto_dangerous: true`), chuẩn hóa mức độ (Thấp/Trung bình/Cao/Nghiêm trọng), gợi ý **mức rủi ro** (R3 khi nghiêm trọng hoặc có bước nguy hiểm và có cách hoàn tác), thêm tên hệ thống vào đầu tên quy trình, và liệt kê thông tin **còn thiếu** theo quy tắc runbook (`missing`, `ready`).\n\nGửi `multipart/form-data` (trường `file` + `text`, `use_ai`) hoặc JSON `{\"text\": \"...\"}`.\n\n**Ai gọi được:** `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `contributor` trở lên.\n- Tệp không theo mẫu thì cần AI đã bật (tính năng `runbook_import`).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `413`: Tệp quá lớn\n- `415`: Loại tệp không được phép\n- `422`: Tệp không theo mẫu (khi use_ai=false), không có nội dung, không tìm thấy quy trình nào, hoặc nội dung chứa bí mật\n- `429`: Hết hạn mức\n- `503`: AI chưa bật hoặc tính năng runbook_import bị tắt\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/runbooks/import/parse\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"text\":\"Khi website báo lỗi 502: 1. Xem log lỗi gần nhất. 2. Khởi động lại dịch vụ ứng dụng. Kiểm tra lại trang chủ. Liên hệ trực ca kỹ thuật.\"}'\n```",
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "text": {
+          "type": "string",
+          "maxLength": 50000,
+          "description": "Nội dung văn bản. Với ký ức (`PUT /agents/memory/{id}`): một câu tự đủ nghĩa (8 đến 300 ký tự). Với nhập tri thức (`POST /ai/draft-item/text`): văn bản nguồn cần AI soạn thành mục (20 đến 100.000 ký tự). Không được chứa mật khẩu, khóa; email và số điện thoại sẽ bị che hoặc từ chối. Với điền mẫu (`POST /fill/templates/{id}/extract`): thông tin bạn dán vào để AI lấy giá trị điền mẫu (tên, ngày, số tiền, bảng kê...), tối đa 20.000 ký tự."
+         },
+         "use_ai": {
+          "type": "boolean",
+          "description": "`false` để chỉ đọc theo tệp mẫu (không gọi AI); mặc định `true`: tệp không theo mẫu thì AI đọc."
+         }
+        }
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "text": "Khi website báo lỗi 502: 1. Xem log lỗi gần nhất. 2. Khởi động lại dịch vụ ứng dụng. Kiểm tra lại trang chủ. Liên hệ trực ca kỹ thuật."
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/runbooks/import/commit": {
+   "post": {
+    "tags": [
+     "runbooks"
+    ],
+    "summary": "Tạo hàng loạt quy trình xử lý sự cố đã xem lại (bản nháp hoặc gửi duyệt)",
+    "operationId": "post_runbooks_import_commit",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "created": 1,
+          "failed": 0,
+          "results": [
+           {
+            "index": 0,
+            "ok": true,
+            "id": 61,
+            "title": "Website bán hàng: báo lỗi 502 Bad Gateway",
+            "status": "draft",
+            "warnings": []
+           }
+          ]
+         },
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Thiếu `space_id` hoặc `runbooks`",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Thiếu space_id hoặc runbooks"
+        }
+       }
+      }
+     }
+    },
+    "description": "**Tạo hàng loạt** quy trình xử lý sự cố (mục loại `runbook`) từ danh sách đã xem lại, vào mảng `space_id`. Mỗi quy trình tạo độc lập: quy trình lỗi (thiếu thông tin bắt buộc, trùng tên với mục đã có...) không chặn các quy trình khác; kết quả từng quy trình ở `results` (trùng tên thì có `similar`, gửi lại với `allow_duplicate: true` nếu vẫn muốn tạo). Mặc định tạo **bản nháp**; `submit: true` để gửi duyệt ngay. Nội dung bài được tự soạn từ các trường (dấu hiệu, các bước, xác nhận, hoàn tác) để tìm kiếm và trợ lý AI dùng được.\n\n**Ai gọi được:** `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `contributor` trở lên.\n- Quy trình đủ thông tin bắt buộc của runbook (dấu hiệu, hệ thống, mức độ, chuẩn bị trước, liên hệ, cách xác nhận, ít nhất 1 bước có kết quả mong đợi; R3 cần cách hoàn tác).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Thiếu `space_id` hoặc `runbooks`\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/runbooks/import/commit\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"space_id\":1,\"submit\":false,\"runbooks\":[{\"title\":\"Website bán hàng: báo lỗi 502 Bad Gateway\",\"affected_system\":\"Website bán hàng\",\"severity_level\":\"critical\",\"error_group\":\"Gián đoạn dịch vụ\",\"symptom\":\"Khách mở website thấy trang lỗi 502.\",\"prerequisites\":\"Có quyền SSH vào máy chủ web.\",\"verification\":\"Mở trang chủ không còn lỗi.\",\"rollback\":\"Quay về bản triển khai trước.\",\"contact_info\":\"Trực ca kỹ thuật\",\"summary\":\"Khôi phục website khi gặp lỗi 502.\",\"risk_level\":\"R3\",\"steps\":[{\"action\":\"Xem log lỗi gần nhất\",\"expected\":\"Tìm được nguyên nhân\",\"dangerous\":false},{\"action\":\"Khởi động lại dịch vụ ứng dụng trên máy chủ\",\"expected\":\"Dịch vụ chạy lại\",\"dangerous\":true}]}]}'\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "space_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Mã mảng (nhóm nội dung). Xem danh sách bằng `GET /spaces`."
+         },
+         "submit": {
+          "type": "boolean",
+          "default": false,
+          "description": "`true` để gửi duyệt ngay sau khi tạo (mặc định chỉ tạo bản nháp)."
+         },
+         "runbooks": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "title": {
+             "type": "string",
+             "maxLength": 255,
+             "description": "Tiêu đề. Nên theo quy ước \"Hệ thống hoặc chủ đề: việc cần làm hoặc triệu chứng\", ví dụ \"Cổng thanh toán: lỗi timeout khi gọi bên thứ ba\". Tối thiểu 3 ký tự."
+            },
+            "summary": {
+             "type": "string",
+             "maxLength": 2000,
+             "description": "Tóm tắt 1 đến 3 câu, hiện trong kết quả tìm kiếm. Bắt buộc với tài liệu và bài viết."
+            },
+            "affected_system": {
+             "type": "string",
+             "maxLength": 255,
+             "description": "Hệ thống bị ảnh hưởng."
+            },
+            "severity_level": {
+             "type": "string",
+             "maxLength": 30,
+             "description": "Mức độ nghiêm trọng: `low`, `medium`, `high` hoặc `critical`."
+            },
+            "error_group": {
+             "type": "string",
+             "maxLength": 100,
+             "description": "Nhóm lỗi trong danh mục của nhóm, để so sánh thời gian xử lý trước và sau khi có runbook."
+            },
+            "symptom": {
+             "type": "string",
+             "maxLength": 5000,
+             "description": "Triệu chứng và thông báo lỗi điển hình, để người xử lý tìm đúng runbook."
+            },
+            "prerequisites": {
+             "type": "string",
+             "maxLength": 5000,
+             "description": "Điều kiện tiên quyết: quyền, công cụ, thông tin cần có trước khi làm."
+            },
+            "verification": {
+             "type": "string",
+             "maxLength": 5000,
+             "description": "Cách xác minh sự cố đã khỏi. Bắt buộc với R2 và R3."
+            },
+            "rollback": {
+             "type": "string",
+             "maxLength": 5000,
+             "description": "Cách hoàn tác nếu làm sai. Bắt buộc với R3."
+            },
+            "contact_info": {
+             "type": "string",
+             "maxLength": 255,
+             "description": "Người hoặc kênh liên hệ khi cần leo thang."
+            },
+            "risk_level": {
+             "type": "string",
+             "enum": [
+              "R2",
+              "R3"
+             ],
+             "description": "Mức rủi ro quyết định số người duyệt: `R1` (ghi chú tham khảo, tự xuất bản), `R2` (một người duyệt), `R3` (hai người duyệt, bắt buộc có cách xác minh và hoàn tác). Prompt và runbook chỉ được R2 hoặc R3."
+            },
+            "allow_duplicate": {
+             "type": "boolean",
+             "description": "Gửi `true` để vẫn tạo dù hệ thống báo có mục tiêu đề tương tự."
+            },
+            "steps": {
+             "type": "array",
+             "items": {
+              "type": "object",
+              "properties": {
+               "action": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000,
+                "description": "Lọc theo tên hành động, ví dụ `item.approve` (khớp phần đầu)."
+               },
+               "expected": {
+                "type": "string",
+                "maxLength": 1000,
+                "description": "Kết quả mong đợi sau khi làm bước này."
+               },
+               "dangerous": {
+                "type": "boolean",
+                "description": "Đánh dấu bước nguy hiểm (xóa dữ liệu, khởi động lại dịch vụ chính...). Khi chạy runbook phải xác nhận rõ."
+               }
+              },
+              "required": [
+               "action"
+              ],
+              "description": "Các bước xử lý theo thứ tự. Mỗi bước gồm `action` (làm gì), `expected` (kết quả mong đợi), `dangerous` (có nguy hiểm không)."
+             },
+             "maxItems": 100,
+             "description": "Các bước xử lý theo thứ tự. Mỗi bước gồm `action` (làm gì), `expected` (kết quả mong đợi), `dangerous` (có nguy hiểm không)."
+            }
+           },
+           "description": "Các quy trình đã xem lại (lấy từ `POST /runbooks/import/parse`, có thể sửa): tên, hệ thống, mức độ, dấu hiệu, chuẩn bị, các bước `{action, expected, dangerous}`, cách xác nhận, hoàn tác, liên hệ."
+          },
+          "minItems": 1,
+          "maxItems": 50,
+          "description": "Các quy trình đã xem lại (lấy từ `POST /runbooks/import/parse`, có thể sửa): tên, hệ thống, mức độ, dấu hiệu, chuẩn bị, các bước `{action, expected, dangerous}`, cách xác nhận, hoàn tác, liên hệ."
+         }
+        },
+        "required": [
+         "space_id",
+         "runbooks"
+        ]
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "space_id": 1,
+          "submit": false,
+          "runbooks": [
+           {
+            "title": "Website bán hàng: báo lỗi 502 Bad Gateway",
+            "affected_system": "Website bán hàng",
+            "severity_level": "critical",
+            "error_group": "Gián đoạn dịch vụ",
+            "symptom": "Khách mở website thấy trang lỗi 502.",
+            "prerequisites": "Có quyền SSH vào máy chủ web.",
+            "verification": "Mở trang chủ không còn lỗi.",
+            "rollback": "Quay về bản triển khai trước.",
+            "contact_info": "Trực ca kỹ thuật",
+            "summary": "Khôi phục website khi gặp lỗi 502.",
+            "risk_level": "R3",
+            "steps": [
+             {
+              "action": "Xem log lỗi gần nhất",
+              "expected": "Tìm được nguyên nhân",
+              "dangerous": false
+             },
+             {
+              "action": "Khởi động lại dịch vụ ứng dụng trên máy chủ",
+              "expected": "Dịch vụ chạy lại",
+              "dangerous": true
+             }
+            ]
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
   "/admin/users": {
    "get": {
     "tags": [
@@ -23431,7 +24569,7 @@
            "active",
            "locked"
           ],
-          "description": "Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
+          "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
          },
          "name": {
           "type": "string",

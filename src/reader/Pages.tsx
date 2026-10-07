@@ -89,7 +89,7 @@ export function ReaderHome() {
   const ask = (t: string) => { if (chat.agentId) chat.selectAgent(null); chat.setOpen(true); void chat.ask(t, chat.mode === 'general' ? 'documents' : chat.mode) }
 
   const intents = [
-    { t: 'Đang có sự cố', d: 'Tìm cách xử lý, làm theo từng bước', ico: <TYPE_ICON.runbook size={26} />, act: () => nav('/browse/type/runbook'), hot: true },
+    { t: 'Đang có sự cố', d: 'Tìm cách xử lý, làm theo từng bước', ico: <TYPE_ICON.runbook size={26} />, act: () => nav('/su-co'), hot: true },
     { t: 'Tìm cách làm việc', d: 'Gõ vấn đề, mình tìm bài phù hợp', ico: <Search size={26} />, act: () => { document.getElementById('rd-q')?.focus() } },
     { t: 'Tra quy định, tài liệu', d: 'Quy trình, biểu mẫu, hướng dẫn', ico: <TYPE_ICON.document size={26} />, act: () => nav('/browse/type/document') },
     { t: 'Hỏi về tệp của tôi', d: 'Kéo ảnh, PDF, Word… vào khung trợ lý', ico: <FileSearch size={26} />, act: () => window.dispatchEvent(new CustomEvent('rd:focus-chat')) },
@@ -118,8 +118,8 @@ export function ReaderHome() {
       <div className="grid xl:grid-cols-[minmax(0,1fr)_340px] gap-8 items-start">
         <div className="flex flex-col gap-8">
           {runList.length > 0 ? (
-            <Section icon={<PlayCircle size={26} className="text-brand-600" />} title="Làm tiếp việc đang dở" sub="Bạn đang làm dở các hướng dẫn này.">
-              <div className="flex flex-col gap-3">{runList.map((r) => {
+            <Section icon={<PlayCircle size={26} className="text-brand-600" />} title="Làm tiếp việc đang dở" sub={runList.length > 3 ? `Bạn đang làm dở ${runList.length} hướng dẫn; đây là 3 việc gần nhất.` : 'Bạn đang làm dở các hướng dẫn này.'} right={runList.length > 3 ? <button className="rd-btn secondary sm" onClick={() => nav('/me?tab=runs')}>Xem tất cả<ArrowRight size={16} /></button> : undefined}>
+              <div className="flex flex-col gap-3">{runList.slice(0, 3).map((r) => {
                 const done = Object.keys(r.results).length
                 return (
                   <div key={r.itemId} className="rd-card rd-resume p-5 flex items-center gap-5 flex-wrap">
@@ -158,7 +158,7 @@ export function ReaderHome() {
             <button className="rd-tool" onClick={() => window.dispatchEvent(new CustomEvent('rd:focus-chat'))}><MessageCircleQuestion size={20} />Hỏi trợ lý</button>
           </div>
           {spaces.length > 0 && <div className="rd-card p-5 flex flex-col gap-3"><div className="font-black">Chủ đề</div>
-            <div className="flex gap-2 flex-wrap">{spaces.map((s, i) => <button key={s.id} className="rd-chip" style={{ background: TOPIC_COLORS[i % TOPIC_COLORS.length] + '1c', color: TOPIC_COLORS[i % TOPIC_COLORS.length], cursor: 'pointer', border: 0, padding: '9px 15px', fontSize: '.9em' }} onClick={() => nav(`/browse/space/${s.id}`)}>{s.name}</button>)}</div></div>}
+            <div className="flex gap-2 flex-wrap">{spaces.slice(0, 12).map((s, i) => <button key={s.id} className="rd-chip" style={{ background: TOPIC_COLORS[i % TOPIC_COLORS.length] + '1c', color: TOPIC_COLORS[i % TOPIC_COLORS.length], cursor: 'pointer', border: 0, padding: '9px 15px', fontSize: '.9em' }} onClick={() => nav(`/browse/space/${s.id}`)}>{s.name}</button>)}</div></div>}
         </div>
       </div>
     </div>)

@@ -12,6 +12,7 @@ import { useAuth } from '../store/auth'
 import { toast } from '../store/ui'
 import { Md, plainWords } from './shared'
 import { Field, Modal, Pill, Seg } from './ui'
+import { LimitedList } from './ShowMore'
 
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.full : String(e))
 
@@ -86,8 +87,7 @@ export function ConflictList({ conflicts, plain, onOpen, docLabel }: { conflicts
   const lbl = docLabel || ((id: number) => (plain ? `bài #${id}` : `tài liệu #${id}`))
   if (!conflicts || conflicts.length === 0) return null
   return (
-    <div className="flex flex-col gap-2.5">
-      {conflicts.map((raw, i) => {
+    <LimitedList items={conflicts} first={3} noun="mâu thuẫn" className="flex flex-col gap-2.5" render={(raw, i) => {
         const c: Conf = typeof raw === 'string' ? { topic: raw } : (raw as Conf)
         const ids = (c.item_ids || (c.positions || []).map((x) => x.item_id) || []) as number[]
         return (
@@ -102,8 +102,7 @@ export function ConflictList({ conflicts, plain, onOpen, docLabel }: { conflicts
               {onOpen && ids.length > 0 && <div className="flex gap-1.5 flex-wrap mt-2">{ids.map((id) => <button key={id} className="cat-chip !py-0.5 !px-2 !text-[11px]" onClick={() => onOpen(id)}>Mở {lbl(id)}</button>)}</div>}
             </div>
           </div>)
-      })}
-    </div>)
+      }} />)
 }
 
 // ---------------------------------------------------------------- Markdown của một tệp (xem / sửa)
@@ -203,10 +202,10 @@ export function IngestModal({ att, onClose, onChanged }: { att: Pick<Attachment,
           {d.tier_flags?.length > 0 && <div className="flex gap-1.5 flex-wrap">{d.tier_flags.map((f) => <Pill key={f} sm tone="warn">{TIER_FLAG[f] || f}</Pill>)}</div>}
           <div className="grid grid-cols-3 gap-3"><div className="kv"><span className="k">Đoạn đã chia</span><span className="v">{d.chunks}</span></div><div className="kv"><span className="k">Đoạn có vector</span><span className="v">{d.embedded_chunks}/{d.chunks}</span></div><div className="kv"><span className="k">Đoạn bị chặn (bí mật)</span><span className="v">{d.blocked_chunks}</span></div></div>
           {d.summary && <div className="rounded-lg border border-line-soft bg-brand-50 p-3"><div className="text-[11px] font-bold uppercase text-muted mb-1">Tóm tắt</div>{d.summary}</div>}
-          {ins?.key_facts && ins.key_facts.length > 0 && <div><div className="text-[11px] font-bold uppercase text-muted mb-1">Dữ kiện chính</div><ul className="m-0 pl-5 leading-relaxed">{ins.key_facts.map((f, i) => <li key={i}>{f}</li>)}</ul></div>}
-          {ins?.entities && ins.entities.length > 0 && <div><div className="text-[11px] font-bold uppercase text-muted mb-1">Thực thể</div><Chips items={ins.entities.map((e, i) => <Pill key={i} sm tone="soft">{e.value}<span className="opacity-60 font-normal normal-case ml-1">{e.type}</span></Pill>)} /></div>}
+          {ins?.key_facts && ins.key_facts.length > 0 && <div><div className="text-[11px] font-bold uppercase text-muted mb-1">Dữ kiện chính</div><ul className="m-0 pl-5 leading-relaxed"><LimitedList items={ins.key_facts} first={8} noun="dữ kiện" className="contents" render={(f, i) => <li key={i}>{f}</li>} /></ul></div>}
+          {ins?.entities && ins.entities.length > 0 && <div><div className="text-[11px] font-bold uppercase text-muted mb-1">Thực thể</div><div className="flex gap-1.5 flex-wrap items-center"><LimitedList items={ins.entities} first={12} noun="thực thể" className="contents" render={(e, i) => <Pill key={i} sm tone="soft">{e.value}<span className="opacity-60 font-normal normal-case ml-1">{e.type}</span></Pill>} /></div></div>}
           {ins?.suggested_tags && ins.suggested_tags.length > 0 && <div><div className="text-[11px] font-bold uppercase text-muted mb-1">Thẻ gợi ý</div><Chips items={ins.suggested_tags.map((t) => <Pill key={t.id} sm tone="ok">#{t.name}</Pill>)} /></div>}
-          {ins?.questions && ins.questions.length > 0 && <div><div className="text-[11px] font-bold uppercase text-muted mb-1">Tài liệu này trả lời được</div><ul className="m-0 pl-5 leading-relaxed">{ins.questions.map((q, i) => <li key={i}>{q}</li>)}</ul></div>}
+          {ins?.questions && ins.questions.length > 0 && <div><div className="text-[11px] font-bold uppercase text-muted mb-1">Tài liệu này trả lời được</div><ul className="m-0 pl-5 leading-relaxed"><LimitedList items={ins.questions} first={6} noun="câu hỏi" className="contents" render={(q, i) => <li key={i}>{q}</li>} /></ul></div>}
           {ins?.uncertain && ins.uncertain.length > 0 && <div className="rounded-lg bg-amber-50 border border-amber-200 p-3"><div className="font-bold text-amber-900 mb-1 flex items-center gap-1.5"><AlertTriangle size={15} />Chỗ AI chưa chắc — cần đối chiếu với tệp gốc</div><ul className="m-0 pl-5 text-sm">{ins.uncertain.map((u, i) => <li key={i}>{u.page ? `Trang ${u.page}: ` : ''}<code>{u.text}</code></li>)}</ul></div>}
           {ins?.conflicts && ins.conflicts.length > 0 && <div><div className="text-[11px] font-bold uppercase text-muted mb-1">Mâu thuẫn với tài liệu khác</div><ConflictList conflicts={ins.conflicts} /></div>}
           {ins?.conflicts_checked_at && <div className="text-xs text-muted">Đã đối chiếu với {ins.conflicts_checked ?? 0} tài liệu lúc {dt(ins.conflicts_checked_at)}.</div>}
@@ -323,23 +322,23 @@ export function FileAskBlock({ info, plain, onOpen }: { info: AskFileInfo; plain
                 {u.summary && <div className="mt-1 leading-relaxed">{u.summary}</div>}
                 {!!u.uncertain && <div className="text-xs text-amber-700 font-semibold mt-1">Có {u.uncertain} chỗ AI đọc chưa chắc — nên đối chiếu với tệp gốc.</div>}
               </div>))}
-            {info.key_facts && info.key_facts.length > 0 && <div className="text-xs text-muted">Thông tin chính trong tệp: {info.key_facts.join(' · ')}</div>}
+            {info.key_facts && info.key_facts.length > 0 && <div className="text-xs text-muted">Thông tin chính trong tệp: {info.key_facts.slice(0, 12).join(' · ')}{info.key_facts.length > 12 ? ` · và ${info.key_facts.length - 12} thông tin khác` : ''}</div>}
           </div>
         </details>)}
       {info.discrepancies.length > 0 && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-3 text-amber-950">
           <div className="font-bold flex items-center gap-1.5 mb-1.5"><AlertTriangle size={16} />{plain ? 'Tệp của bạn khác với tài liệu của công ty' : `Tệp lệch so với tài liệu (${info.discrepancies.length})`}</div>
-          <div className="flex flex-col gap-1.5">{info.discrepancies.map((d, i) => (
+          <LimitedList items={info.discrepancies} first={5} noun="chỗ lệch" maxHeight="360px" className="flex flex-col gap-1.5" render={(d, i) => (
             <div key={i} className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-0.5 border-t border-amber-200 pt-1.5 first:border-0 first:pt-0">
               <div className="md:col-span-2 font-semibold">{d.topic}</div>
               <div><span className="text-xs text-amber-800">Tệp của bạn ghi:</span> {d.uploaded_says}</div>
               <div><span className="text-xs text-green-800">Tài liệu ghi:</span> <b>{d.source_says}</b>{d.item_id && onOpen ? <button className="ml-1.5 text-brand-700 underline bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={() => onOpen(d.item_id!)}>{plain ? 'xem bài gốc' : `mở #${d.item_id}`}</button> : null}</div>
-            </div>))}</div>
+            </div>)} />
         </div>)}
       {info.related.length > 0 && onOpen && (
         <div className="flex gap-1.5 flex-wrap items-center"><span className="text-xs text-muted font-semibold">{plain ? 'Có thể bạn cần xem:' : 'Liên quan:'}</span>
-          {info.related.map((r) => <button key={r.id} className="cat-chip !py-1 !px-2.5 !text-[12px]" onClick={() => onOpen(r.id)}>{r.title}{r.tier ? ` · ${(plain ? TIER_PLAIN : TIER_LABEL)[r.tier] || r.tier}` : ''}</button>)}</div>)}
-      {info.skipped.length > 0 && <div className="text-xs text-red-700">Bỏ qua: {info.skipped.map((s) => `${s.filename || 'tệp'} (${s.reason || s.message || 'không đọc được'})`).join('; ')}</div>}
+          <LimitedList items={info.related} first={6} noun="bài" className="contents" render={(r) => <button key={r.id} className="cat-chip !py-1 !px-2.5 !text-[12px] max-w-full truncate" title={r.title} onClick={() => onOpen(r.id)}>{r.title}{r.tier ? ` · ${(plain ? TIER_PLAIN : TIER_LABEL)[r.tier] || r.tier}` : ''}</button>} /></div>)}
+      {info.skipped.length > 0 && <div className="text-xs text-red-700">Bỏ qua: {info.skipped.slice(0, 5).map((s) => `${s.filename || 'tệp'} (${s.reason || s.message || 'không đọc được'})`).join('; ')}{info.skipped.length > 5 ? ` và ${info.skipped.length - 5} tệp khác` : ''}</div>}
       <div className="text-[11px] text-muted flex items-center gap-1.5"><ShieldCheck size={12} />Tệp chỉ được đọc để trả lời câu này, không lưu vào kho.</div>
     </div>)
 }

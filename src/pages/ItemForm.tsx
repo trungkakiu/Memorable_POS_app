@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Copy, Eye, FileText, Plus, Save, Sparkles, Trash2, Wand2 } from 'lucide-react'
 import { ApiError, get, post, put, UPLOAD_MB } from '../lib/api'
 import { RISK_LABEL, SENS_LABEL, SEVERITY_LABEL, TYPE_LABEL, todayStr } from '../lib/format'
@@ -91,7 +91,10 @@ export default function ItemForm() {
   const edit = !!id
   const nav = useNavigate()
   const { spaces, tags } = useAuth()
-  const [f, setF] = useState<Form>(blank())
+  // ?type=runbook (từ trang Nhập quy trình xử lý sự cố): mở sẵn đúng loại nội dung
+  const [sp] = useSearchParams()
+  const preType = sp.get('type')
+  const [f, setF] = useState<Form>(() => ({ ...blank(), ...(preType && ['article', 'document', 'prompt', 'runbook'].includes(preType) ? { type: preType as Form['type'] } : {}) }))
   const [loading, setLoading] = useState(edit)
   const [err, setErr] = useState<ApiError | null>(null)
   const [templates, setTemplates] = useState<Template[]>([])
@@ -257,7 +260,7 @@ export default function ItemForm() {
               <button className="btn outline sm" onClick={() => up('steps', [...f.steps, { action: '', expected: '', dangerous: false }])}><Plus size={13} />Thêm bước</button></div>
             <div className="flex flex-col gap-2">
               {f.steps.map((st, i) => (
-                <div key={i} className="grid grid-cols-[34px_2fr_2fr_auto_auto] gap-2 items-center">
+                <div key={i} className="grid grid-cols-[34px_minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-2 items-center">
                   <span className="w-8 h-8 rounded-md bg-brand-100 text-brand-700 font-black grid place-items-center">{i + 1}</span>
                   <input className="input" placeholder="Làm gì" value={st.action} onChange={(e) => up('steps', f.steps.map((x, j) => (j === i ? { ...x, action: e.target.value } : x)))} />
                   <input className="input" placeholder="Kết quả mong đợi" value={st.expected} onChange={(e) => up('steps', f.steps.map((x, j) => (j === i ? { ...x, expected: e.target.value } : x)))} />

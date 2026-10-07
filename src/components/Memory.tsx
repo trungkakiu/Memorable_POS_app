@@ -132,7 +132,7 @@ export function MemoryPanel({ plain, agents = [] }: { plain?: boolean; agents?: 
             <td><Pill sm tone={KIND_TONE[m.kind]}>{MEMORY_KIND_LABEL[m.kind] || m.kind_label}</Pill></td>
             <td className="whitespace-nowrap">{'★'.repeat(m.importance)}<span className="text-slate-300">{'★'.repeat(5 - m.importance)}</span></td>
             <td className="text-xs">{agentName(m.agent_id)}</td>
-            <td className="text-xs max-w-[180px] truncate" title={m.conversation_title || ''}>{m.conversation_title ? `“${m.conversation_title}”` : '—'}{!m.has_embedding && <div className="text-amber-700">chưa có vector</div>}</td>
+            <td className="text-xs" title={m.conversation_title || ''}><div className="max-w-[180px] truncate">{m.conversation_title ? `“${m.conversation_title}”` : '—'}{!m.has_embedding && <div className="text-amber-700">chưa có vector</div>}</div></td>
             <td className="num">{m.hits}</td>
             <td className="text-xs whitespace-nowrap">{m.last_used_at ? dt(m.last_used_at) : '—'}</td>
             <td className="num"><div className="flex gap-1 justify-end">
