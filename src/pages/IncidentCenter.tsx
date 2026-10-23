@@ -19,6 +19,13 @@ import { toast } from '../store/ui'
 
 const TABS: { k: '' | IncidentStatus; t: string }[] = [{ k: '', t: 'Tất cả' }, { k: 'open', t: 'Mới báo' }, { k: 'investigating', t: 'Đang xử lý' }, { k: 'resolved', t: 'Đã khắc phục' }]
 
+// Dòng phụ dưới tên sự cố: mô tả nếu khác tên, không thì nhóm lỗi (bỏ "Chưa phân loại")
+const subLine = (i: IncidentRow) => {
+  const desc = (i.description || '').trim()
+  if (desc && desc !== i.title.trim()) return desc
+  return i.error_group && i.error_group !== 'Chưa phân loại' ? i.error_group : ''
+}
+
 export function SeverityDot({ s, label }: { s: Severity | null; label?: boolean }) {
   if (!s) return label ? <span className="text-muted text-xs">Chưa đánh giá</span> : null
   return <span className="inc-sev" style={{ ['--c' as string]: SEVERITY_COLOR[s] }}><i />{label !== false && SEVERITY_TEXT[s]}</span>
@@ -41,20 +48,29 @@ export default function IncidentCenter() {
   const refresh = () => { reload(); stats.reload() }
   const openDetail = (id: number | null) => { const n = new URLSearchParams(sp); if (id) n.set('open', String(id)); else n.delete('open'); setSp(n, { replace: true }) }
   const s = stats.data
+  // Quy trình còn nháp: nhân viên không thấy, sự cố không được gợi ý
+  const drafts = useGet<{ total: number }>('/items', { type: 'runbook', status: 'draft', limit: 1 })
+  const draftCount = manage ? drafts.data?.total || 0 : 0
+  const topGroups = (s?.last_30_days.top_error_groups || []).map((g) => g.name).filter((n) => n && n !== 'Chưa phân loại')
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Trung tâm xử lý sự cố" subtitle="Báo sự cố, chọn quy trình xử lý phù hợp, làm theo từng bước, đóng sự cố và theo dõi thời gian khắc phục (MTTR)."
+      <PageHeader title="Trung tâm xử lý sự cố" subtitle="Báo sự cố, chọn quy trình xử lý phù hợp, làm theo từng bước, đóng sự cố và theo dõi thời gian khắc phục trung bình."
         actions={<>
           {manage && <button className="btn outline" onClick={() => nav('/runbooks/import')}><FileUp size={16} />Nhập quy trình xử lý</button>}
           <button className="btn" onClick={() => setReport(true)}><Plus size={16} />Báo sự cố</button>
         </>} />
 
+      {draftCount > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 flex items-center gap-3 flex-wrap text-sm">
+          <AlertTriangle size={18} className="shrink-0" /><span className="flex-1 min-w-[240px]"><b>{draftCount} quy trình xử lý đang ở bản nháp</b>: nhân viên chưa thấy và hệ thống chưa gợi ý được khi có sự cố. Gửi duyệt để đưa vào sử dụng.</span>
+          <button className="btn outline sm" onClick={() => nav('/items?type=runbook&status=draft')}>Xem và gửi duyệt</button>
+        </div>)}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         <StatCard tone="bad" icon={<Siren size={18} />} label="Mới báo, chưa ai nhận" value={s?.open} onClick={() => { setStatus('open'); setPage(1) }} />
         <StatCard tone="warn" icon={<Flame size={18} />} label="Đang xử lý" value={s?.investigating} onClick={() => { setStatus('investigating'); setPage(1) }} />
         <StatCard tone="ok" icon={<CheckCircle2 size={18} />} label="Đã khắc phục (30 ngày)" value={s?.last_30_days.resolved} hint={s ? `${s.last_30_days.with_runbook} có dùng quy trình` : ''} />
-        <StatCard icon={<Timer size={18} />} label="Thời gian khắc phục TB (30 ngày)" value={s ? fmtMinutes(s.last_30_days.mttr_minutes) : undefined} hint={s?.last_30_days.top_error_groups[0] ? `Hay gặp: ${s.last_30_days.top_error_groups.slice(0, 2).map((g) => g.name).join(', ')}` : ''} />
+        <StatCard icon={<Timer size={18} />} label="Thời gian khắc phục TB (30 ngày)" value={s ? fmtMinutes(s.last_30_days.mttr_minutes) : undefined} hint={topGroups.length ? `Hay gặp: ${topGroups.slice(0, 2).join(', ')}` : ''} />
       </div>
 
       <div className="card !p-3 flex items-center gap-3 flex-wrap">
@@ -73,7 +89,7 @@ export default function IncidentCenter() {
         {data && data.incidents.length === 0 && <tr><td colSpan={7}><Empty text={status || severity || q || mine ? 'Không có sự cố khớp bộ lọc' : 'Chưa có sự cố nào. Tuyệt vời!'} icon={<Siren size={42} strokeWidth={1.4} />} /></td></tr>}
         {data?.incidents.map((i) => (
           <tr key={i.id} className="clickable" onClick={() => openDetail(i.id)}>
-            <td><div className="max-w-[360px]"><div className="font-bold truncate">{i.title}</div><div className="text-xs text-muted truncate">{i.description || i.error_group}</div></div></td>
+            <td><div className="max-w-[360px]"><div className="font-bold truncate">{i.title}</div><div className="text-xs text-muted truncate">{subLine(i)}</div></div></td>
             <td><SeverityDot s={i.severity} label /></td>
             <td><Pill sm tone={STATUS_TONE[i.status]}>{STATUS_TEXT[i.status]}</Pill></td>
             <td><div className="max-w-[160px] truncate">{i.system}</div></td>
@@ -156,6 +172,9 @@ function IncidentDrawer({ id, manage, meId, onClose, onChanged }: { id: number; 
   }
   const startRun = (rbId: number) => nav(`/items/${rbId}?tab=run&incident=${id}`)
   const resolved = d?.status === 'resolved'
+  // Người có thể nhận xử lý, để quản lý giao việc
+  const [people, setPeople] = useState<{ id: number; name: string }[]>([])
+  useEffect(() => { if (manage) get<{ id: number; name: string }[]>('/incidents/assignees').then(setPeople).catch(() => setPeople([])) }, [manage])
 
   return (
     <Modal title={d ? <span className="inline-flex items-center gap-2 min-w-0"><Siren size={18} className="shrink-0" /><span className="truncate">Sự cố #{d.id}</span></span> : 'Sự cố'} size="xl" onClose={onClose}>
@@ -167,7 +186,7 @@ function IncidentDrawer({ id, manage, meId, onClose, onChanged }: { id: number; 
             <div>
               <div className="flex items-center gap-2 flex-wrap mb-1.5"><Pill tone={STATUS_TONE[d.status]}>{STATUS_TEXT[d.status]}</Pill><SeverityDot s={d.severity} label /><Pill sm tone="gray">{d.system}</Pill><Pill sm tone="soft">{d.error_group}</Pill></div>
               <h2 className="m-0 text-[19px] font-extrabold leading-snug">{d.title}</h2>
-              {d.description && <p className="mt-1.5 mb-0 text-[13.5px] text-ink-2 whitespace-pre-wrap leading-relaxed">{d.description}</p>}
+              {d.description && d.description.trim() !== d.title.trim() && <p className="mt-1.5 mb-0 text-[13.5px] text-ink-2 whitespace-pre-wrap leading-relaxed">{d.description}</p>}
               <div className="text-xs text-muted mt-2 flex gap-x-4 gap-y-1 flex-wrap">
                 <span><Clock size={12} className="inline -mt-0.5 mr-1" />Phát hiện {dt(d.detected_at)} ({ago(d.detected_at)})</span>
                 <span><UserRound size={12} className="inline -mt-0.5 mr-1" />Báo bởi {d.reporter?.name || '—'}</span>
@@ -182,7 +201,12 @@ function IncidentDrawer({ id, manage, meId, onClose, onChanged }: { id: number; 
                 </div>
                 {!resolved && d.assignee_id !== meId && <button className="btn outline sm" disabled={busy} onClick={() => void update({ assignee_id: meId, status: d.status === 'open' ? 'investigating' : undefined }, 'Bạn đã nhận xử lý sự cố này')}><Hand size={14} />Nhận xử lý</button>}
                 <select className="select !w-auto !py-1.5" value={d.severity || ''} disabled={busy} onChange={(e) => void update({ severity: e.target.value }, 'Đã đổi mức độ')} aria-label="Mức độ"><option value="" disabled>Mức độ…</option>{SEVERITY_LIST.map((s) => <option key={s} value={s}>{SEVERITY_TEXT[s]}</option>)}</select>
-                <span className="text-xs text-muted ml-auto">{d.assignee ? <>Phụ trách: <b className="text-ink">{d.assignee.name}</b></> : 'Chưa ai nhận xử lý'}</span>
+                <label className="flex items-center gap-1.5 text-xs text-muted ml-auto">Giao cho
+                  <select className="select !w-auto !py-1.5 !text-[13px]" value={d.assignee_id ?? ''} disabled={busy || resolved} onChange={(e) => { const v = Number(e.target.value); const who = people.find((p) => p.id === v)?.name; void update({ assignee_id: v, status: d.status === 'open' ? 'investigating' : undefined }, `Đã giao cho ${who || 'người phụ trách'}`) }} aria-label="Giao cho">
+                    <option value="" disabled>Chưa ai nhận</option>
+                    {d.assignee && !people.some((p) => p.id === d.assignee_id) && <option value={d.assignee_id ?? ''}>{d.assignee.name}</option>}
+                    {people.map((p) => <option key={p.id} value={p.id}>{p.id === meId ? `${p.name} (tôi)` : p.name}</option>)}
+                  </select></label>
               </div>)}
 
             {!resolved && (

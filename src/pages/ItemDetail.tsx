@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
@@ -39,7 +39,12 @@ export default function ItemDetail() {
   const [offDlg, setOffDlg] = useState(false)
   const [offNote, setOffNote] = useState('')
 
-  useEffect(() => { setTab('content'); void post('/usage-events', { event_type: 'view', item_id: Number(id) }).catch(() => undefined) }, [id])
+  // Chỉ về tab Nội dung khi chuyển sang mục khác; lần mở đầu giữ tab theo ?tab= (VD mở thẳng chế độ chạy quy trình từ sự cố)
+  const shownId = useRef(id)
+  useEffect(() => {
+    if (shownId.current !== id) { shownId.current = id; setTab('content') }
+    void post('/usage-events', { event_type: 'view', item_id: Number(id) }).catch(() => undefined)
+  }, [id])
 
   if (loading && !it) return <Loading />
   if (error) return <div className="flex flex-col gap-4"><button className="btn outline w-fit" onClick={() => nav(-1)}><ArrowLeft size={15} />Quay lại</button><ErrorBox error={error} onRetry={reload} /></div>
@@ -81,16 +86,18 @@ export default function ItemDetail() {
   const x = (it.detail || {}) as Record<string, any>
   const hasDetail = it.type === 'prompt' || it.type === 'runbook'
   const tabs: { v: Tab; l: string }[] = [
-    { v: 'content', l: 'Nội dung' }, { v: 'merged', l: 'Bản gộp (bài + tệp)' }, ...(hasDetail ? [{ v: 'detail' as Tab, l: it.type === 'prompt' ? 'Chi tiết prompt' : 'Chi tiết runbook' }] : []),
+    { v: 'content', l: 'Nội dung' }, { v: 'merged', l: 'Bản gộp (bài + tệp)' }, ...(hasDetail ? [{ v: 'detail' as Tab, l: it.type === 'prompt' ? 'Chi tiết câu lệnh' : 'Chi tiết quy trình' }] : []),
     { v: 'versions', l: 'Phiên bản' }, { v: 'files', l: `Tệp (${it.attachments?.length ?? 0})` },
-    ...(it.type === 'prompt' ? [{ v: 'tests' as Tab, l: 'Kiểm thử' }] : []), ...(it.type === 'runbook' ? [{ v: 'run' as Tab, l: 'Chạy runbook' }] : []),
+    ...(it.type === 'prompt' ? [{ v: 'tests' as Tab, l: 'Kiểm thử' }] : []), ...(it.type === 'runbook' ? [{ v: 'run' as Tab, l: 'Làm theo quy trình' }] : []),
   ]
 
   return (
     <div className="flex flex-col gap-4">
       <section className="panel">
         <div className="px-5 pt-4 pb-3 flex flex-col gap-2">
-          <button className="btn ghost sm w-fit !px-0" onClick={() => nav('/items')}><ArrowLeft size={15} />Kho tri thức</button>
+          {incidentId
+            ? <button className="btn ghost sm w-fit !px-0" onClick={() => nav(`/incidents?open=${incidentId}`)}><ArrowLeft size={15} />Về sự cố #{incidentId}</button>
+            : <button className="btn ghost sm w-fit !px-0" onClick={() => nav('/items')}><ArrowLeft size={15} />Kho tri thức</button>}
           <h1 className="m-0 text-[22px] font-extrabold leading-snug text-ink">{it.title}</h1>
           <div className="flex items-center gap-3 flex-wrap"><ItemBadges it={it} />{official && <Pill tone="ok"><ShieldCheck size={12} />Nguồn chính thống</Pill>}<Tags tags={it.tags} max={8} />
             {w && <button className="btn outline sm" onClick={() => setTagEdit((it.tags || []).map((t) => t.id))}><Tag size={13} />Gán thẻ</button>}
@@ -106,6 +113,7 @@ export default function ItemDetail() {
           {w && (it.status === 'approved' || it.status === 'overdue') && <button className="btn" disabled={busy} onClick={() => act(`/items/${id}/renew`, {}, 'Đã gia hạn ngày rà soát')}><RefreshCw size={15} />Xác nhận còn đúng</button>}
           {w && it.status === 'archived' && <button className="btn" disabled={busy} onClick={() => act(`/items/${id}/restore`, {}, 'Đã khôi phục về nháp')}><RotateCcw size={15} />Khôi phục</button>}
           {w && it.status !== 'archived' && <button className="btn outline" onClick={archive}><Archive size={15} />Lưu trữ</button>}
+          {can(user.role, 'ask') && <button className="btn outline" onClick={() => nav(`/compare?ids=${id}`)}><GitCompare size={15} />So sánh với bài khác</button>}
           <button className="btn outline" onClick={() => exportIt('md')}><Download size={15} />.md</button>
           <button className="btn outline" onClick={() => exportIt('json')}><Download size={15} />.json</button>
         
@@ -201,20 +209,20 @@ function PromptRender({ id, vars }: { id: number; vars: PromptVar[] }) {
   }
   async function copy() {
     if (!out) return
-    await navigator.clipboard.writeText(out.text); toast.ok('Đã sao chép prompt')
+    await navigator.clipboard.writeText(out.text); toast.ok('Đã sao chép câu lệnh')
     void post('/usage-events', { event_type: 'copy_prompt', item_id: id }).catch(() => undefined)
   }
   return (
     <Section title="Điền biến & sao chép">
       <div className="flex flex-col gap-3">
-        {vars.length === 0 && <div className="text-muted text-sm">Prompt không có biến.</div>}
+        {vars.length === 0 && <div className="text-muted text-sm">Câu lệnh này không có biến cần điền.</div>}
         {vars.map((v) => (
           <Field key={v.name} label={`${v.name}${v.type ? ` (${v.type})` : ''}`} hint={v.description}>
             {v.type === 'boolean' ? <label className="check"><input type="checkbox" checked={!!vals[v.name]} onChange={(e) => setVals({ ...vals, [v.name]: e.target.checked })} />Đúng</label>
               : v.type === 'text' ? <textarea className="textarea" rows={3} placeholder={v.example} value={String(vals[v.name] ?? '')} onChange={(e) => setVals({ ...vals, [v.name]: e.target.value })} />
                 : <input className="input" type={v.type === 'number' ? 'number' : 'text'} placeholder={v.example} value={String(vals[v.name] ?? '')} onChange={(e) => setVals({ ...vals, [v.name]: e.target.value })} />}
           </Field>))}
-        <button className="btn" disabled={busy} onClick={render}><Play size={14} />Tạo prompt hoàn chỉnh</button>
+        <button className="btn" disabled={busy} onClick={render}><Play size={14} />Tạo câu lệnh hoàn chỉnh</button>
         {out && (
           <div className="border-[1.5px] border-brand-300 rounded-lg bg-brand-50 p-3">
             {out.missing_variables.length > 0 && <div className="text-amber-700 text-sm font-semibold mb-2">Thiếu biến: {out.missing_variables.join(', ')}</div>}
@@ -248,7 +256,7 @@ function Versions({ id, canWrite, onRestored }: { id: number; canWrite: boolean;
           <select className="select !w-24 !py-1.5" value={cmp?.from ?? ''} onChange={(e) => setCmp({ from: Number(e.target.value), to: cmp?.to ?? nums[nums.length - 1] })}><option value="">Từ</option>{nums.map((n) => <option key={n} value={n}>v{n}</option>)}</select>→
           <select className="select !w-24 !py-1.5" value={cmp?.to ?? ''} onChange={(e) => setCmp({ from: cmp?.from ?? nums[0], to: Number(e.target.value) })}><option value="">Đến</option>{nums.map((n) => <option key={n} value={n}>v{n}</option>)}</select>
           <button className="btn sm" disabled={!cmp?.from || !cmp?.to || busy} onClick={compare}>So sánh</button></div>)}>
-        <div className="tbl-wrap max-h-[420px]"><table className="tbl"><thead><tr><th>Phiên bản</th><th>Thời gian</th><th>Ghi chú</th><th>Mã băm</th><th /></tr></thead><tbody>
+        <div className="tbl-wrap max-h-[420px]"><table className="tbl"><thead><tr><th>Phiên bản</th><th>Thời gian</th><th>Ghi chú</th><th>Mã kiểm tra</th><th /></tr></thead><tbody>
           {vs.map((v) => (
             <tr key={v.id}><td className="font-bold">v{v.version_number} {v.id === data?.current_version_id && <Pill sm tone="ok">Hiện hành</Pill>}</td><td>{dt(v.edited_at)}</td><td>{v.change_note || '—'}</td><td className="font-mono text-xs text-muted">{v.content_hash?.slice(0, 10)}</td>
               <td className="num"><div className="flex gap-1 justify-end"><button className="btn outline sm" onClick={() => open(v.version_number)}><History size={13} />Xem</button>
@@ -375,7 +383,7 @@ function RunbookRun({ id, incidentId }: { id: number; incidentId?: number | null
       <AlertTriangle size={16} className="shrink-0" /><span className="flex-1">Lần chạy này gắn với <b>sự cố #{incidentId}</b>: từng bước được ghi vào dòng thời gian của sự cố.</span>
       <button className="btn outline sm" onClick={() => nav(`/incidents?open=${incidentId}`)}>Về sự cố</button></div>) : null
   if (!rn) return (
-    <Section title="Chạy runbook khi xử lý sự cố">{incidentBar}
+    <Section title="Làm theo quy trình khi xử lý sự cố">{incidentBar}
       <div className="empty"><Play size={40} strokeWidth={1.4} /><div>Bắt đầu một lần chạy để ghi lại từng bước đã làm (có tính thời gian xử lý).</div><button className="btn lg" disabled={busy} onClick={start}><Play size={16} />Bắt đầu chạy</button></div>
     </Section>)
   const done = Object.keys(state).length
@@ -418,7 +426,7 @@ function Merged({ id, atts }: { id: number; atts: Attachment[] }) {
     </Section>)
 }
 
-const AUTO_TAG_STATUS: Record<string, string> = { disabled: 'Quản trị đã tắt AI gắn thẻ (ai_auto_tag)', not_taggable: 'Mục nháp, hạn chế hoặc đã lưu trữ không gửi cho AI', no_content: 'Mục quá ít nội dung để gắn thẻ', missing: 'Không tìm thấy mục' }
+const AUTO_TAG_STATUS: Record<string, string> = { disabled: 'Quản trị đã tắt tính năng AI tự gắn thẻ', not_taggable: 'Mục nháp, hạn chế hoặc đã lưu trữ không gửi cho AI', no_content: 'Mục quá ít nội dung để gắn thẻ', missing: 'Không tìm thấy mục' }
 
 /** Mục liên quan: chung thẻ (kể cả khác nhóm) và gần nghĩa nội dung */
 function RelatedPanel({ id }: { id: number }) {

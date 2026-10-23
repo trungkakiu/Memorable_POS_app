@@ -21,6 +21,7 @@ export interface IncidentDetail extends IncidentRow {
 export interface IncidentStats {
   open: number; investigating: number; resolved: number; open_by_severity: Record<string, number>
   last_30_days: { resolved: number; mttr_minutes: number | null; with_runbook: number; top_error_groups: { name: string; count: number }[] }
+  previous_30_days?: { resolved: number; mttr_minutes: number | null }
 }
 export interface RunbookSuggestion {
   id: number; title: string; summary: string | null; status: string; affected_system: string | null; severity_level: Severity | null
@@ -68,3 +69,26 @@ export const ago = (iso: string | null | undefined) => {
   if (m < 1440) return `${Math.round(m / 60)} giờ trước`
   return `${Math.round(m / 1440)} ngày trước`
 }
+
+// ---- Luật bắt buộc của quy trình xử lý: một nguồn duy nhất cho trang tạo mục và trang nhập quy trình (khớp máy chủ)
+export const RUNBOOK_FIELD: Record<string, string> = {
+  title: 'Tên quy trình', affected_system: 'Hệ thống bị ảnh hưởng', severity_level: 'Mức độ', symptom: 'Dấu hiệu nhận biết',
+  prerequisites: 'Chuẩn bị trước', contact_info: 'Liên hệ hỗ trợ', verification: 'Cách xác nhận đã khắc phục', rollback: 'Cách hoàn tác',
+  steps: 'Các bước xử lý', 'steps.expected': 'Việc cần làm và kết quả của từng bước', risk_level: 'Mức rủi ro',
+}
+export const RUNBOOK_REQUIRED = ['title', 'affected_system', 'severity_level', 'symptom', 'prerequisites', 'contact_info', 'verification'] as const
+export interface RunbookLike {
+  title: string; affected_system: string; severity_level: string; symptom: string; prerequisites: string; contact_info: string
+  verification: string; rollback: string; risk_level: string; steps: { action: string; expected: string }[]
+}
+/** Các trường còn thiếu. Dòng bước để trống hoàn toàn được bỏ qua (khi lưu sẽ bị lọc). */
+export const runbookMissing = (r: RunbookLike): string[] => {
+  const m: string[] = RUNBOOK_REQUIRED.filter((k) => !String(r[k] || '').trim())
+  const steps = r.steps.filter((s) => s.action.trim() || s.expected.trim())
+  if (!steps.length) m.push('steps')
+  else if (steps.some((s) => !s.action.trim() || !s.expected.trim())) m.push('steps.expected')
+  if (r.risk_level === 'R1') m.push('risk_level')
+  if (r.risk_level === 'R3' && !r.rollback.trim()) m.push('rollback')
+  return m
+}
+export const runbookMissingText = (k: string) => (k === 'risk_level' ? 'Quy trình xử lý phải ở mức rủi ro R2 hoặc R3' : k === 'rollback' ? 'Mức rủi ro R3 phải có cách hoàn tác' : k === 'steps' ? 'Cần ít nhất một bước (việc cần làm + kết quả mong đợi)' : `Thiếu: ${RUNBOOK_FIELD[k] || k}`)

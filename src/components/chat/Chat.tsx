@@ -161,7 +161,6 @@ export function AgentBar() {
       {(cur || askConvId) && <button className="btn ghost sm icon" title={cur ? 'Bắt đầu hội thoại mới với Agent' : `Bắt đầu hội thoại mới (đang ở hội thoại #${askConvId}; trợ lý nhớ các câu trước trong hội thoại này)`} onClick={newConversation}><Plus size={14} /></button>}
       {cur && <button className="btn ghost sm icon" title="Trang Agent đầy đủ" onClick={() => nav(`/agents/${cur.id}/chat`)}><ExternalLink size={14} /></button>}
       <button className="btn ghost sm icon" title="Quản lý Agent" onClick={() => nav('/agents')}><Settings2 size={14} /></button>
-      <span className="hidden">{msgs.length}</span>
     </div>)
 }
 
@@ -169,7 +168,10 @@ export function ModeSwitch() {
   const { mode, setMode, status, policy, setPolicy, deep, setDeep, webScope, setWebScope } = useChat()
   const feats = status?.features
   const agent = useChat((s) => s.agents.find((a) => a.id === s.agentId))
-  if (agent) return <div className="px-3 pt-2.5 pb-1 bg-white border-t border-line text-[11px] text-muted leading-snug"><b className="text-brand-700">{agent.name}</b> · {KNOWLEDGE_LABEL[agent.knowledge_mode]} · {agent.skills.length} skill — tự tra cứu tài liệu, đọc tệp và xem ảnh/PDF theo quyền của bạn.</div>
+  // Tùy chọn nâng cao (nguồn dùng, tìm sâu, phạm vi Internet) thu gọn mặc định: người dùng chỉ cần chọn chế độ rồi hỏi
+  const [adv, setAdv] = useState(false)
+  const changed = policy !== 'auto' || deep || (mode === 'web' && webScope !== 'balanced')
+  if (agent) return <div className="px-3 pt-2.5 pb-1 bg-white border-t border-line text-[11px] text-muted leading-snug"><b className="text-brand-700">{agent.name}</b> · {KNOWLEDGE_LABEL[agent.knowledge_mode]} · {agent.skills.length} kỹ năng — tự tra cứu tài liệu, đọc tệp và xem ảnh/PDF theo quyền của bạn.</div>
   return (
     <div className="px-3 pt-2.5 pb-1 bg-white border-t border-line">
       <div className="seg sm w-full !flex" role="tablist" aria-label="Chế độ hỏi đáp">
@@ -180,10 +182,14 @@ export function ModeSwitch() {
         })}
       </div>
       <div className="text-[11px] text-muted mt-1.5 leading-snug">{MODE_HINT[mode]}</div>
-      {mode === 'web' && <div className="flex items-center gap-2 mt-2"><span className="text-[11px] font-bold uppercase text-muted shrink-0">Phạm vi tìm</span>
+      {mode !== 'general' && (
+        <button type="button" className="mt-1.5 inline-flex items-center gap-1 border-0 bg-transparent p-0 text-[11px] font-semibold text-brand-700 cursor-pointer hover:underline" onClick={() => setAdv(!adv)} aria-expanded={adv}>
+          <Settings2 size={12} />Tùy chọn nâng cao{!adv && changed && <span className="ml-1 rounded-full bg-brand-100 px-1.5 text-[10px]">đã chỉnh</span>}
+        </button>)}
+      {adv && mode === 'web' && <div className="flex items-center gap-2 mt-2"><span className="text-[11px] font-bold uppercase text-muted shrink-0">Phạm vi tìm</span>
         <select className="select !py-1 !text-xs" value={webScope} onChange={(e) => setWebScope(e.target.value as WebScope)}>{(Object.keys(WEB_SCOPE_LABEL) as WebScope[]).map((s) => <option key={s} value={s}>{WEB_SCOPE_LABEL[s]}</option>)}</select></div>}
-      {mode !== 'general' && mode !== 'web' && <div className="flex items-center gap-2 mt-2"><span className="text-[11px] font-bold uppercase text-muted shrink-0">Nguồn dùng</span><PolicySelect value={policy} onChange={setPolicy} />
-        <label className="check text-[11px] shrink-0" title="depth=deep: mở rộng qua thẻ liên quan, xét nhiều tài liệu hơn"><input type="checkbox" checked={deep} onChange={(e) => setDeep(e.target.checked)} />Tìm sâu</label></div>}
+      {adv && mode !== 'general' && mode !== 'web' && <div className="flex items-center gap-2 mt-2"><span className="text-[11px] font-bold uppercase text-muted shrink-0">Nguồn dùng</span><PolicySelect value={policy} onChange={setPolicy} />
+        <label className="check text-[11px] shrink-0" title="Xét thêm các tài liệu liên quan; chậm hơn một chút"><input type="checkbox" checked={deep} onChange={(e) => setDeep(e.target.checked)} />Tìm sâu</label></div>}
     </div>)
 }
 

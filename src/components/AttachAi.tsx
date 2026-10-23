@@ -126,7 +126,7 @@ export function ExtractModal({ att, onClose, onDone }: { att: Pick<Attachment, '
             <li>Tệp dài có thể chỉ đọc phần đầu. Văn bản đọc ra được quét bí mật; nếu có bí mật sẽ bị chặn và không lưu.</li>
             <li><b>Tốn chi phí AI.</b> Chỉ chủ sở hữu mục (hoặc quản trị) được thực hiện.</li>
           </ul>
-          <label className="check"><input type="checkbox" checked={masked} onChange={(e) => setMasked(e.target.checked)} />Chữ trong tệp đã che thông tin nhạy cảm (confirm_masked)</label>
+          <label className="check"><input type="checkbox" checked={masked} onChange={(e) => setMasked(e.target.checked)} />Chữ trong tệp đã che thông tin nhạy cảm</label>
           {err && <div className="rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-2 flex gap-2"><AlertTriangle size={15} className="shrink-0 mt-0.5" />{err}</div>}
         </div>
       ) : (

@@ -1,0 +1,44 @@
+@use "tokens" as *;
+
+// =====================================================================
+//  Thông báo: chuông + hộp xem nhanh, danh sách theo ngày, dùng chung cho quản lý và người dùng
+// =====================================================================
+.nt-wrap { position: relative; }
+.nt-bellbtn { position: relative; padding: 0 12px; }
+.nt-badge { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: $danger; color: #fff; font-size: 11px; font-weight: 800;
+  display: grid; place-items: center; border: 2px solid #fff; line-height: 1; }
+
+.nt-pop { position: absolute; right: 0; top: calc(100% + 8px); width: min(420px, 92vw); background: #fff; border: 1px solid $line; border-radius: $r-lg; box-shadow: $shadow-pop;
+  z-index: 90; display: flex; flex-direction: column; overflow: hidden; animation: pop .15s ease both; text-align: left;
+  .nt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-bottom: 1px solid $line-soft; background: linear-gradient(180deg, #fff, $brand-tint);
+    b { font-size: 14px; color: $ink; }
+    button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: $brand-dark; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; &:hover { text-decoration: underline; } } }
+  .nt-scroll { max-height: min(60vh, 440px); overflow-y: auto; }
+  .nt-none { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 30px 14px; color: $muted; font-size: 13px; svg { color: $brand-line; } }
+  .nt-foot { height: 42px; border: 0; border-top: 1px solid $line-soft; background: $brand-tint; color: $brand-dark; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; &:hover { background: $brand-soft; } } }
+
+.nt-row { display: flex; gap: 12px; align-items: flex-start; width: 100%; padding: 12px 14px; border: 0; border-bottom: 1px solid $line-soft; background: #fff; text-align: left; cursor: pointer; font: inherit; color: inherit;
+  &:last-child { border-bottom: 0; }
+  &:hover { background: $brand-soft; }
+  &.unread { background: #faf6ff; }
+  .nt-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px;
+    b { font-size: .92em; color: $ink; }
+    .nt-msg { font-size: .88em; color: $ink-2; line-height: 1.45; overflow-wrap: anywhere; }
+    small { font-size: .78em; color: $muted; } }
+  .nt-dot { width: 9px; height: 9px; border-radius: 50%; background: $brand; margin-top: 7px; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(122, 46, 230, .18); } }
+
+.nt-ico { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; background: $brand-soft; color: $brand-dark;
+  &.ok { background: #dcfae6; color: #067647; }
+  &.warn { background: #fef0c7; color: #93370d; }
+  &.bad { background: #fee4e2; color: #b42318; } }
+
+.nt-day { font-size: .78em; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: $muted; margin: 4px 2px 0; }
+.nt-list { padding: 0 !important; overflow: hidden; }
+
+@media (max-width: 640px) {
+  .nt-pop { position: fixed; left: 8px; right: 8px; top: 60px; width: auto; }
+}
+
+// Giao diện người dùng: chữ to hơn, dễ bấm
+.rd .page-tabs button { font-size: .95em; padding: 9px 16px; min-height: 44px; }
+.rd .nt-row { padding: 14px 16px; }

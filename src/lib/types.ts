@@ -3,7 +3,9 @@ export type ItemType = 'document' | 'article' | 'prompt' | 'runbook'
 export type ItemStatus = 'draft' | 'pending' | 'approved' | 'overdue' | 'archived'
 export type Risk = 'R1' | 'R2' | 'R3'
 
-export interface UserInfo { id: number; name: string; email: string; role: Role }
+/** Khối làm việc của người đọc: Văn phòng (hành chính, kinh doanh) hoặc Sản xuất (vườn, xưởng). */
+export type Audience = 'office' | 'field'
+export interface UserInfo { id: number; name: string; email: string; role: Role; audience?: Audience | null }
 export interface Space { id: number; name: string; description?: string | null; owner_id?: number | null; default_sensitivity_level?: 'internal' | 'restricted' }
 export interface Tag { id: number; name: string; description?: string | null; kind?: TagKind; origin?: 'manual' | 'ai'; uses?: number; source?: 'manual' | 'ai'; confidence?: number | null }
 export interface VersionRef { id: number; number: number; edited_by: number; edited_at: string; change_note?: string | null }
@@ -36,7 +38,7 @@ export interface Notice { id: number; type: string; content: string; status: 'un
 export interface TimeLog { id: number; log_date: string; work_type: string; hours: string | number; claude_supported: boolean; notes?: string | null }
 export interface Cost { id: number; cost_item: string; amount: string | number; period: string; source: string; notes?: string | null }
 export interface Benchmark { id: number; batch: string; task_code: string; performer_id: number; minutes: string | number; success: boolean; notes?: string | null; measured_at: string }
-export interface AdminUser { id: number; name: string; email: string; role: Role; status: 'active' | 'locked'; totp_enabled?: boolean; created_at: string }
+export interface AdminUser { id: number; name: string; email: string; role: Role; status: 'active' | 'locked' | 'pending'; audience?: Audience | null; totp_enabled?: boolean; created_at: string }
 export interface Template { id: number; name: string; content?: string | null; created_by?: number; created_at?: string }
 export interface Synonym { id: number; word: string; synonym_with: string }
 

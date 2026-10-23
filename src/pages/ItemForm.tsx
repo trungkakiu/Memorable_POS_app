@@ -4,6 +4,7 @@ import { Copy, Eye, FileText, Plus, Save, Sparkles, Trash2, Wand2 } from 'lucide
 import { ApiError, get, post, put, UPLOAD_MB } from '../lib/api'
 import { RISK_LABEL, SENS_LABEL, SEVERITY_LABEL, TYPE_LABEL, todayStr } from '../lib/format'
 import type { Attachment, ItemDetail, ItemType, PromptVar, RunbookStep, Template } from '../lib/types'
+import { runbookMissing, runbookMissingText } from '../lib/incident'
 import type { LocalFile } from '../lib/api'
 import { AttachmentGrid, PendingFiles, Uploader, uploadPending } from '../components/Attachments'
 import { Field, Modal, PageHeader, Pill } from '../components/ui'
@@ -76,13 +77,9 @@ function validate(f: Form, edit: boolean) {
   if (!edit && !f.space_id) e.push('Chọn mảng nội dung')
   if ((f.type === 'document' || f.type === 'article') && !f.summary.trim()) e.push('Tài liệu/bài viết bắt buộc có tóm tắt')
   if (f.type === 'article' && f.content.trim().length < 50) e.push('Bài viết cần nội dung tối thiểu 50 ký tự')
-  if ((f.type === 'prompt' || f.type === 'runbook') && f.risk_level === 'R1') e.push('Prompt và runbook chỉ được mức rủi ro R2 hoặc R3')
-  if (f.type === 'prompt' && edit && !f.change_note.trim()) e.push('Sửa prompt bắt buộc có ghi chú thay đổi')
-  if (f.type === 'runbook') {
-    if (!f.steps.some((st) => st.action.trim() && st.expected.trim())) e.push('Runbook cần ít nhất một bước (hành động + kết quả mong đợi)')
-    if (f.risk_level !== 'R1' && !f.verification.trim()) e.push('Runbook R2/R3 bắt buộc có cách xác minh')
-    if (f.risk_level === 'R3' && !f.rollback.trim()) e.push('Runbook R3 bắt buộc có cách hoàn tác')
-  }
+  if (f.type === 'prompt' && f.risk_level === 'R1') e.push('Câu lệnh AI phải ở mức rủi ro R2 hoặc R3')
+  if (f.type === 'prompt' && edit && !f.change_note.trim()) e.push('Sửa câu lệnh AI bắt buộc có ghi chú thay đổi')
+  if (f.type === 'runbook') runbookMissing(f).filter((k) => k !== 'title').forEach((k) => e.push(runbookMissingText(k)))
   return e
 }
 
@@ -174,7 +171,7 @@ export default function ItemForm() {
           <Field label="Loại nội dung" className="md:col-span-1">
             <select className="select" value={f.type} disabled={edit} onChange={(e) => up('type', e.target.value as ItemType)}>
               {Object.entries(TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
-          <Field label="Mảng (space)" className="md:col-span-1">
+          <Field label="Mảng nội dung" className="md:col-span-1">
             <select className="select" value={f.space_id} disabled={edit} onChange={(e) => up('space_id', Number(e.target.value))}>
               <option value="">— Chọn —</option>{spaces.map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}</select></Field>
           <Field label="Mức rủi ro" hint="Quyết định số người duyệt"><select className="select" value={f.risk_level} onChange={(e) => up('risk_level', e.target.value as Form['risk_level'])}>
@@ -212,7 +209,7 @@ export default function ItemForm() {
             <div className="grid grid-cols-2 gap-4">
               <Field label="Mô hình AI đã thử"><input className="input" value={f.model_used} onChange={(e) => up('model_used', e.target.value)} placeholder="gpt-5.4" /></Field>
               <Field label="Nhãn phiên bản"><select className="select" value={f.version_label} onChange={(e) => up('version_label', e.target.value as Form['version_label'])}>
-                <option value="">(tự động)</option><option value="draft">draft</option><option value="approved">approved</option><option value="deprecated">deprecated</option></select></Field>
+                <option value="">(tự động)</option><option value="draft">Bản nháp</option><option value="approved">Đã duyệt</option><option value="deprecated">Ngừng dùng</option></select></Field>
             </div>
             <Field label="Hướng dẫn cách dùng"><textarea className="textarea" rows={3} value={f.usage_guide} onChange={(e) => up('usage_guide', e.target.value)} /></Field>
             <Field label="Giới hạn đã biết"><textarea className="textarea" rows={3} value={f.limitations} onChange={(e) => up('limitations', e.target.value)} /></Field>
@@ -234,7 +231,7 @@ export default function ItemForm() {
                 <div key={i} className="grid grid-cols-[1.2fr_.8fr_2fr_1.6fr_auto] gap-2 items-center">
                   <input className="input" placeholder="ten_bien" value={v.name} pattern="[a-zA-Z_][a-zA-Z0-9_]*" onChange={(e) => up('variables', f.variables.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
                   <select className="select" value={v.type || 'string'} onChange={(e) => up('variables', f.variables.map((x, j) => (j === i ? { ...x, type: e.target.value as PromptVar['type'] } : x)))}>
-                    <option value="string">string</option><option value="text">text</option><option value="number">number</option><option value="boolean">boolean</option></select>
+                    <option value="string">Chữ ngắn</option><option value="text">Đoạn văn</option><option value="number">Số</option><option value="boolean">Có / Không</option></select>
                   <input className="input" placeholder="Mô tả" value={v.description || ''} onChange={(e) => up('variables', f.variables.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)))} />
                   <input className="input" placeholder="Ví dụ" value={v.example || ''} onChange={(e) => up('variables', f.variables.map((x, j) => (j === i ? { ...x, example: e.target.value } : x)))} />
                   <button className="btn ghost icon" onClick={() => up('variables', f.variables.filter((_, j) => j !== i))} aria-label="Xóa biến"><Trash2 size={16} /></button>
@@ -246,14 +243,14 @@ export default function ItemForm() {
       )}
 
       {T === 'runbook' && (
-        <Section title="Chi tiết runbook">
+        <Section title="Chi tiết quy trình xử lý">
           <div className="grid md:grid-cols-3 gap-4">
-            <Field label="Hệ thống bị ảnh hưởng"><input className="input" value={f.affected_system} onChange={(e) => up('affected_system', e.target.value)} /></Field>
-            <Field label="Mức độ nghiêm trọng"><select className="select" value={f.severity_level} onChange={(e) => up('severity_level', e.target.value as Form['severity_level'])}>
+            <Field label="Hệ thống bị ảnh hưởng *"><input className="input" value={f.affected_system} onChange={(e) => up('affected_system', e.target.value)} /></Field>
+            <Field label="Mức độ *"><select className="select" value={f.severity_level} onChange={(e) => up('severity_level', e.target.value as Form['severity_level'])}>
               <option value="">—</option>{Object.entries(SEVERITY_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
-            <Field label="Liên hệ leo thang"><input className="input" value={f.contact_info} onChange={(e) => up('contact_info', e.target.value)} /></Field>
-            <Field label="Triệu chứng & thông báo lỗi điển hình" className="md:col-span-3"><textarea className="textarea" rows={2} value={f.symptom} onChange={(e) => up('symptom', e.target.value)} /></Field>
-            <Field label="Điều kiện tiên quyết" className="md:col-span-3"><textarea className="textarea" rows={2} value={f.prerequisites} onChange={(e) => up('prerequisites', e.target.value)} /></Field>
+            <Field label="Liên hệ hỗ trợ *"><input className="input" value={f.contact_info} onChange={(e) => up('contact_info', e.target.value)} /></Field>
+            <Field label="Dấu hiệu nhận biết *" className="md:col-span-3"><textarea className="textarea" rows={2} value={f.symptom} onChange={(e) => up('symptom', e.target.value)} /></Field>
+            <Field label="Chuẩn bị trước *" className="md:col-span-3"><textarea className="textarea" rows={2} value={f.prerequisites} onChange={(e) => up('prerequisites', e.target.value)} /></Field>
           </div>
           <div className="mt-5">
             <div className="flex items-center justify-between mb-2"><div className="text-xs font-bold uppercase text-muted">Các bước xử lý (theo thứ tự)</div>
@@ -270,8 +267,8 @@ export default function ItemForm() {
             </div>
           </div>
           <div className="grid md:grid-cols-2 gap-4 mt-5">
-            <Field label={`Cách xác minh đã khỏi${f.risk_level !== 'R1' ? ' *' : ''}`}><textarea className="textarea" rows={3} value={f.verification} onChange={(e) => up('verification', e.target.value)} /></Field>
-            <Field label={`Cách hoàn tác nếu làm sai${f.risk_level === 'R3' ? ' *' : ''}`}><textarea className="textarea" rows={3} value={f.rollback} onChange={(e) => up('rollback', e.target.value)} /></Field>
+            <Field label="Cách xác nhận đã khắc phục *"><textarea className="textarea" rows={3} value={f.verification} onChange={(e) => up('verification', e.target.value)} /></Field>
+            <Field label={`Cách hoàn tác${f.risk_level === 'R3' ? ' *' : ''}`}><textarea className="textarea" rows={3} value={f.rollback} onChange={(e) => up('rollback', e.target.value)} /></Field>
           </div>
         </Section>
       )}
@@ -293,9 +290,9 @@ export default function ItemForm() {
           <span className="text-xs text-muted self-center">AI chỉ gợi ý nháp; mục “Hạn chế” không bao giờ được gửi cho AI.</span>
         </div>
         <div className="flex gap-6 flex-wrap">
-          <label className="check"><input type="checkbox" checked={f.confirm_masked} onChange={(e) => up('confirm_masked', e.target.checked)} />Tôi đã che giá trị nhạy cảm (confirm_masked)</label>
-          {!edit && <label className="check"><input type="checkbox" checked={f.allow_duplicate} onChange={(e) => up('allow_duplicate', e.target.checked)} />Vẫn tạo dù có tiêu đề tương tự (allow_duplicate)</label>}
-          {edit && <label className="check"><input type="checkbox" checked={f.minor_edit} onChange={(e) => up('minor_edit', e.target.checked)} />Sửa nhỏ (minor_edit)</label>}
+          <label className="check"><input type="checkbox" checked={f.confirm_masked} onChange={(e) => up('confirm_masked', e.target.checked)} />Tôi đã che các thông tin nhạy cảm (mật khẩu, số tài khoản…)</label>
+          {!edit && <label className="check"><input type="checkbox" checked={f.allow_duplicate} onChange={(e) => up('allow_duplicate', e.target.checked)} />Vẫn tạo dù đã có bài tên gần giống</label>}
+          {edit && <label className="check"><input type="checkbox" checked={f.minor_edit} onChange={(e) => up('minor_edit', e.target.checked)} />Chỉ sửa nhỏ (không cần duyệt lại)</label>}
         </div>
       </Section>
 

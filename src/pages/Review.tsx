@@ -2,12 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, ClipboardCheck, XCircle } from 'lucide-react'
 import { post, useGet } from '../lib/api'
-import { dt } from '../lib/format'
+import { dt, noticeText, noticeType } from '../lib/format'
 import type { Notice } from '../lib/types'
 import { Empty, Field, Modal, PageHeader, Pill } from '../components/ui'
 import { ErrorBox, Loading, Pager, RiskPill, TypePill, useBusy } from '../components/shared'
 import { itemIdOf, useNotices } from '../store/notices'
-import { get } from '../lib/api'
 import { toast } from '../store/ui'
 
 interface QItem { id: number; type: string; title: string; risk_level: string; owner: { id: number; name: string }; version: number; waiting_business_days: number; sla_days: number; sla_breached: boolean; approvals: number; approvals_needed: number; approved_by_me: boolean }
@@ -65,37 +64,6 @@ export function Tasks() {
         <div key={t.id} className="card !p-4 flex items-center gap-4 cursor-pointer hover:border-brand-500" onClick={() => nav(`/items/${t.item.id}`)}>
           <TypePill t={t.item.type} /><div className="flex-1 font-extrabold truncate">{t.item.title}</div>
           <Pill sm tone={t.status === 'open' ? 'warn' : 'ok'}>{t.status === 'open' ? 'Đang mở' : t.status}</Pill><Pill sm tone="soft">Hạn {dt(t.due_date, false)}</Pill></div>))}</div>
-    </div>
-  )
-}
-
-export function Notifications() {
-  const nav = useNavigate()
-  const n = useNotices()
-  const [status, setStatus] = useState('')
-  const [page, setPage] = useState(1)
-  const { data, loading, error, reload } = useGet<{ notifications: Notice[]; unread: number; total: number; page: number; pages: number }>('/notifications', { page, limit: 20, status })
-  const { busy, run } = useBusy()
-  async function open(x: Notice) {
-    if (x.status === 'unread') { await post(`/notifications/${x.id}/read`).catch(() => undefined); n.refresh(); reload() }
-    const id = itemIdOf(x.content); if (id) nav(`/items/${id}`)
-  }
-  async function readAll() { const r = await run(() => post<{ updated: number }>('/notifications/read-all'), undefined); if (r) { toast.ok(`Đã đánh dấu ${r.updated} thông báo`); n.refresh(); reload() } }
-  return (
-    <div className="flex flex-col gap-4 max-w-[1000px]">
-      <PageHeader title="Thông báo" subtitle={data ? `${data.unread} chưa đọc` : ''} actions={<>
-        <select className="select !w-auto" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1) }}><option value="">Tất cả</option><option value="unread">Chưa đọc</option><option value="read">Đã đọc</option></select>
-        <button className="btn" disabled={busy || !data?.unread} onClick={readAll}>Đánh dấu đã đọc tất cả</button></>} />
-      <ErrorBox error={error} onRetry={reload} />
-      {loading && !data && <Loading />}
-      {data && data.notifications.length === 0 && <Empty text="Không có thông báo" />}
-      <div className="flex flex-col gap-2">{data?.notifications.map((x) => (
-        <div key={x.id} onClick={() => open(x)} className={`card !p-4 flex items-start gap-3 cursor-pointer hover:border-brand-500 ${x.status === 'unread' ? '!border-brand-500 bg-brand-50/60' : ''}`}>
-          <span className={`mt-1.5 w-2.5 h-2.5 rounded-md shrink-0 ${x.status === 'unread' ? 'bg-brand-600' : 'bg-slate-300'}`} />
-          <div className="flex-1"><div className="font-bold">{x.content}</div><div className="text-xs text-muted mt-1">{x.type} · {dt(x.created_at)}</div></div>
-          {x.status === 'unread' && <Pill sm tone="soft">Mới</Pill>}</div>))}</div>
-      {data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
-      <div className="hidden">{String(get).length}</div>
     </div>
   )
 }

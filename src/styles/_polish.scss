@@ -29,3 +29,13 @@
   > .chat-panel, > .grid { min-height: 380px; } }
 @media (max-width: 1023px) { .chat-page { height: calc(100dvh - 64px - 28px); } }
 @media (max-width: 640px) { .chat-page { height: calc(100dvh - 56px - 20px); min-height: 520px; } }
+
+// ---- Khung trợ lý: không tràn ngang ----
+.chat-panel {
+  .chat-body { overflow-x: hidden; > * { min-width: 0; } }
+  .msg > div { min-width: 0; }
+  .msg .btn { white-space: normal; height: auto; min-height: 32px; padding-top: 6px; padding-bottom: 6px; line-height: 1.35; text-align: left; max-width: 100%; }
+  .msg img, .msg video { max-width: 100%; height: auto; }
+  .md-body { pre, code { white-space: pre-wrap; overflow-wrap: anywhere; } table { display: block; max-width: 100%; overflow-x: auto; } }
+  .seg.sm { flex-wrap: nowrap; button { flex: 1 1 auto !important; white-space: nowrap; font-size: 11px; letter-spacing: 0; padding-left: 6px !important; padding-right: 6px !important; } }
+}

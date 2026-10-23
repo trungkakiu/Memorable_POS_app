@@ -1,4 +1,5 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react'
+import { plainText } from '../lib/format'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, AudioLines, Wand2, Layers, Clock, Compass, FileSearch, ShieldCheck, TextSearch, FolderOpen, Frown, Loader2, MessageCircleQuestion, Mic, Plus, Search, SearchX, Smile, ThumbsDown, ThumbsUp, Star, History, PlayCircle, Timer } from 'lucide-react'
 import { ApiError, get, post } from '../lib/api'
@@ -23,8 +24,8 @@ function Problem({ text, retry }: { text: string; retry?: () => void }) {
 export function FavStar({ it, className }: { it: { id: number; title: string; type: ItemType }; className?: string }) {
   const on = useWorkspace((s) => s.favs.some((f) => f.id === it.id))
   return (
-    <button className={`rd-star ${on ? 'on' : ''} ${className || ''}`} aria-pressed={on} title={on ? 'Bỏ khỏi mục Đã lưu' : 'Lưu bài này để xem lại'}
-      onClick={(e) => { e.stopPropagation(); const added = useWorkspace.getState().toggleFav(it); toast.ok(added ? 'Đã lưu bài này' : 'Đã bỏ khỏi mục Đã lưu') }}><Star size={22} /></button>)
+    <button className={`rd-star ${on ? 'on' : ''} ${className || ''}`} aria-pressed={on} title={on ? 'Bỏ đánh dấu sao' : 'Đánh dấu sao để tìm lại nhanh'}
+      onClick={(e) => { e.stopPropagation(); const added = useWorkspace.getState().toggleFav(it); toast.ok(added ? 'Đã đánh dấu sao' : 'Đã bỏ đánh dấu sao') }}><Star size={22} /></button>)
 }
 
 export function ItemRowCard({ it, snippet, isNew }: { it: Pick<ItemRow, 'id' | 'type' | 'title' | 'summary' | 'updated_at' | 'next_review_date' | 'freshness' | 'status'> & { space?: { name: string } }; snippet?: string; isNew?: boolean }) {
@@ -38,7 +39,7 @@ export function ItemRowCard({ it, snippet, isNew }: { it: Pick<ItemRow, 'id' | '
         <span className="rd-ico lg"><Ico size={28} /></span>
         <span className="min-w-0 flex-1">
           <span className="ttl block">{it.title}{isNew && <span className="rd-new ml-2">Mới</span>}</span>
-          {(snippet || it.summary) && <span className="snip block">{snippet || it.summary}</span>}
+          {(snippet || it.summary) && <span className="snip block">{plainText(snippet || it.summary)}</span>}
           <span className="meta">
             <span className="rd-chip">{TYPE_PLAIN[it.type]}</span>
             {official && <span className="rd-chip ok"><ShieldCheck size={13} />Chính thống</span>}
@@ -88,14 +89,13 @@ export function ReaderHome() {
   useEffect(() => { get<{ items: ItemRow[] }>('/items', { limit: 6, sort: 'updated' }).then((r) => setNews(r.items)).catch((e) => setErr((e as ApiError).full)) }, [])
   const ask = (t: string) => { if (chat.agentId) chat.selectAgent(null); chat.setOpen(true); void chat.ask(t, chat.mode === 'general' ? 'documents' : chat.mode) }
 
+  // Khối Văn phòng: 5 việc hay làm nhất, việc giấy tờ lên đầu
   const intents = [
-    { t: 'Đang có sự cố', d: 'Tìm cách xử lý, làm theo từng bước', ico: <TYPE_ICON.runbook size={26} />, act: () => nav('/su-co'), hot: true },
-    { t: 'Tìm cách làm việc', d: 'Gõ vấn đề, mình tìm bài phù hợp', ico: <Search size={26} />, act: () => { document.getElementById('rd-q')?.focus() } },
-    { t: 'Tra quy định, tài liệu', d: 'Quy trình, biểu mẫu, hướng dẫn', ico: <TYPE_ICON.document size={26} />, act: () => nav('/browse/type/document') },
-    { t: 'Hỏi về tệp của tôi', d: 'Kéo ảnh, PDF, Word… vào khung trợ lý', ico: <FileSearch size={26} />, act: () => window.dispatchEvent(new CustomEvent('rd:focus-chat')) },
-    { t: 'Điền mẫu tự động', d: 'Hợp đồng, giấy đề nghị, bảng kê… dán thông tin hoặc gửi ảnh, AI điền giúp và giữ nguyên định dạng mẫu', ico: <Wand2 size={26} />, act: () => nav('/autofill'), wide: true },
-    { t: 'Chép lời ghi âm', d: 'Biến ghi âm cuộc họp thành chữ', ico: <AudioLines size={26} />, act: () => nav('/transcribe') },
-    { t: 'Dùng câu lệnh AI sẵn', d: 'Điền thông tin rồi sao chép', ico: <TYPE_ICON.prompt size={26} />, act: () => nav('/browse/type/prompt') },
+    { t: 'Điền giấy tờ', d: 'Hợp đồng, giấy đề nghị, bảng kê… dán thông tin hoặc gửi ảnh, trợ lý điền giúp và giữ nguyên mẫu', ico: <Wand2 size={26} />, act: () => nav('/autofill'), wide: true },
+    { t: 'Tra quy định, biểu mẫu', d: 'Quy trình, quy định, mẫu giấy tờ của công ty', ico: <TYPE_ICON.document size={26} />, act: () => nav('/browse/type/document') },
+    { t: 'Hỏi về tệp của tôi', d: 'Gửi ảnh, PDF, Word, Excel rồi hỏi trợ lý', ico: <FileSearch size={26} />, act: () => window.dispatchEvent(new CustomEvent('rd:focus-chat')) },
+    { t: 'Ghi âm thành chữ', d: 'Biến ghi âm cuộc họp, cuộc gọi thành văn bản', ico: <AudioLines size={26} />, act: () => nav('/transcribe') },
+    { t: 'Báo lỗi máy, phần mềm', d: 'Máy tính, máy in, mạng… có hướng dẫn tự sửa', ico: <TYPE_ICON.runbook size={26} />, act: () => nav('/su-co'), hot: true },
   ]
 
   return (
@@ -107,7 +107,7 @@ export function ReaderHome() {
 
       <HomeChat />
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {intents.map((a) => (
           <button key={a.t} className={`rd-card click rd-intent${a.wide ? ' sm:col-span-2 rd-intent-new' : ''}`} style={a.hot ? { borderColor: '#fda29b', background: 'linear-gradient(135deg,#fffbfa,#fff)' } : undefined} onClick={a.act}>
             <span className={`rd-ico md ${a.hot ? '' : 'g'}`} style={a.hot ? { background: '#fee4e2', color: '#d92d20' } : undefined}>{a.ico}</span>
@@ -148,7 +148,7 @@ export function ReaderHome() {
 
         <div className="flex flex-col gap-6">
           <div className="rd-card p-5 flex flex-col gap-2">
-            <div className="flex items-center justify-between"><div className="font-black flex items-center gap-2"><Star size={20} className="text-amber-500" />Đã lưu</div><button className="rd-btn secondary sm" onClick={() => nav('/me?tab=saved')}>Tất cả</button></div>
+            <div className="flex items-center justify-between"><div className="font-black flex items-center gap-2"><Star size={20} className="text-amber-500" />Đánh dấu sao</div><button className="rd-btn secondary sm" onClick={() => nav('/me?tab=saved')}>Tất cả</button></div>
             {favs.length === 0 ? <div className="text-muted text-[0.92em] leading-relaxed py-1">Bấm dấu <Star size={14} className="inline -mt-0.5" /> ở mỗi bài để lưu lại những bài hay dùng.</div> : favs.slice(0, 5).map((f) => <MiniRow key={f.id} {...f} />)}
           </div>
           <div className="rd-card p-5 flex flex-col gap-3">
@@ -174,7 +174,7 @@ export function ReaderMe() {
   const { favs, recent, runs, clearRun, clearRecent } = useWorkspace()
   const runList = Object.values(runs).sort((a, b) => b.at - a.at)
   const go = (t: string) => setSp({ tab: t }, { replace: true })
-  const tabs = [{ v: 'runs', l: `Đang làm dở (${runList.length})` }, { v: 'saved', l: `Đã lưu (${favs.length})` }, { v: 'recent', l: 'Đã xem gần đây' }]
+  const tabs = [{ v: 'runs', l: `Đang làm dở (${runList.length})` }, { v: 'saved', l: `Đánh dấu sao (${favs.length})` }, { v: 'recent', l: 'Đã xem gần đây' }]
   const empty = (icon: ReactNode, t: string, d: string) => <div className="rd-card p-12 text-center flex flex-col items-center gap-3 text-muted">{icon}<b className="text-ink text-[1.15em]">{t}</b><span className="max-w-[420px] leading-relaxed">{d}</span></div>
   return (
     <div className="flex flex-col gap-6">
@@ -316,9 +316,6 @@ export function ReaderSearch() {
 export function ReaderBrowse() {
   const nav = useNavigate()
   const spaces = useAuth((s) => s.spaces)
-  const tags = useAuth((s) => s.tags)
-  const groups = tags.filter((t) => t.kind === 'category' && (t.uses ?? 1) > 0).sort((a, b) => (b.uses ?? 0) - (a.uses ?? 0))
-  const topics = tags.filter((t) => t.kind !== 'category' && (t.uses ?? 0) > 0).sort((a, b) => (b.uses ?? 0) - (a.uses ?? 0)).slice(0, 24)
   return (
     <div className="flex flex-col gap-10">
       <div><h1 className="rd-h2 !text-[1.8em]"><Compass size={30} className="text-brand-600" />Duyệt thư viện</h1><p className="rd-sub !mb-0">Chọn chủ đề bạn quan tâm, hoặc xem theo loại nội dung.</p></div>
@@ -333,23 +330,6 @@ export function ReaderBrowse() {
           {spaces.length === 0 && <div className="rd-card p-8 text-muted">Chưa có chủ đề nào.</div>}
         </div>
       </section>
-      {groups.length > 0 && (
-        <section>
-          <h2 className="rd-h2">Theo nhóm kiến thức</h2>
-          <p className="rd-sub">Các bài được trợ lý và người phụ trách xếp vào từng nhóm — một bài có thể thuộc nhiều nhóm.</p>
-          <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
-            {groups.map((g, i) => (
-              <button key={g.id} className="rd-card click p-4 flex items-center gap-3" onClick={() => nav(`/browse/tag/${g.id}`)}>
-                <span className="rd-ico md" style={{ background: TOPIC_COLORS[(i + 3) % TOPIC_COLORS.length] + '1f', color: TOPIC_COLORS[(i + 3) % TOPIC_COLORS.length] }}><Layers size={22} /></span>
-                <span className="min-w-0 flex-1"><span className="block font-black leading-snug">{g.name}</span><span className="block text-muted text-[0.84em]">{g.uses ?? 0} bài</span></span></button>))}
-          </div>
-        </section>)}
-      {topics.length > 0 && (
-        <section>
-          <h2 className="rd-h2">Chủ đề hay gặp</h2>
-          <div className="flex gap-2 flex-wrap mt-3">{topics.map((t) => (
-            <button key={t.id} className="rd-chip" style={{ cursor: 'pointer', border: '1px solid #d9c9f7', padding: '9px 14px', fontSize: '.92em' }} onClick={() => nav(`/browse/tag/${t.id}`)}>{t.name}<span className="opacity-60">· {t.uses}</span></button>))}</div>
-        </section>)}
       <section>
         <h2 className="rd-h2">Theo loại nội dung</h2>
         <div className="grid sm:grid-cols-2 gap-5 mt-3">
@@ -400,7 +380,7 @@ export function ReaderList() {
         <button className={`rd-btn sm ${sort === 'updated' ? '' : 'secondary'}`} onClick={() => setSort('updated')}>Mới cập nhật</button>
         <button className={`rd-btn sm ${sort === 'title' ? '' : 'secondary'}`} onClick={() => setSort('title')}>Theo tên A → Z</button>
         <span className="w-px h-6 bg-line mx-1" />
-        <button className={`rd-btn sm ${onlyOfficial ? '' : 'secondary'}`} onClick={() => setOnlyOfficial(!onlyOfficial)} title="Chỉ hiện các bài đã được kiểm duyệt xác nhận là bản chính thức"><ShieldCheck size={16} />Chỉ nguồn chính thống</button></div>
+        <button className={`rd-btn sm ${onlyOfficial ? '' : 'secondary'}`} onClick={() => setOnlyOfficial(!onlyOfficial)} title="Chỉ hiện các bài người kiểm duyệt đã xác nhận là bản công ty dùng chính thức"><ShieldCheck size={16} />Chỉ bản chính thức</button></div>
       {err && <Problem text={err} retry={() => void load(1, true)} />}
       {loading && items.length === 0 && <Loading />}
       {!loading && !err && items.length === 0 && <div className="rd-card p-10 text-center text-muted flex flex-col items-center gap-3"><FolderOpen size={40} className="text-brand-300" />Chưa có bài nào ở đây.</div>}

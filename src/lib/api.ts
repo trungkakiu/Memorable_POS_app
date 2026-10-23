@@ -6,7 +6,7 @@ interface Desk {
   request: (a: { method?: string; path: string; query?: object; body?: unknown; token?: string | null }) => Promise<Reply<{ status: number; ok: boolean; json: { RD: unknown; RC: number; RM: string } | null; text?: string }>>
   download: (a: { path: string; query?: object; token?: string | null; filename?: string; filters?: { name: string; extensions: string[] }[] }) => Promise<Reply<{ ok: boolean; canceled?: boolean; filePath?: string; error?: string }>>
   uploadForm: (a: { path: string; query?: object; token?: string | null; files: { name: string; bytes: Uint8Array }[]; confirmMasked?: boolean; fields?: Record<string, string | number | boolean | undefined> }) => Promise<Reply<{ status: number; ok: boolean; json: { RD: unknown; RM: string } | null }>>
-  pickFiles: (a: { imagesOnly?: boolean; audioOnly?: boolean }) => Promise<Reply<{ name: string; size: number; bytes: Uint8Array | null }[]>>
+  pickFiles: (a: { imagesOnly?: boolean; audioOnly?: boolean; camera?: boolean }) => Promise<Reply<{ name: string; size: number; bytes: Uint8Array | null }[]>>
   openExternal: (a: { name: string; base64: string }) => Promise<Reply<boolean>>
   blob: (a: { path: string; token?: string | null }) => Promise<Reply<{ ok: boolean; status?: number; error?: string; mime?: string; name?: string; base64?: string; size?: number }>>
   ping: () => Promise<Reply<{ online: boolean; ms: number; message?: string }>>
@@ -123,8 +123,9 @@ export function checkFile(f: { name: string; size: number }): string | null {
 }
 
 /** Mở hộp chọn tệp. `true`/'image': chỉ ảnh; 'audio': chỉ file ghi âm. */
-export async function pickLocalFiles(only: boolean | 'image' | 'audio' = false): Promise<LocalFile[]> {
-  const r = await desk().pickFiles({ imagesOnly: only === true || only === 'image', audioOnly: only === 'audio' })
+/** `camera`: trên điện thoại mở thẳng máy ảnh; trên máy tính giống 'image'. */
+export async function pickLocalFiles(only: boolean | 'image' | 'audio' | 'camera' = false): Promise<LocalFile[]> {
+  const r = await desk().pickFiles({ imagesOnly: only === true || only === 'image' || only === 'camera', audioOnly: only === 'audio', camera: only === 'camera' })
   if (!r.ok) throw new ApiError(r.error || 'Không mở được hộp thoại chọn tệp', 0)
   return r.data || []
 }

@@ -21,7 +21,7 @@
   &.ok .ic { background: #dcfae6; color: #067647; } }
 
 // ---- Thanh lọc trạng thái ----
-.inc-tabs, .rb-seg, .inc-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: $r-md; background: $surface; border: 1px solid $line-soft; flex-wrap: wrap;
+.inc-tabs, .rb-seg, .inc-seg, .page-tabs { display: inline-flex; padding: 3px; gap: 2px; border-radius: $r-md; background: $surface; border: 1px solid $line-soft; flex-wrap: wrap;
   button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; padding: 6px 12px; border-radius: $r-sm; font: inherit; font-size: 13px; font-weight: 700; color: $ink-2; cursor: pointer; white-space: nowrap;
     &:hover:not(:disabled) { color: $brand-dark; }
     &.on { background: #fff; color: $brand-dark; box-shadow: $shadow-xs; }

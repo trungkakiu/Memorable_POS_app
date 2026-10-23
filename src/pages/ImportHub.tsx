@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   AlertTriangle, ArrowRight, Bot, CheckCircle2, ClipboardPaste, Copy, ExternalLink, Eye, FileStack, FileText, FileUp, Files, ImagePlus, Layers, Loader2, Lock,
-  PencilLine, Plus, RotateCcw, ScanSearch, ShieldAlert, Sparkles, Trash2, UploadCloud, Wand2, X, XCircle,
+  PencilLine, Plus, RotateCcw, ScanSearch, ShieldAlert, Siren, Sparkles, Trash2, UploadCloud, Wand2, X, XCircle,
 } from 'lucide-react'
 import { ApiError, LocalFile, checkFile, fromBrowserFile, pickLocalFiles, AUDIO_MB, UPLOAD_MB } from '../lib/api'
 import { can } from '../lib/permissions'
@@ -141,7 +141,7 @@ function DraftEditor({ f, set, onCreate, onDiscard }: { f: DraftForm; set: (p: P
 
         {f.type === 'prompt' && (
           <div className="flex flex-col gap-3 border-t border-line-soft pt-4">
-            <div className="font-extrabold text-sm flex items-center gap-2">Thông tin prompt<ConfBadge c={d.confidence.variables} touched={f.touched.includes('variables')} /></div>
+            <div className="font-extrabold text-sm flex items-center gap-2">Thông tin câu lệnh AI<ConfBadge c={d.confidence.variables} touched={f.touched.includes('variables')} /></div>
             <div className="grid md:grid-cols-2 gap-3">
               <Field label="Mục đích"><textarea className="textarea" rows={2} value={f.purpose} onChange={(e) => set({ purpose: e.target.value })} /></Field>
               <Field label="Mô hình đã thử"><input className="input" value={f.model_used} onChange={(e) => set({ model_used: e.target.value })} /></Field>
@@ -391,23 +391,24 @@ export default function ImportHub() {
   const canAnalyze = !busy && aiOn && (src === 'files' ? files.length > 0 : text.trim().length >= 20)
   const totalLow = useMemo(() => forms.reduce((a, f) => a + lowFields(f).length, 0), [forms])
 
-  const methods: { k: 'ai' | 'manual' | 'bulk'; icon: ReactNode; t: string; d: string; tag?: string }[] = [
+  const methods: { k: 'ai' | 'manual' | 'bulk' | 'runbook'; icon: ReactNode; t: string; d: string; tag?: string }[] = [
     { k: 'ai', icon: <Wand2 size={22} />, t: 'AI đọc và tự điền', d: 'Đưa tệp hoặc dán văn bản. AI phân loại, điền mọi trường, gắn thẻ, kiểm tra trùng. Bạn xem lại rồi tạo.', tag: 'Nên dùng' },
     { k: 'bulk', icon: <FileStack size={22} />, t: 'Nhập hàng loạt', d: `Tối đa ${MAX_BULK} tệp, mỗi tệp thành một bản nháp; tự tạo khi đủ điều kiện, còn lại chờ bạn xem lại.` },
+    { k: 'runbook', icon: <Siren size={22} />, t: 'Quy trình xử lý sự cố', d: 'Tải mẫu Word hoặc CSV, điền từng bước rồi nhập hàng loạt. Đọc theo mẫu, không tốn AI.' },
     { k: 'manual', icon: <PencilLine size={22} />, t: 'Nhập thủ công', d: 'Tự điền biểu mẫu từ đầu (có AI gợi ý tóm tắt, thẻ, rủi ro trong biểu mẫu).' },
   ]
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Nhập tri thức" subtitle="Đưa tri thức mới vào kho nhanh và chuẩn: AI đọc tài liệu, điền sẵn toàn bộ trường kèm độ tin cậy, phát hiện trùng; bạn chỉ cần xem lại và xác nhận."
-        actions={<><button className="btn outline" onClick={() => nav('/import')}><Files size={15} />Nhập từ CSV/JSON</button><button className="btn outline" onClick={() => nav('/items?status=draft')}><Layers size={15} />Bản nháp hiện có</button></>} />
+        actions={<><button className="btn outline" onClick={() => nav('/data')}><Files size={15} />Nhập từ CSV/JSON</button><button className="btn outline" onClick={() => nav('/items?status=draft')}><Layers size={15} />Bản nháp hiện có</button></>} />
 
-      <div className="grid md:grid-cols-3 gap-3">
+      <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
         {methods.map((m) => (
           <button key={m.k} className={clsx('text-left rounded-[10px] border p-4 flex gap-3 items-start cursor-pointer transition', (m.k === mode) ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-200' : 'border-line bg-white hover:border-brand-300')}
-            onClick={() => (m.k === 'manual' ? nav('/items/new') : setMode(m.k))}>
+            onClick={() => (m.k === 'manual' ? nav('/items/new') : m.k === 'runbook' ? nav('/runbooks/import') : setMode(m.k))}>
             <span className={clsx('w-11 h-11 rounded-lg grid place-items-center shrink-0', m.k === mode ? 'bg-gradient-to-br from-brand-500 to-brand-700 text-white' : 'bg-brand-50 text-brand-600')}>{m.icon}</span>
-            <span className="min-w-0"><span className="flex items-center gap-2 font-extrabold">{m.t}{m.tag && <Pill sm tone="ok">{m.tag}</Pill>}{m.k === 'manual' && <ArrowRight size={14} className="text-muted" />}</span><span className="block text-xs text-muted mt-1 leading-relaxed">{m.d}</span></span>
+            <span className="min-w-0"><span className="flex items-center gap-2 font-extrabold">{m.t}{m.tag && <Pill sm tone="ok">{m.tag}</Pill>}{(m.k === 'manual' || m.k === 'runbook') && <ArrowRight size={14} className="text-muted" />}</span><span className="block text-xs text-muted mt-1 leading-relaxed">{m.d}</span></span>
           </button>))}
       </div>
 

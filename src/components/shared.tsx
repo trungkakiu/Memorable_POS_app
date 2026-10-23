@@ -48,10 +48,11 @@ export const RiskPill = ({ r }: { r: string }) => <Pill sm tone={RISK_TONE[r] ||
 export const TierPill = ({ tier, plain }: { tier?: string; plain?: boolean }) => tier ? <Pill sm tone={TIER_TONE[tier] || 'gray'}>{(plain ? TIER_PLAIN : TIER_LABEL)[tier] || tier}</Pill> : null
 export const TypePill = ({ t }: { t: string }) => <Pill sm tone="soft">{TYPE_LABEL[t] || t}</Pill>
 
-export function ItemBadges({ it }: { it: Pick<ItemRow, 'type' | 'status' | 'risk_level' | 'freshness' | 'sensitivity_level'> }) {
+/** compact: dùng trong danh sách — chỉ loại + trạng thái, hạn rà soát chỉ hiện khi sắp/quá hạn, bỏ mức rủi ro */
+export function ItemBadges({ it, compact }: { it: Pick<ItemRow, 'type' | 'status' | 'risk_level' | 'freshness' | 'sensitivity_level'>; compact?: boolean }) {
   return (
     <span className="inline-flex items-center gap-1.5 flex-wrap">
-      <TypePill t={it.type} /><StatusPill s={it.status} /><RiskPill r={it.risk_level} /><FreshPill f={it.freshness} />
+      <TypePill t={it.type} /><StatusPill s={it.status} />{!compact && <RiskPill r={it.risk_level} />}{(!compact || (it.freshness && it.freshness !== 'fresh')) && <FreshPill f={it.freshness} />}
       {it.sensitivity_level === 'restricted' && <Pill sm tone="bad"><Lock size={11} />{SENS_LABEL.restricted}</Pill>}
     </span>
   )
@@ -96,7 +97,11 @@ const PLAIN_TERMS: [RegExp, string][] = [
 /** Thay vài thuật ngữ kỹ thuật AI hay dùng bằng lời thường cho người đọc. */
 export const plainWords = (s: string) => PLAIN_TERMS.reduce((acc, [re, to]) => acc.replace(re, to), s)
 
+// Câu trả lời AI đôi khi chứa chuỗi "\n" dạng chữ (chép từ câu lệnh mẫu): đổi thành xuống dòng thật, trừ trong khối mã
+const fixNewlines = (t: string) => (t.includes('\\n') ? t.split('```').map((part, i) => (i % 2 ? part : part.replace(/\\n/g, '\n'))).join('```') : t)
+
 export function Md({ children, citeIds, citeTitles }: { children: string; citeIds?: number[]; citeTitles?: Record<number, string> }) {
+  children = fixNewlines(children || '')
   return (
     <div className="md-body">
       <Markdown remarkPlugins={[remarkGfm]}
@@ -142,10 +147,10 @@ export function useBusy() {
 }
 
 export const Spin = () => <Loader2 size={15} className="animate-spin" />
-export function Section({ title, right, children, className }: { title: ReactNode; right?: ReactNode; children: ReactNode; className?: string }) {
+export function Section({ title, sub, right, children, className }: { title: ReactNode; sub?: ReactNode; right?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <section className={clsx('panel', className)}>
-      <div className="panel-head"><div className="panel-title">{title}</div>{right && <div className="flex items-center gap-2 flex-wrap">{right}</div>}</div>
+      <div className="panel-head"><div className="min-w-0"><div className="panel-title">{title}</div>{sub && <div className="text-xs text-muted mt-0.5 font-normal normal-case tracking-normal">{sub}</div>}</div>{right && <div className="flex items-center gap-2 flex-wrap">{right}</div>}</div>
       <div className="panel-body">{children}</div>
     </section>
   )

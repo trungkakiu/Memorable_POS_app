@@ -56,6 +56,10 @@
    "description": "**Luồng xử lý sự cố**: báo sự cố, gợi ý quy trình phù hợp, làm theo từng bước gắn với sự cố, phân công, đóng sự cố, thống kê MTTR."
   },
   {
+   "name": "iot",
+   "description": ""
+  },
+  {
    "name": "items",
    "description": "Trung tâm của hệ thống: tạo, sửa, gửi duyệt, duyệt, phiên bản, tệp, ca kiểm thử prompt, chạy runbook."
   },
@@ -158,7 +162,7 @@
     "tags": [
      "user"
     ],
-    "summary": "Đăng ký tài khoản (luôn là vai trò reader)",
+    "summary": "Đăng ký tài khoản (vai trò reader, chờ quản trị duyệt)",
     "operationId": "post_user_register",
     "parameters": [],
     "responses": {
@@ -171,10 +175,11 @@
         },
         "example": {
          "RD": {
-          "userId": 4
+          "userId": 4,
+          "status": "pending"
          },
          "RC": 201,
-         "RM": "User registered"
+         "RM": "Registered, waiting for administrator approval"
         }
        }
       }
@@ -225,7 +230,7 @@
       }
      }
     },
-    "description": "Tự đăng ký tài khoản. Tài khoản mới **luôn có vai trò `reader`** (chỉ đọc); muốn quyền cao hơn, nhờ quản trị đổi qua `PATCH /admin/users/:id`. **Không cần đăng nhập.**\n\n**Ai gọi được:** công khai, không cần đăng nhập.\n\n**Lỗi thường gặp:**\n- `409`: Email đã được dùng\n- `422`: Mật khẩu dưới 10 ký tự hoặc email sai định dạng\n- `429`: Gửi quá nhiều lần, thử lại sau\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/user/register\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name\":\"Nguyễn Văn An\",\"email\":\"an@congty.vn\",\"password\":\"MatKhau-Dai-2026\"}'\n```",
+    "description": "Tự đăng ký tài khoản. Tài khoản mới **luôn có vai trò `reader`** và ở trạng thái **`pending` (chờ duyệt)**: chưa đăng nhập được cho tới khi quản trị duyệt bằng `PATCH /admin/users/:id` với `status: active`. Quản trị nhận thông báo ngay khi có tài khoản mới. **Không cần đăng nhập.**\n\n**Ai gọi được:** công khai, không cần đăng nhập.\n\n**Lỗi thường gặp:**\n- `409`: Email đã được dùng\n- `422`: Mật khẩu dưới 10 ký tự hoặc email sai định dạng\n- `429`: Gửi quá nhiều lần, thử lại sau\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/user/register\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name\":\"Nguyễn Văn An\",\"email\":\"an@congty.vn\",\"password\":\"MatKhau-Dai-2026\"}'\n```",
     "requestBody": {
      "required": true,
      "content": {
@@ -295,7 +300,8 @@
            "id": 4,
            "name": "Nguyễn Văn An",
            "email": "an@congty.vn",
-           "role": "contributor"
+           "role": "contributor",
+           "audience": "office"
           }
          },
          "RC": 200,
@@ -320,7 +326,7 @@
       }
      },
      "403": {
-      "description": "Tài khoản bị khóa",
+      "description": "Tài khoản bị khóa hoặc đang chờ quản trị duyệt",
       "content": {
        "application/json": {
         "schema": {
@@ -329,7 +335,7 @@
         "example": {
          "RD": null,
          "RC": 403,
-         "RM": "Tài khoản bị khóa"
+         "RM": "Tài khoản bị khóa hoặc đang chờ quản trị duyệt"
         }
        }
       }
@@ -365,7 +371,7 @@
       }
      }
     },
-    "description": "Đăng nhập và nhận **token**. Sao chép `RD.token` rồi dán vào nút **Authorize** của Swagger (hoặc dùng làm `Authorization: Bearer ...`). Token hết hạn sau 1 giờ. Sai mật khẩu 5 lần liên tiếp từ cùng một máy thì bị khóa tạm 15 phút. **Không cần đăng nhập.**\n\n**Ai gọi được:** công khai, không cần đăng nhập.\n\n**Lỗi thường gặp:**\n- `401`: Sai email hoặc mật khẩu\n- `403`: Tài khoản bị khóa\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n- `429`: Bị khóa tạm do sai nhiều lần; xem header `Retry-After`\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/user/login\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"email\":\"an@congty.vn\",\"password\":\"MatKhau-Dai-2026\"}'\n```",
+    "description": "Đăng nhập và nhận **token**. Sao chép `RD.token` rồi dán vào nút **Authorize** của Swagger (hoặc dùng làm `Authorization: Bearer ...`). Token hết hạn sau 1 giờ. Sai mật khẩu 5 lần liên tiếp từ cùng một máy thì bị khóa tạm 15 phút. **Không cần đăng nhập.**\n\n**Ai gọi được:** công khai, không cần đăng nhập.\n\n**Lỗi thường gặp:**\n- `401`: Sai email hoặc mật khẩu\n- `403`: Tài khoản bị khóa hoặc đang chờ quản trị duyệt\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n- `429`: Bị khóa tạm do sai nhiều lần; xem header `Retry-After`\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/user/login\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"email\":\"an@congty.vn\",\"password\":\"MatKhau-Dai-2026\"}'\n```",
     "requestBody": {
      "required": true,
      "content": {
@@ -424,7 +430,8 @@
           "id": 4,
           "name": "Nguyễn Văn An",
           "email": "an@congty.vn",
-          "role": "contributor"
+          "role": "contributor",
+          "audience": "office"
          },
          "RC": 200,
          "RM": "User profile"
@@ -454,6 +461,223 @@
       "bearerAuth": []
      }
     ]
+   }
+  },
+  "/user/audience": {
+   "put": {
+    "tags": [
+     "user"
+    ],
+    "summary": "Chọn khối làm việc (Văn phòng hoặc Sản xuất) ở lần đầu đăng nhập",
+    "operationId": "put_user_audience",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 4,
+          "name": "Nguyễn Văn An",
+          "email": "an@congty.vn",
+          "role": "reader",
+          "audience": "field"
+         },
+         "RC": 200,
+         "RM": "Audience saved"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Đã chọn khối khác; nhờ quản trị đổi",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Đã chọn khối khác; nhờ quản trị đổi"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Giá trị không phải office hoặc field",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Giá trị không phải office hoặc field"
+        }
+       }
+      }
+     }
+    },
+    "description": "Chọn **khối làm việc** ở lần đầu đăng nhập: `office` (Văn phòng: hành chính, kinh doanh) hoặc `field` (Sản xuất: nông dân, công nhân). Giao diện và tính năng khác nhau theo khối; người đọc khối Sản xuất không dùng điền mẫu, so sánh văn bản, tìm trên Internet, và trợ lý trả lời ngắn gọn, lời thường. **Đã chọn rồi thì chỉ quản trị đổi được** (`PATCH /admin/users/:id`).\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Đã chọn khối khác; nhờ quản trị đổi\n- `422`: Giá trị không phải office hoặc field\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PUT \"http://localhost:3001/user/audience\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"audience\":\"field\"}'\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "audience": {
+          "type": "string",
+          "enum": [
+           "office",
+           "field"
+          ],
+          "description": "Khối làm việc của người dùng: `office` (Văn phòng: hành chính, kinh doanh) hoặc `field` (Sản xuất: nông dân, công nhân). Người đọc khối Sản xuất có giao diện đơn giản, trợ lý trả lời ngắn gọn và không dùng điền mẫu, so sánh văn bản, tìm trên Internet."
+         }
+        },
+        "required": [
+         "audience"
+        ]
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "audience": "field"
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/iot/ingest": {
+   "post": {
+    "tags": [
+     "iot"
+    ],
+    "summary": "Thiết bị IoT gửi số đo (khóa thiết bị, không cần đăng nhập)",
+    "operationId": "post_iot_ingest",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "status": "ok"
+         },
+         "RC": 200,
+         "RM": "Reading saved"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Khóa thiết bị sai hoặc thiết bị đã tắt",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Khóa thiết bị sai hoặc thiết bị đã tắt"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "value không phải số",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "value không phải số"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Gửi quá nhiều",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 429,
+         "RM": "Gửi quá nhiều"
+        }
+       }
+      }
+     }
+    },
+    "description": "Cảm biến gửi **một số đo**. Xác thực bằng header `X-Device-Key` (khóa nhận được một lần khi quản trị tạo thiết bị, dạng `<mã>.<chuỗi bí mật>`), **không dùng JWT**. Thời điểm do máy chủ ghi. Mỗi thiết bị tối đa 60 lần/phút; lịch sử chỉ lưu tối đa 3 số đo mỗi phút, số đo mới nhất luôn được cập nhật. Số đo cũ hơn 30 ngày bị xóa dần. **Không cần đăng nhập.**\n\n**Ai gọi được:** công khai, không cần đăng nhập.\n\n**Lỗi thường gặp:**\n- `401`: Khóa thiết bị sai hoặc thiết bị đã tắt\n- `422`: value không phải số\n- `429`: Gửi quá nhiều\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/iot/ingest\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"value\":29.5}'\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "value": {
+          "type": "number",
+          "description": "Giá trị cài đặt (văn bản)."
+         }
+        },
+        "required": [
+         "value"
+        ]
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "value": 29.5
+         }
+        }
+       }
+      }
+     }
+    }
    }
   },
   "/items": {
@@ -917,6 +1141,16 @@
       }
      },
      {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "description": "Từ khóa tìm kiếm. Gõ tiếng Việt có hoặc không dấu đều được, hoặc mã lỗi nguyên văn như `ERR_504`.",
+      "schema": {
+       "type": "string",
+       "maxLength": 200
+      }
+     },
+     {
       "name": "type",
       "in": "query",
       "required": false,
@@ -946,7 +1180,7 @@
       "name": "status",
       "in": "query",
       "required": false,
-      "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
+      "description": "Với tài khoản: `active` (đang dùng), `pending` (tự đăng ký, chờ quản trị duyệt), `locked` (bị khóa). Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
       "schema": {
        "type": "string",
        "enum": [
@@ -1112,7 +1346,7 @@
       }
      }
     },
-    "description": "Danh sách mục bạn **được phép xem**, có lọc và phân trang. Mặc định không hiện mục đã lưu trữ. Người đọc chỉ thấy mục đã duyệt (và mục của chính mình); mục hạn chế không bao giờ hiện với người không có quyền.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/items?type=article&status=approved&page=1&limit=20\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "description": "Danh sách mục bạn **được phép xem**, có lọc và phân trang. `q` lọc nhanh theo từ khóa trong tiêu đề hoặc tóm tắt (tìm toàn văn dùng `GET /search`). Mặc định không hiện mục đã lưu trữ. Người đọc chỉ thấy mục đã duyệt (và mục của chính mình); mục hạn chế không bao giờ hiện với người không có quyền.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/items?type=article&status=approved&page=1&limit=20\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
     "security": [
      {
       "bearerAuth": []
@@ -6494,7 +6728,7 @@
       "name": "status",
       "in": "query",
       "required": false,
-      "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
+      "description": "Với tài khoản: `active` (đang dùng), `pending` (tự đăng ký, chờ quản trị duyệt), `locked` (bị khóa). Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
       "schema": {
        "type": "string",
        "enum": [
@@ -6785,7 +7019,7 @@
            "investigating",
            "resolved"
           ],
-          "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
+          "description": "Với tài khoản: `active` (đang dùng), `pending` (tự đăng ký, chờ quản trị duyệt), `locked` (bị khóa). Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
          },
          "assignee_id": {
           "type": "integer",
@@ -6867,6 +7101,10 @@
              "count": 5
             }
            ]
+          },
+          "previous_30_days": {
+           "resolved": 10,
+           "mttr_minutes": 48.2
           }
          },
          "RC": 200,
@@ -6891,7 +7129,7 @@
       }
      }
     },
-    "description": "Số liệu cho bảng điều khiển sự cố: số sự cố mới báo / đang xử lý / đã khắc phục, sự cố chưa xong theo mức độ, và trong 30 ngày qua: số đã khắc phục, MTTR trung bình (phút), số có dùng quy trình, 5 nhóm lỗi hay gặp nhất.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/incidents/stats\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "description": "Số liệu cho bảng điều khiển sự cố: số sự cố mới báo / đang xử lý / đã khắc phục, sự cố chưa xong theo mức độ, và trong 30 ngày qua: số đã khắc phục, MTTR trung bình (phút), số có dùng quy trình, 5 nhóm lỗi hay gặp nhất. `previous_30_days` là 30 ngày liền trước đó (số đã khắc phục và MTTR) để so sánh xu hướng.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/incidents/stats\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
     "security": [
      {
       "bearerAuth": []
@@ -7034,6 +7272,75 @@
      }
     },
     "description": "**Gợi ý quy trình xử lý** cho một sự cố (hoặc mô tả đang gõ), **không dùng AI**: tìm quy trình (runbook) khớp chữ với mô tả và hệ thống, cộng điểm cho quy trình **cùng hệ thống** và quy trình **đã khắc phục được sự cố tương tự** (cùng nhóm lỗi hoặc cùng hệ thống) trước đây. `reasons` giải thích vì sao gợi ý; `dangerous_steps` cho biết số bước cần xác nhận khi làm.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `reader` trở lên.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/incidents/suggest-runbooks?text=thanh%20to%C3%A1n%20b%C3%A1o%20timeout&system=payment&error_group=thanh-toan\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/incidents/assignees": {
+   "get": {
+    "tags": [
+     "incidents"
+    ],
+    "summary": "Danh sách người có thể nhận xử lý sự cố (để giao việc)",
+    "operationId": "get_incidents_assignees",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": [
+          {
+           "id": 4,
+           "name": "Nguyễn Văn An",
+           "role": "moderator"
+          }
+         ],
+         "RC": 200,
+         "RM": "OK"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     }
+    },
+    "description": "Những người dùng đang hoạt động có thể **nhận xử lý sự cố** (vai trò `contributor`, `moderator`, `admin`), sắp theo tên. Dùng cho ô \"Giao cho\" ở Trung tâm sự cố; giao việc bằng `PATCH /incidents/{id}` với `assignee_id`.\n\n**Ai gọi được:** `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Quyền `incident:manage` (contributor trở lên).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/incidents/assignees\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
     "security": [
      {
       "bearerAuth": []
@@ -7384,7 +7691,7 @@
            "investigating",
            "resolved"
           ],
-          "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
+          "description": "Với tài khoản: `active` (đang dùng), `pending` (tự đăng ký, chờ quản trị duyệt), `locked` (bị khóa). Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
          },
          "assignee_id": {
           "type": "integer",
@@ -7518,7 +7825,7 @@
       "name": "status",
       "in": "query",
       "required": false,
-      "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
+      "description": "Với tài khoản: `active` (đang dùng), `pending` (tự đăng ký, chờ quản trị duyệt), `locked` (bị khóa). Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
       "schema": {
        "type": "string",
        "enum": [
@@ -7905,7 +8212,7 @@
       "name": "status",
       "in": "query",
       "required": false,
-      "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
+      "description": "Với tài khoản: `active` (đang dùng), `pending` (tự đăng ký, chờ quản trị duyệt), `locked` (bị khóa). Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
       "schema": {
        "type": "string",
        "enum": [
@@ -7931,7 +8238,7 @@
             "id": 9,
             "user_id": 4,
             "type": "review_requested",
-            "content": "Item #12 \"...\" is waiting for review (R2)",
+            "content": "Bài #12 “...” đang chờ duyệt (mức rủi ro R2)",
             "status": "unread",
             "created_at": "2026-10-05T08:30:00.000Z"
            }
@@ -9576,7 +9883,7 @@
       }
      }
     },
-    "description": "Tạo thẻ mới.\n\n**Ai gọi được:** `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `moderator` hoặc `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `409`: Tên thẻ đã tồn tại\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/tags\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name\":\"Thanh toán\",\"description\":\"Mọi thứ liên quan thanh toán\",\"kind\":\"topic\"}'\n```",
+    "description": "Tạo thẻ mới. Tên thẻ viết tự nhiên, có dấu; tên dạng mã như `tai-lieu` bị từ chối (422).\n\n**Ai gọi được:** `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `moderator` hoặc `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `409`: Tên thẻ đã tồn tại\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/tags\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name\":\"Thanh toán\",\"description\":\"Mọi thứ liên quan thanh toán\",\"kind\":\"topic\"}'\n```",
     "requestBody": {
      "required": true,
      "content": {
@@ -9732,7 +10039,7 @@
       }
      }
     },
-    "description": "Đổi tên, mô tả hoặc loại thẻ. Thẻ do AI tự tạo mà người kiểm duyệt đã sửa thì được coi là đã xác nhận (`origin` thành `manual`).\n\n**Ai gọi được:** `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `moderator` hoặc `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PUT \"http://localhost:3001/tags/12\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"description\":\"Thanh toán và đối soát\",\"kind\":\"topic\"}'\n```",
+    "description": "Đổi tên, mô tả hoặc loại thẻ (tên dạng mã như `tai-lieu` bị từ chối). Thẻ do AI tự tạo mà người kiểm duyệt đã sửa thì được coi là đã xác nhận (`origin` thành `manual`).\n\n**Ai gọi được:** `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `moderator` hoặc `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PUT \"http://localhost:3001/tags/12\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"description\":\"Thanh toán và đối soát\",\"kind\":\"topic\"}'\n```",
     "requestBody": {
      "required": false,
      "content": {
@@ -12870,7 +13177,7 @@
       "name": "status",
       "in": "query",
       "required": false,
-      "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
+      "description": "Với tài khoản: `active` (đang dùng), `pending` (tự đăng ký, chờ quản trị duyệt), `locked` (bị khóa). Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
       "schema": {
        "type": "string",
        "enum": [
@@ -13298,7 +13605,7 @@
            "active",
            "hidden"
           ],
-          "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
+          "description": "Với tài khoản: `active` (đang dùng), `pending` (tự đăng ký, chờ quản trị duyệt), `locked` (bị khóa). Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
          },
          "extend_days": {
           "type": "integer",
@@ -19957,7 +20264,7 @@
       }
      }
     },
-    "description": "**Chat với Agent.** Agent tự quyết định dùng công cụ (chỉ đọc, theo quyền của bạn): `search_knowledge` (tra cứu kho tri thức), `get_document` (đọc tài liệu kèm văn bản tệp đính kèm), `related_documents` (tài liệu liên quan qua thẻ chung và nghĩa), `explore_topic` (khám phá một chủ đề qua thẻ: mọi tài liệu mang thẻ và thẻ đi cùng, để tìm sâu và rộng), `recall_chat_history` (lục lại ký ức và hội thoại cũ của bạn), `look_at_attachment` (nhìn ảnh hoặc PDF). **Trí nhớ dài hạn:** mỗi lượt Agent được nhắc ký ức và hội thoại cũ liên quan nhất tới câu hỏi (`memory.recalled`, `memory.earlier_conversations`); 40 tin nhắn gần nhất giữ nguyên văn, phần cũ hơn được tóm tắt cuốn chiếu nên hội thoại dài bao nhiêu cũng giữ được mạch. Mỗi lượt tối đa 4 vòng công cụ. Câu trả lời trích nguồn dạng `[doc:ID]`; hệ thống **kiểm tra lại**: chỉ nhận trích dẫn của tài liệu Agent thực sự đã truy xuất, ID lạ bị gỡ. Phản hồi cho biết `sources` (nguồn được trích), `consulted` (mọi tài liệu đã đọc), `tools_used` (Agent đã làm gì), `grounded` và `warnings` (ví dụ chưa tra cứu tài liệu nào, hoặc phần kiến thức chung không từ tài liệu).\n\nĐể **nói tiếp**, gửi `conversation_id` của lần trước (Agent nhớ 12 tin gần nhất). Lịch sử chỉ bạn đọc được và tự xóa sau thời hạn lưu (mặc định 30 ngày). Tin nhắn chứa mật khẩu, khóa hay số điện thoại bị chặn.\n\nChi phí: mỗi lượt gọi mô hình 1 đến 5 lần, có trần chi phí mỗi lượt. Dùng chung giới hạn 10 yêu cầu AI mỗi phút.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật (`GET /ai/status`).\n- Bạn dùng được Agent (của bạn hoặc chia sẻ cho nhóm).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có Agent hoặc hội thoại này\n- `409`: Agent đang tắt, hoặc hội thoại đã đầy (2000 tin)\n- `422`: Tin nhắn chứa bí mật hoặc dữ liệu cá nhân, hoặc quá dài\n- `429`: Hết hạn mức\n- `503`: AI chưa bật\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/agents/12/chat\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"message\":\"Giao dịch báo ERR_504 thì xử lý thế nào?\"}'\n```",
+    "description": "**Chat với Agent.** Agent tự quyết định dùng công cụ (chỉ đọc, theo quyền của bạn): `search_knowledge` (tra cứu kho tri thức), `get_document` (đọc tài liệu kèm văn bản tệp đính kèm), `related_documents` (tài liệu liên quan qua thẻ chung và nghĩa), `explore_topic` (khám phá một chủ đề qua thẻ: mọi tài liệu mang thẻ và thẻ đi cùng, để tìm sâu và rộng), `recall_chat_history` (lục lại ký ức và hội thoại cũ của bạn), `system_help` (tra cách chính hệ thống hoạt động: API nào làm gì, ai được gọi, quy trình duyệt, vai trò và quyền), `system_status` (đọc tình trạng hệ thống hiện tại; chỉ quản trị, kiểm duyệt, bảo trợ, mỗi người chỉ thấy các mục đúng quyền của mình), `look_at_attachment` (nhìn ảnh hoặc PDF, nghe file ghi âm). **Trí nhớ dài hạn:** mỗi lượt Agent được nhắc ký ức và hội thoại cũ liên quan nhất tới câu hỏi (`memory.recalled`, `memory.earlier_conversations`); 40 tin nhắn gần nhất giữ nguyên văn, phần cũ hơn được tóm tắt cuốn chiếu nên hội thoại dài bao nhiêu cũng giữ được mạch. Mỗi lượt tối đa 4 vòng công cụ. Câu trả lời trích nguồn dạng `[doc:ID]`; hệ thống **kiểm tra lại**: chỉ nhận trích dẫn của tài liệu Agent thực sự đã truy xuất, ID lạ bị gỡ. Phản hồi cho biết `sources` (nguồn được trích), `consulted` (mọi tài liệu đã đọc), `tools_used` (Agent đã làm gì), `grounded` và `warnings` (ví dụ chưa tra cứu tài liệu nào, hoặc phần kiến thức chung không từ tài liệu).\n\nĐể **nói tiếp**, gửi `conversation_id` của lần trước (Agent nhớ 12 tin gần nhất). Lịch sử chỉ bạn đọc được và tự xóa sau thời hạn lưu (mặc định 30 ngày). Tin nhắn chứa mật khẩu, khóa hay số điện thoại bị chặn.\n\nChi phí: mỗi lượt gọi mô hình 1 đến 5 lần, có trần chi phí mỗi lượt. Dùng chung giới hạn 10 yêu cầu AI mỗi phút.\n\n**Ai gọi được:** `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị).\n\n**Cần có trước:**\n- AI đã bật (`GET /ai/status`).\n- Bạn dùng được Agent (của bạn hoặc chia sẻ cho nhóm).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có Agent hoặc hội thoại này\n- `409`: Agent đang tắt, hoặc hội thoại đã đầy (2000 tin)\n- `422`: Tin nhắn chứa bí mật hoặc dữ liệu cá nhân, hoặc quá dài\n- `429`: Hết hạn mức\n- `503`: AI chưa bật\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/agents/12/chat\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"message\":\"Giao dịch báo ERR_504 thì xử lý thế nào?\"}'\n```",
     "requestBody": {
      "required": true,
      "content": {
@@ -23616,6 +23923,811 @@
     ]
    }
   },
+  "/iot/devices": {
+   "get": {
+    "tags": [
+     "iot"
+    ],
+    "summary": "Danh sách cảm biến với số đo mới nhất và trạng thái (ổn, hơi lệch, nguy hiểm, mất tín hiệu)",
+    "operationId": "get_iot_devices",
+    "parameters": [
+     {
+      "name": "all",
+      "in": "query",
+      "required": false,
+      "description": "Với `true`, quản trị và kiểm duyệt xem cả thiết bị đã tắt.",
+      "schema": {
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "devices": [
+           {
+            "id": 3,
+            "name": "Nhiệt độ nhà màng 1",
+            "place": "Vườn",
+            "kind": "temperature",
+            "unit": "°C",
+            "ok_min": 18,
+            "ok_max": 32,
+            "danger_min": 10,
+            "danger_max": 38,
+            "offline_minutes": 30,
+            "last_value": 29.5,
+            "last_at": "2026-10-13T08:30:00.000Z",
+            "active": true,
+            "status": "ok",
+            "side": null
+           }
+          ]
+         },
+         "RC": 200,
+         "RM": "Devices"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Token thiếu, sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Token thiếu, sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Danh sách cảm biến đang bật, kèm **số đo mới nhất** và `status`: `ok` (bình thường), `warn` (hơi lệch khỏi khoảng bình thường), `bad` (vượt ngưỡng nguy hiểm), `offline` (lâu không gửi số đo). `side` là `low` hoặc `high` khi lệch. Quản trị và kiểm duyệt thêm `?all=true` để xem cả thiết bị đã tắt.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Lỗi thường gặp:**\n- `401`: Token thiếu, sai hoặc hết hạn\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/iot/devices\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "iot"
+    ],
+    "summary": "Quản trị: tạo cảm biến, nhận khóa thiết bị một lần",
+    "operationId": "post_iot_devices",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 3,
+          "name": "Nhiệt độ nhà màng 1",
+          "place": "Vườn",
+          "kind": "temperature",
+          "unit": "°C",
+          "ok_min": 18,
+          "ok_max": 32,
+          "danger_min": 10,
+          "danger_max": 38,
+          "offline_minutes": 30,
+          "last_value": 29.5,
+          "last_at": "2026-10-13T08:30:00.000Z",
+          "active": true,
+          "status": "ok",
+          "side": null,
+          "device_key": "3.4f9c2b7a1d..."
+         },
+         "RC": 201,
+         "RM": "Device created"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Không phải admin",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Không phải admin"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Thiếu tên hoặc sai kiểu dữ liệu",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Thiếu tên hoặc sai kiểu dữ liệu"
+        }
+       }
+      }
+     }
+    },
+    "description": "Tạo cảm biến. Máy chủ trả `device_key` **một lần duy nhất**: nhập khóa này vào thiết bị (header `X-Device-Key` khi gọi `POST /iot/ingest`). Khoảng `ok_min`..`ok_max` là bình thường; ngoài khoảng đó là \"hơi lệch\"; ngoài `danger_min`..`danger_max` là nguy hiểm. `kind`: `temperature`, `humidity`, `soil`, `water`, `power`, `other`.\n\n**Ai gọi được:** `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Không phải admin\n- `422`: Thiếu tên hoặc sai kiểu dữ liệu\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/iot/devices\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name\":\"Nhiệt độ nhà màng 1\",\"place\":\"Vườn\",\"kind\":\"temperature\",\"unit\":\"°C\",\"ok_min\":18,\"ok_max\":32,\"danger_min\":10,\"danger_max\":38}'\n```",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "description": "Tên."
+         },
+         "place": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Nơi đặt cảm biến (ví dụ \"Vườn\", \"Kho lạnh\"). Dùng để nhóm cảm biến trên điện thoại."
+         },
+         "kind": {
+          "type": "string",
+          "enum": [
+           "temperature",
+           "humidity",
+           "soil",
+           "water",
+           "power",
+           "other"
+          ],
+          "description": "Loại. Với thẻ: `category` (nhóm lớn, ví dụ \"Tài chính\", mỗi tài liệu 1-2 thẻ) hoặc `topic` (chủ đề cụ thể dùng chung giữa các nhóm để liên kết kiến thức, ví dụ \"PDCA\"). Với ký ức: `fact` (sự thật), `preference` (sở thích), `decision` (quyết định), `task` (việc dang dở), `entity` (đối tượng), `conversation` (tóm tắt một hội thoại)."
+         },
+         "unit": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Đơn vị hiển thị (ví dụ °C, %, cm)."
+         },
+         "ok_min": {
+          "type": "number",
+          "description": "Giá trị thấp nhất còn **bình thường**. Thấp hơn thì báo \"hơi thấp\" (vàng)."
+         },
+         "ok_max": {
+          "type": "number",
+          "description": "Giá trị cao nhất còn **bình thường**. Cao hơn thì báo \"hơi cao\" (vàng)."
+         },
+         "danger_min": {
+          "type": "number",
+          "description": "Thấp hơn giá trị này là **nguy hiểm** (đỏ)."
+         },
+         "danger_max": {
+          "type": "number",
+          "description": "Cao hơn giá trị này là **nguy hiểm** (đỏ)."
+         },
+         "offline_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10080,
+          "description": "Sau bao nhiêu phút không nhận số đo thì báo \"mất tín hiệu\" (mặc định 30)."
+         }
+        },
+        "required": [
+         "name"
+        ]
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "name": "Nhiệt độ nhà màng 1",
+          "place": "Vườn",
+          "kind": "temperature",
+          "unit": "°C",
+          "ok_min": 18,
+          "ok_max": 32,
+          "danger_min": 10,
+          "danger_max": 38
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/iot/devices/{id}/readings": {
+   "get": {
+    "tags": [
+     "iot"
+    ],
+    "summary": "Lịch sử số đo của một cảm biến",
+    "operationId": "get_iot_devices_id_readings",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     },
+     {
+      "name": "hours",
+      "in": "query",
+      "required": false,
+      "description": "Số giờ (0,25 đến 24). Tổng một ngày không quá 24 giờ.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 168
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "device": {
+           "id": 3,
+           "name": "Nhiệt độ nhà màng 1",
+           "place": "Vườn",
+           "kind": "temperature",
+           "unit": "°C",
+           "ok_min": 18,
+           "ok_max": 32,
+           "danger_min": 10,
+           "danger_max": 38,
+           "offline_minutes": 30,
+           "last_value": 29.5,
+           "last_at": "2026-10-13T08:30:00.000Z",
+           "active": true,
+           "status": "ok",
+           "side": null
+          },
+          "hours": 24,
+          "readings": [
+           {
+            "value": 29.1,
+            "at": "2026-10-13T08:00:00.000Z"
+           },
+           {
+            "value": 29.5,
+            "at": "2026-10-13T08:30:00.000Z"
+           }
+          ]
+         },
+         "RC": 200,
+         "RM": "Readings"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có cảm biến này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có cảm biến này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Lịch sử số đo của một cảm biến trong `hours` giờ gần nhất (mặc định 24, tối đa 168), tối đa 2000 điểm, cũ trước mới sau.\n\n**Ai gọi được:** mọi người đã đăng nhập (một số thao tác còn kiểm tra bạn có phải chủ sở hữu mục).\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `404`: Không có cảm biến này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/iot/devices/12/readings\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/iot/devices/{id}": {
+   "patch": {
+    "tags": [
+     "iot"
+    ],
+    "summary": "Quản trị: sửa cảm biến (tên, nơi đặt, khoảng bình thường và nguy hiểm, bật tắt)",
+    "operationId": "patch_iot_devices_id",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 3,
+          "name": "Nhiệt độ nhà màng 1",
+          "place": "Vườn",
+          "kind": "temperature",
+          "unit": "°C",
+          "ok_min": 18,
+          "ok_max": 32,
+          "danger_min": 10,
+          "danger_max": 38,
+          "offline_minutes": 30,
+          "last_value": 29.5,
+          "last_at": "2026-10-13T08:30:00.000Z",
+          "active": true,
+          "status": "ok",
+          "side": null
+         },
+         "RC": 200,
+         "RM": "Device updated"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có cảm biến này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có cảm biến này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Sửa thông tin cảm biến, đổi khoảng bình thường hoặc nguy hiểm, bật hoặc tắt (`active`). Thiết bị bị tắt thì không nhận số đo và không hiện cho người dùng.\n\n**Ai gọi được:** `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có cảm biến này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PATCH \"http://localhost:3001/iot/devices/12\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"ok_max\":30,\"active\":true}'\n```",
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "description": "Tên."
+         },
+         "place": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Nơi đặt cảm biến (ví dụ \"Vườn\", \"Kho lạnh\"). Dùng để nhóm cảm biến trên điện thoại."
+         },
+         "kind": {
+          "type": "string",
+          "enum": [
+           "temperature",
+           "humidity",
+           "soil",
+           "water",
+           "power",
+           "other"
+          ],
+          "description": "Loại. Với thẻ: `category` (nhóm lớn, ví dụ \"Tài chính\", mỗi tài liệu 1-2 thẻ) hoặc `topic` (chủ đề cụ thể dùng chung giữa các nhóm để liên kết kiến thức, ví dụ \"PDCA\"). Với ký ức: `fact` (sự thật), `preference` (sở thích), `decision` (quyết định), `task` (việc dang dở), `entity` (đối tượng), `conversation` (tóm tắt một hội thoại)."
+         },
+         "unit": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Đơn vị hiển thị (ví dụ °C, %, cm)."
+         },
+         "ok_min": {
+          "type": "number",
+          "description": "Giá trị thấp nhất còn **bình thường**. Thấp hơn thì báo \"hơi thấp\" (vàng)."
+         },
+         "ok_max": {
+          "type": "number",
+          "description": "Giá trị cao nhất còn **bình thường**. Cao hơn thì báo \"hơi cao\" (vàng)."
+         },
+         "danger_min": {
+          "type": "number",
+          "description": "Thấp hơn giá trị này là **nguy hiểm** (đỏ)."
+         },
+         "danger_max": {
+          "type": "number",
+          "description": "Cao hơn giá trị này là **nguy hiểm** (đỏ)."
+         },
+         "offline_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10080,
+          "description": "Sau bao nhiêu phút không nhận số đo thì báo \"mất tín hiệu\" (mặc định 30)."
+         },
+         "active": {
+          "type": "boolean",
+          "description": "`false` để tạm tắt (không dùng nhưng không xóa)."
+         }
+        }
+       },
+       "examples": {
+        "Ví dụ": {
+         "summary": "Ví dụ",
+         "value": {
+          "ok_max": 30,
+          "active": true
+         }
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   },
+   "delete": {
+    "tags": [
+     "iot"
+    ],
+    "summary": "Quản trị: xóa cảm biến và lịch sử số đo",
+    "operationId": "delete_iot_devices_id",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 3
+         },
+         "RC": 200,
+         "RM": "Device deleted"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có cảm biến này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có cảm biến này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Xóa cảm biến cùng toàn bộ lịch sử số đo. Không khôi phục được; muốn tạm dừng thì dùng `PATCH` với `active: false`.\n\n**Ai gọi được:** `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có cảm biến này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X DELETE \"http://localhost:3001/iot/devices/12\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
+  "/iot/devices/{id}/rotate-key": {
+   "post": {
+    "tags": [
+     "iot"
+    ],
+    "summary": "Quản trị: đổi khóa thiết bị (khóa cũ hết hiệu lực)",
+    "operationId": "post_iot_devices_id_rotate_key",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "description": "Mã số của đối tượng (số nguyên dương). Lấy từ kết quả của API tạo hoặc API danh sách.",
+      "schema": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "example": 12
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Thành công",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": {
+          "id": 3,
+          "device_key": "3.9b1e0c44aa..."
+         },
+         "RC": 200,
+         "RM": "Key rotated"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Chưa đăng nhập, token sai hoặc hết hạn",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 401,
+         "RM": "Chưa đăng nhập, token sai hoặc hết hạn"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "Vai trò của bạn không được gọi API này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 403,
+         "RM": "Vai trò của bạn không được gọi API này"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Không có cảm biến này",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 404,
+         "RM": "Không có cảm biến này"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        },
+        "example": {
+         "RD": null,
+         "RC": 422,
+         "RM": "Dữ liệu không hợp lệ: RD.errors liệt kê từng trường sai"
+        }
+       }
+      }
+     }
+    },
+    "description": "Đổi khóa thiết bị khi nghi lộ khóa hoặc quên khóa. **Khóa cũ hết hiệu lực ngay**; khóa mới chỉ hiện một lần.\n\n**Ai gọi được:** `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `404`: Không có cảm biến này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X POST \"http://localhost:3001/iot/devices/12/rotate-key\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "security": [
+     {
+      "bearerAuth": []
+     }
+    ]
+   }
+  },
   "/runbooks/template": {
    "get": {
     "tags": [
@@ -24195,6 +25307,20 @@
        "minimum": 1,
        "maximum": 100
       }
+     },
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "description": "Với tài khoản: `active` (đang dùng), `pending` (tự đăng ký, chờ quản trị duyệt), `locked` (bị khóa). Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`).",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "active",
+        "pending",
+        "locked"
+       ]
+      }
      }
     ],
     "responses": {
@@ -24275,7 +25401,7 @@
       }
      }
     },
-    "description": "Danh sách người dùng (không gồm mật khẩu).\n\n**Ai gọi được:** `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/admin/users\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
+    "description": "Danh sách người dùng (không gồm mật khẩu), kèm khối làm việc. Lọc `status=pending` để xem tài khoản tự đăng ký đang chờ duyệt.\n\n**Ai gọi được:** `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Vai trò của bạn không được gọi API này\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X GET \"http://localhost:3001/admin/users\" \\\n  -H \"Authorization: Bearer $TOKEN\"\n```",
     "security": [
      {
       "bearerAuth": []
@@ -24409,6 +25535,14 @@
            "sponsor"
           ],
           "description": "Vai trò: `reader` (người đọc), `contributor` (người đóng góp), `moderator` (kiểm duyệt viên), `admin` (quản trị), `sponsor` (người bảo trợ, chỉ xem báo cáo)."
+         },
+         "audience": {
+          "type": "string",
+          "enum": [
+           "office",
+           "field"
+          ],
+          "description": "Khối làm việc của người dùng: `office` (Văn phòng: hành chính, kinh doanh) hoặc `field` (Sản xuất: nông dân, công nhân). Người đọc khối Sản xuất có giao diện đơn giản, trợ lý trả lời ngắn gọn và không dùng điền mẫu, so sánh văn bản, tìm trên Internet."
          }
         },
         "required": [
@@ -24444,7 +25578,7 @@
     "tags": [
      "admin"
     ],
-    "summary": "Đổi vai trò, khóa tài khoản",
+    "summary": "Duyệt, khóa tài khoản; đổi vai trò, khối làm việc",
     "operationId": "patch_admin_users_id",
     "parameters": [
      {
@@ -24544,7 +25678,7 @@
       }
      }
     },
-    "description": "Đổi vai trò hoặc khóa/mở khóa tài khoản. **Không được tự hạ quyền hoặc tự khóa chính mình** để tránh mất quyền quản trị.\n\n**Ai gọi được:** `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Đang tự hạ quyền hoặc tự khóa mình\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PATCH \"http://localhost:3001/admin/users/12\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"role\":\"moderator\",\"status\":\"active\"}'\n```",
+    "description": "Duyệt tài khoản chờ duyệt (`status: active`), đổi vai trò, đổi khối làm việc (`audience`), hoặc khóa/mở khóa tài khoản. **Không được tự hạ quyền hoặc tự khóa chính mình** để tránh mất quyền quản trị.\n\n**Ai gọi được:** `admin` (quản trị).\n\n**Cần có trước:**\n- Vai trò `admin`.\n\n**Lỗi thường gặp:**\n- `401`: Chưa đăng nhập, token sai hoặc hết hạn\n- `403`: Đang tự hạ quyền hoặc tự khóa mình\n- `404`: Không tìm thấy, hoặc bạn không có quyền xem\n- `422`: Dữ liệu không hợp lệ: `RD.errors` liệt kê từng trường sai\n\n**Lệnh curl mẫu:**\n\n```\ncurl -X PATCH \"http://localhost:3001/admin/users/12\" \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"role\":\"moderator\",\"status\":\"active\"}'\n```",
     "requestBody": {
      "required": false,
      "content": {
@@ -24569,7 +25703,15 @@
            "active",
            "locked"
           ],
-          "description": "Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
+          "description": "Với tài khoản: `active` (đang dùng), `pending` (tự đăng ký, chờ quản trị duyệt), `locked` (bị khóa). Với sự cố: `open` (mới báo), `investigating` (đang xử lý), `resolved` (đã khắc phục). Trạng thái. Với mục: `draft` (nháp), `pending` (chờ duyệt), `approved` (đã duyệt), `overdue` (quá hạn rà soát), `archived` (lưu trữ). Với người dùng: `active` hoặc `locked`. Với câu trả lời Internet đã học: `active`, `hidden` (lọc thêm `expired`, `all`)."
+         },
+         "audience": {
+          "type": "string",
+          "enum": [
+           "office",
+           "field"
+          ],
+          "description": "Khối làm việc của người dùng: `office` (Văn phòng: hành chính, kinh doanh) hoặc `field` (Sản xuất: nông dân, công nhân). Người đọc khối Sản xuất có giao diện đơn giản, trợ lý trả lời ngắn gọn và không dùng điền mẫu, so sánh văn bản, tìm trên Internet."
          },
          "name": {
           "type": "string",

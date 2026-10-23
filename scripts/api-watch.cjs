@@ -6,7 +6,7 @@
 //
 // Nguồn spec (theo thứ tự ưu tiên):
 //   1. Mã nguồn backend: BACKEND_DIR (mặc định ../Memorable) — sinh spec trực tiếp từ route + tài liệu, không ghi gì vào backend
-//   2. API_DOCS_URL (ví dụ https://memorable.clearlink.io.vn/openapi.json, nếu máy chủ mở tài liệu)
+//   2. API_DOCS_URL (ví dụ https://khokienthuc.traduocvietnam.com/openapi.json, nếu máy chủ mở tài liệu)
 //   3. BACKEND_DIR/docs/openapi.json (bản build sẵn, có thể cũ)
 const fs = require('node:fs'); const path = require('node:path'); const { execFileSync } = require('node:child_process')
 

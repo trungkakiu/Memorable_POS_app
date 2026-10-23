@@ -6,7 +6,7 @@ import {
   setToken,
   setUnauthorizedHandler,
 } from "../lib/api";
-import type { Space, Tag, UserInfo } from "../lib/types";
+import type { Audience, Space, Tag, UserInfo } from "../lib/types";
 import { toast } from "./ui";
 
 interface AuthState {
@@ -17,6 +17,8 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: (expired?: boolean) => void;
   loadCatalog: () => Promise<void>;
+  /** Người đọc chọn khối làm việc lần đầu (máy chủ chặn tự đổi về sau). */
+  setAudience: (audience: Audience) => Promise<void>;
 }
 
 const KEY = "memorable.session";
@@ -50,7 +52,7 @@ export const useAuth = create<AuthState>((set, get_) => ({
     set({ user: null, spaces: [], tags: [] });
     if (expired)
       toast.warn(
-        "Phiên đăng nhập đã hết hạn (token sống 1 giờ). Vui lòng đăng nhập lại.",
+        "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
       );
   },
   loadCatalog: async () => {
@@ -60,11 +62,36 @@ export const useAuth = create<AuthState>((set, get_) => ({
     ]);
     set({ spaces: spaces || [], tags: tags || [] });
   },
+  setAudience: async (audience) => {
+    await api("PUT", "/user/audience", { body: { audience } });
+    const user = get_().user;
+    if (!user) return;
+    const next = { ...user, audience };
+    set({ user: next });
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) localStorage.setItem(KEY, JSON.stringify({ ...JSON.parse(raw), user: next }));
+    } catch {
+      /* phiên lưu hỏng thì bỏ qua, lần sau đăng nhập lại */
+    }
+  },
 }));
 
 setUnauthorizedHandler(() => {
   if (useAuth.getState().user) useAuth.getState().logout(true);
 });
+
+/** Phiên còn hạn không: đọc thời hạn thật trong mã phiên (máy chủ có thể đặt 1 giờ hay 9 giờ); không đọc được thì coi là 55 phút. */
+function sessionAlive(token: string, savedAt: number) {
+  try {
+    const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const exp = Number(JSON.parse(atob(b64)).exp);
+    if (Number.isFinite(exp) && exp > 0) return exp * 1000 - Date.now() > 60 * 1000;
+  } catch {
+    /* mã phiên lạ: dùng mức mặc định bên dưới */
+  }
+  return Date.now() - savedAt < 55 * 60 * 1000;
+}
 
 /** Khôi phục phiên (token còn hạn 1 giờ) khi mở lại ứng dụng. */
 export async function bootstrapAuth() {
@@ -76,7 +103,7 @@ export async function bootstrapAuth() {
         user: UserInfo;
         at: number;
       };
-      if (Date.now() - s.at < 55 * 60 * 1000) {
+      if (sessionAlive(s.token, s.at)) {
         setToken(s.token);
         const me = await get<UserInfo>("/user/profile"); // xác thực token thật sự còn dùng được
         useAuth.setState({ user: me });

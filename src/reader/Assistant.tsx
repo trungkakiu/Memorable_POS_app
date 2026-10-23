@@ -25,9 +25,9 @@ const ACTION_ICON: Record<string, ReactNode> = { sum: <FileText size={18} />, ea
 
 // Ba cách trợ lý tìm câu trả lời, nói bằng lời thường
 const MODES: { k: 'documents' | 'hybrid' | 'web'; icon: ReactNode; t: string; short: string; d: string; feature: string }[] = [
-  { k: 'documents', icon: <BookOpen size={16} />, t: 'Tài liệu công ty', short: 'Tài liệu', d: 'Chỉ trả lời từ tài liệu đã duyệt', feature: 'ask' },
-  { k: 'hybrid', icon: <Lightbulb size={16} />, t: 'Tài liệu + hiểu biết chung', short: '+ Kiến thức', d: 'Thiếu thì AI bổ sung, có ghi rõ', feature: 'ask_hybrid' },
-  { k: 'web', icon: <Globe2 size={16} />, t: 'Tìm trên Internet', short: 'Internet', d: 'Có nguồn, ưu tiên trang chính thống', feature: 'web_search' },
+  { k: 'documents', icon: <BookOpen size={16} />, t: 'Tài liệu công ty', short: 'Tài liệu', d: 'Chỉ trả lời từ tài liệu công ty đã duyệt', feature: 'ask' },
+  { k: 'hybrid', icon: <Lightbulb size={16} />, t: 'Hỏi rộng', short: 'Hỏi rộng', d: 'Tài liệu công ty trước; thiếu thì thêm hiểu biết chung, có ghi rõ', feature: 'ask_hybrid' },
+  { k: 'web', icon: <Globe2 size={16} />, t: 'Trên mạng', short: 'Trên mạng', d: 'Tìm trên Internet, luôn ghi nguồn', feature: 'web_search' },
 ]
 
 export function Bubble({ m, onOpen, onSearch, onAsk }: { m: Msg; onOpen: (id: number) => void; onSearch: (q: string) => void; onAsk?: (q: string, mode: AskMode) => void }) {
@@ -192,11 +192,11 @@ export function AssistantPanel({ variant = 'dock', onClose }: { variant?: 'dock'
           <div className="m-auto w-full max-w-[520px] text-center flex flex-col gap-3 py-2">
             <span className="rd-ico md g mx-auto">{isWeb ? <Globe2 size={24} /> : <MessageCircleQuestion size={24} />}</span>
             <div><div className="text-[1.1em] font-black">{isWeb ? 'Bạn muốn tra cứu gì trên Internet?' : ctx && aboutDoc ? 'Hỏi gì về bài này?' : 'Bạn cần giúp gì?'}</div>
-              <div className="text-muted text-[0.92em] mt-1">{isWeb ? 'Tìm ở trang chính thống trước, luôn ghi nguồn và kiểm tra nguồn.' : 'Cứ hỏi như đang nói chuyện với đồng nghiệp.'}</div></div>
+              <div className="text-muted text-[0.92em] mt-1">{isWeb ? 'Tìm trên mạng, ưu tiên trang của cơ quan nhà nước, luôn ghi nguồn.' : 'Cứ hỏi như đang nói chuyện với đồng nghiệp.'}</div></div>
             {(!ctx || isWeb) && <div className="flex flex-col gap-2">{STARTERS[isWeb ? 'web' : 'documents'].map((s) => <button key={s} className="rd-card click px-3.5 py-2.5 font-bold text-left flex items-center gap-3 text-[0.93em]" onClick={() => void send(s, false)}><span className="flex-1">{s}</span><ArrowRight size={16} className="text-brand-600" /></button>)}</div>}
           </div>
         ) : visible.map((m) => <Bubble key={m.id} m={m} onOpen={(id) => nav(`/items/${id}`)} onSearch={(t) => nav(`/search?q=${encodeURIComponent(t)}`)} onAsk={(t, md) => void send(t, false, md)} />)}
-        {busy && <div className="rd-bubble bot flex items-center gap-3 text-muted"><Loader2 size={20} className="animate-spin text-brand-500" />{fileCtx.length && !isWeb ? 'Mình đang xem tệp của bạn…' : isWeb ? 'Đang tìm trên các trang chính thống và kiểm tra nguồn… (10–30 giây)' : 'Mình đang đọc tài liệu…'}</div>}
+        {busy && <div className="rd-bubble bot flex items-center gap-3 text-muted"><Loader2 size={20} className="animate-spin text-brand-500" />{fileCtx.length && !isWeb ? 'Mình đang xem tệp của bạn…' : isWeb ? 'Đang tìm trên mạng và kiểm tra nguồn… (10–30 giây)' : 'Mình đang đọc tài liệu…'}</div>}
         <div ref={end} />
       </div>
 
@@ -212,7 +212,7 @@ export function AssistantPanel({ variant = 'dock', onClose }: { variant?: 'dock'
             <span className="opt note" title="Chỉ câu hỏi được gửi đi để tìm kiếm, không gửi tài liệu của công ty"><Lock size={13} />Không gửi tài liệu công ty</span>
           </>) : (<>
             {ctx && <button className={clsx('opt', aboutDoc && 'on')} aria-pressed={aboutDoc} onClick={() => setAboutDoc(!aboutDoc)} title="Chỉ hỏi về bài đang đọc">{aboutDoc ? <CheckCircle2 size={14} /> : <FileText size={14} />}Về bài này</button>}
-            <label className="opt sel" title="Nguồn tài liệu trợ lý được dùng: tự động, chỉ tài liệu đã kiểm duyệt, hoặc chỉ tài liệu chính thống"><ShieldCheck size={14} />Nguồn:<select value={policy} onChange={(e) => setPolicy(e.target.value as never)} aria-label="Nguồn dùng"><option value="auto">Tự động</option><option value="reviewed">Đã kiểm duyệt</option><option value="official">Chính thống</option></select></label>
+            <label className="opt sel" title="Trợ lý được dùng tài liệu nào: tất cả, chỉ bài đã duyệt, hoặc chỉ bản chính thức"><ShieldCheck size={14} />Nguồn:<select value={policy} onChange={(e) => setPolicy(e.target.value as never)} aria-label="Nguồn dùng"><option value="auto">Tất cả</option><option value="reviewed">Chỉ bài đã duyệt</option><option value="official">Chỉ bản chính thức</option></select></label>
             <button className={clsx('opt', deep && 'on')} aria-pressed={deep} onClick={() => setDeep(!deep)} title="Xem thêm các bài cùng chủ đề trước khi trả lời — kỹ hơn nhưng chậm hơn">{deep ? <CheckCircle2 size={14} /> : <Search size={14} />}Tìm kỹ</button>
           </>)}
         </div>

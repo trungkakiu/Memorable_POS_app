@@ -82,15 +82,6 @@ img, video, canvas, svg { max-width: 100%; }
 .sidebar .sb-mobile-head { align-items: center; justify-content: space-between; padding: 12px 12px 4px 16px;
   b { font-size: 14px; font-weight: 800; color: $brand-deep; } }
 
-// Laptop: menu trên cùng trùng với thanh bên nên ẩn bớt để header không chật
-// (menu trên cùng cần khoảng 1.400px; dưới mức đó ẩn đi vì thanh bên đã có đủ các mục)
-@media (max-width: 1599px) {
-  .topnav .nav-item > button { padding: 0 7px; font-size: 12px; }
-}
-@media (max-width: 1439px) {
-  .topnav { display: none; }
-  .hdr-right { margin-left: auto; }
-}
 @media (max-width: 1279px) {
   .app-header { gap: 10px; padding: 0 12px; }
   .user-chip > div { display: none; }

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { ApiError, get, post, put } from '../lib/api'
 import { can } from '../lib/permissions'
-import { dt, INGEST_LABEL, INGEST_METHOD, INGEST_TONE, POLICY_LABEL, TEXT_REVIEW_LABEL, TEXT_REVIEW_TONE, TIER_FLAG, TIER_LABEL, TIER_PLAIN, TIER_TONE } from '../lib/format'
+import { dt, INGEST_LABEL, INGEST_METHOD, INGEST_TONE, POLICY_LABEL, TEXT_REVIEW_LABEL, TEXT_REVIEW_TONE, TIER_FLAG, TIER_LABEL, TIER_PLAIN, TIER_TONE, plainText } from '../lib/format'
 import type { AgentMemoryUse, AskFileInfo, Attachment, CompareResult, IngestInfo, ItemRow, KPassage, SourcePolicy } from '../lib/types'
 import { useAuth } from '../store/auth'
 import { toast } from '../store/ui'
@@ -72,7 +72,7 @@ export function PassageCard({ p, q, plain, scores, onOpen }: { p: KPassage; q?: 
         <button className="font-bold text-left text-brand-800 bg-transparent border-0 p-0 cursor-pointer hover:underline flex-1 min-w-0 leading-snug" onClick={() => onOpen(p.item_id)}>{p.item_title}</button>
         <Pill sm tone={TIER_TONE[p.tier] || 'gray'}>{(plain ? TIER_PLAIN : TIER_LABEL)[p.tier] || p.tier}</Pill>
       </div>
-      <div className="leading-relaxed border-l-4 border-brand-300 pl-3 text-ink-2"><Highlight text={p.text} q={q} /></div>
+      <div className="leading-relaxed border-l-4 border-brand-300 pl-3 text-ink-2"><Highlight text={plainText(p.text)} q={q} /></div>
       <div className="text-xs text-muted flex gap-x-3 gap-y-1 flex-wrap items-center">
         <span className="flex items-center gap-1.5">{s.kind === 'attachment' ? <Paperclip size={12} /> : <FileText size={12} />}{where}</span>
         {p.flags?.includes('ai_text_unverified') && <Pill sm tone="warn">Chữ do AI đọc, chưa ai kiểm chứng</Pill>}

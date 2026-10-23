@@ -6,9 +6,9 @@ import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   ArrowRight, ArrowUp, AudioLines, BookOpen, Check, CheckCircle2, FileText, GitCompare, Globe2, History, ImagePlus, Lightbulb, ListChecks, Loader2, Lock,
-  MessageCircleQuestion, Mic, Paperclip, Plus, RotateCcw, ScanText, Search, ShieldCheck, Sparkles, Trash2, UploadCloud, Wand2, Wrench, X,
+  MessageCircleQuestion, Mic, Paperclip, Plus, RotateCcw, ScanText, Search, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, UploadCloud, Wand2, Wrench, X,
 } from 'lucide-react'
-import { LocalFile } from '../lib/api'
+import { LocalFile, get } from '../lib/api'
 import { Recorder, startRecorder, sttError, transcribeFile } from '../lib/stt'
 import { AskMode, WEB_SCOPE_LABEL, WebScope, useChat } from '../store/chat'
 import { toast } from '../store/ui'
@@ -21,9 +21,9 @@ import { isTemplateName } from '../components/Autofill'
 
 type Where = 'documents' | 'hybrid' | 'web'
 const MODES: { k: Where; icon: ReactNode; t: string; d: string; feature: string }[] = [
-  { k: 'documents', icon: <BookOpen size={16} />, t: 'Tài liệu công ty', d: 'Chỉ trả lời từ tài liệu đã duyệt, luôn kèm bài gốc', feature: 'ask' },
-  { k: 'hybrid', icon: <Lightbulb size={16} />, t: '+ Kiến thức chung', d: 'Ưu tiên tài liệu; thiếu thì AI bổ sung, có ghi rõ', feature: 'ask_hybrid' },
-  { k: 'web', icon: <Globe2 size={16} />, t: 'Tìm trên Internet', d: 'Ưu tiên trang chính thống, luôn ghi nguồn và kiểm tra nguồn', feature: 'web_search' },
+  { k: 'documents', icon: <BookOpen size={16} />, t: 'Tài liệu công ty', d: 'Chỉ trả lời từ tài liệu công ty đã duyệt, luôn kèm bài gốc', feature: 'ask' },
+  { k: 'hybrid', icon: <Lightbulb size={16} />, t: 'Hỏi rộng', d: 'Tài liệu công ty trước; thiếu thì thêm hiểu biết chung, có ghi rõ phần nào là hiểu biết chung', feature: 'ask_hybrid' },
+  { k: 'web', icon: <Globe2 size={16} />, t: 'Trên mạng', d: 'Tìm trên Internet, ưu tiên trang của cơ quan nhà nước, luôn ghi nguồn', feature: 'web_search' },
 ]
 const STARTERS: Record<'text' | 'web' | 'file', { icon: ReactNode; t: string }[]> = {
   text: [
@@ -55,7 +55,11 @@ export default function HomeChat() {
   const isWeb = cur === 'web'
   const att = useAttachments()
   const [q, setQ] = useState('')
+  // Câu hỏi mẫu lấy từ các bài mới cập nhật trong kho (không gợi ý chuyện kho không có)
+  const [recent, setRecent] = useState<{ title: string; type: string }[]>([])
+  useEffect(() => { get<{ items: { title: string; type: string }[] }>('/items', { limit: 3, sort: 'updated' }).then((r) => setRecent(r.items)).catch(() => undefined) }, [])
   const [menu, setMenu] = useState(false)
+  const [showOpts, setShowOpts] = useState(false)
   const [view, setView] = useState<LocalFile | null>(null)
   const [mic, setMic] = useState<'off' | 'on' | 'busy'>('off')
   const rec = useRef<Recorder | null>(null)
@@ -112,16 +116,21 @@ export default function HomeChat() {
     try { const f = await r.stop(); if (f) { const said = (await transcribeFile(f)).text.replace(/\s+/g, ' ').trim(); if (said) setQ((c) => (c ? `${c} ${said}` : said)); else toast.warn('Không nghe rõ lời nói. Hãy thử lại.') } } catch (e) { toast.error(sttError(e)) } finally { setMic('off'); ta.current?.focus() }
   }
 
-  const starters = att.files.length || (fileCtx.length && !isWeb) ? STARTERS.file : isWeb ? STARTERS.web : STARTERS.text
+  const clip = (t: string) => (t.length > 58 ? `${t.slice(0, 57)}…` : t)
+  const textStarters = recent.length
+    ? [...recent.map((i) => (i.type === 'runbook' ? { icon: <Wrench size={17} />, t: `Làm thế nào khi gặp: ${clip(i.title)}?` } : { icon: <FileText size={17} />, t: `Tóm tắt giúp mình: ${clip(i.title)}` })), STARTERS.text[3]]
+    : STARTERS.text
+  const starters = att.files.length || (fileCtx.length && !isWeb) ? STARTERS.file : isWeb ? STARTERS.web : textStarters
   const placeholder = mic === 'on' ? 'Đang nghe… bấm ✓ khi nói xong' : mic === 'busy' ? 'AI đang chép lời…' : withFiles ? 'Hỏi về tệp…' : isWeb ? 'Hỏi điều cần tra cứu trên Internet…' : 'Hỏi trợ lý bất cứ điều gì, hoặc kéo thả ảnh, tệp vào đây…'
-  const busyText = withFiles ? 'AI đang xem tệp của bạn…' : isWeb ? 'Đang tìm trên các trang chính thống và kiểm tra nguồn… (10–30 giây)' : 'Mình đang đọc tài liệu…'
+  const tuned = policy !== 'auto' || deep || webScope !== 'balanced'
+  const busyText = withFiles ? 'AI đang xem tệp của bạn…' : isWeb ? 'Đang tìm trên mạng và kiểm tra nguồn… (10–30 giây)' : 'Mình đang đọc tài liệu…'
 
   return (
     <section className={clsx('hc', !empty && 'active', att.over && 'over')} {...att.dropProps} aria-label="Trợ lý AI">
       <div className="hc-top">
         <span className="hc-badge"><Sparkles size={18} /></span>
         <div className="min-w-0 flex-1"><b>Trợ lý AI</b><small>{withFiles ? 'Đang hỏi về tệp của bạn' : MODES.find((x) => x.k === cur)!.d}</small></div>
-        {!empty && <button className="hc-hb" onClick={newConversation} title="Bắt đầu chủ đề mới (trợ lý không nhớ các câu trước)"><RotateCcw size={15} /><span>Cuộc trò chuyện mới</span></button>}
+        {!empty && <button className="hc-hb" onClick={newConversation} title="Bắt đầu hỏi chuyện khác (trợ lý quên các câu trước)"><RotateCcw size={15} /><span>Hỏi chuyện mới</span></button>}
         {!empty && <button className="hc-hb icon" onClick={clear} title="Xóa cuộc trò chuyện" aria-label="Xóa cuộc trò chuyện"><Trash2 size={15} /></button>}
       </div>
 
@@ -149,7 +158,7 @@ export default function HomeChat() {
           <div className="hc-fill-hint">
             <Wand2 size={17} className="shrink-0" />
             <span className="flex-1 min-w-0"><b>{tf.name}</b> là biểu mẫu cần điền? Lưu làm mẫu để AI điền giúp từ thông tin bạn gửi, giữ nguyên định dạng.</span>
-            <button onClick={() => { queueTemplate(tf); att.remove(att.files.indexOf(tf)); nav('/autofill') }}>Điền mẫu tự động<ArrowRight size={15} /></button>
+            <button onClick={() => { queueTemplate(tf); att.remove(att.files.indexOf(tf)); nav('/autofill') }}>Điền giấy tờ<ArrowRight size={15} /></button>
           </div>) : null })()}
         <div className="fc-box">
           <AttachTray files={att.files} onRemove={att.remove} onOpen={setView} />
@@ -163,8 +172,8 @@ export default function HomeChat() {
                   <button role="menuitem" onClick={() => { setMenu(false); void att.pick('image') }}><ImagePlus size={18} /><span><b>Thêm ảnh</b><small>Ảnh chụp, ảnh màn hình (hoặc dán Ctrl+V)</small></span></button>
                   <button role="menuitem" onClick={() => { setMenu(false); void att.pick('audio') }}><AudioLines size={18} /><span><b>Thêm file ghi âm</b><small>AI chép lời rồi trả lời</small></span></button>
                   <div className="sep" />
-                  <button role="menuitem" onClick={() => { setMenu(false); nav('/autofill') }}><Wand2 size={18} /><span><b>Điền mẫu tự động</b><small>Word, Excel, CSV: AI điền từ thông tin bạn gửi</small></span></button>
-                  <button role="menuitem" onClick={() => { setMenu(false); nav('/transcribe') }}><AudioLines size={18} /><span><b>Chép lời ghi âm</b><small>Biến ghi âm cuộc họp thành chữ</small></span></button>
+                  <button role="menuitem" onClick={() => { setMenu(false); nav('/autofill') }}><Wand2 size={18} /><span><b>Điền giấy tờ</b><small>Đơn, hợp đồng, bảng kê: trợ lý điền giúp từ thông tin bạn đưa</small></span></button>
+                  <button role="menuitem" onClick={() => { setMenu(false); nav('/transcribe') }}><AudioLines size={18} /><span><b>Ghi âm thành chữ</b><small>Biến ghi âm cuộc họp, cuộc gọi thành văn bản</small></span></button>
                   <button role="menuitem" onClick={() => { setMenu(false); nav('/compare') }}><GitCompare size={18} /><span><b>So sánh các bài</b><small>Bài nào đúng hơn?</small></span></button>
                   <button role="menuitem" onClick={() => { setMenu(false); nav('/browse/type/prompt') }}><TYPE_ICON.prompt size={18} /><span><b>Câu lệnh AI mẫu</b><small>Điền thông tin rồi sao chép</small></span></button>
                   <button role="menuitem" onClick={() => { setMenu(false); nav('/my-file/private') }}><Lock size={18} /><span><b>Đọc tệp riêng tư trên máy</b><small>Giấy tờ nhạy cảm: tệp không gửi đi nguyên vẹn</small></span></button>
@@ -184,14 +193,16 @@ export default function HomeChat() {
         </div>
 
         <div className="ask-opts hc-opts">
-          {isWeb && !withFiles ? (<>
+          {/* Tùy chọn nâng cao để sau một nút, người dùng thường không cần đụng tới */}
+          <button className={clsx('opt', (showOpts || tuned) && 'on')} aria-expanded={showOpts} onClick={() => setShowOpts(!showOpts)} title="Chọn nguồn trợ lý được dùng"><SlidersHorizontal size={14} />Tùy chọn{tuned && !showOpts ? ' (đã đổi)' : ''}</button>
+          {showOpts && (isWeb && !withFiles ? (<>
             <label className="opt sel" title="Trang nào được dùng làm nguồn"><Globe2 size={14} />Tìm ở:<select value={webScope} onChange={(e) => setWebScope(e.target.value as WebScope)}>{(Object.keys(WEB_SCOPE_LABEL) as WebScope[]).map((s) => <option key={s} value={s}>{WEB_SCOPE_LABEL[s]}</option>)}</select></label>
-            <span className="opt note"><Lock size={13} />Chỉ gửi câu hỏi, không gửi tài liệu công ty</span>
           </>) : (<>
-            <label className="opt sel" title="Nguồn tài liệu công ty trợ lý được dùng"><ShieldCheck size={14} />Nguồn:<select value={policy} onChange={(e) => setPolicy(e.target.value as never)}><option value="auto">Tự động</option><option value="reviewed">Đã kiểm duyệt</option><option value="official">Chính thống</option></select></label>
-            {!withFiles && <button className={clsx('opt', deep && 'on')} aria-pressed={deep} onClick={() => setDeep(!deep)} title="Xem thêm các bài cùng chủ đề trước khi trả lời — kỹ hơn nhưng chậm hơn">{deep ? <CheckCircle2 size={14} /> : <Search size={14} />}Tìm kỹ</button>}
-            {withFiles && <span className="opt note" title="Ở chế độ Internet thì chỉ trả lời theo tệp">{cur === 'web' ? 'Chỉ trả lời theo tệp' : 'AI xem tệp và đối chiếu tài liệu công ty'}</span>}
-          </>)}
+            <label className="opt sel" title="Trợ lý được dùng tài liệu nào của công ty"><ShieldCheck size={14} />Dùng:<select value={policy} onChange={(e) => setPolicy(e.target.value as never)}><option value="auto">Tất cả tài liệu</option><option value="reviewed">Chỉ bài đã duyệt</option><option value="official">Chỉ bản chính thức</option></select></label>
+            {!withFiles && <button className={clsx('opt', deep && 'on')} aria-pressed={deep} onClick={() => setDeep(!deep)} title="Đọc thêm các bài cùng chủ đề trước khi trả lời: kỹ hơn nhưng chậm hơn">{deep ? <CheckCircle2 size={14} /> : <Search size={14} />}Đọc kỹ hơn</button>}
+          </>))}
+          {isWeb && !withFiles && <span className="opt note"><Lock size={13} />Chỉ gửi câu hỏi, không gửi tài liệu công ty</span>}
+          {withFiles && <span className="opt note" title="Ở chế độ Trên mạng thì chỉ trả lời theo tệp">{cur === 'web' ? 'Chỉ trả lời theo tệp' : 'Trợ lý xem tệp và đối chiếu tài liệu công ty'}</span>}
           <span className="hc-hint"><b>Enter</b> gửi · <b>Shift+Enter</b> xuống dòng · kéo thả hoặc dán ảnh để hỏi về tệp</span>
         </div>
 

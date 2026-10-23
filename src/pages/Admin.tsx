@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Download, FileJson, FileSpreadsheet, KeyRound, Lock, Play, Plus, ShieldCheck, Unlock, Upload } from 'lucide-react'
+import { Download, FileJson, FileSpreadsheet, KeyRound, Lock, Play, Plus, ShieldCheck, Unlock, Upload, UserCheck } from 'lucide-react'
 import { ApiError, api, deskApi, download, get, patch, post, put, useGet } from '../lib/api'
 import { parseCsv } from '../lib/csv'
 import { dt, ROLE_LABEL } from '../lib/format'
-import type { AdminUser, Role } from '../lib/types'
+import type { AdminUser, Audience, Role } from '../lib/types'
 import { Empty, Field, Modal, PageHeader, Pill, Seg, SearchBox, Stat } from '../components/ui'
 import { ErrorBox, Loading, Pager, Section, useBusy } from '../components/shared'
 import { useAuth } from '../store/auth'
@@ -12,29 +12,44 @@ import { useNotices } from '../store/notices'
 import { APP_CONFIG } from '../lib/appConfig'
 import { useClientPage } from '../components/ShowMore'
 
+const AUDIENCE_LABEL: Record<Audience, string> = { office: 'Văn phòng', field: 'Sản xuất' }
+
 export function Users() {
   const me = useAuth((s) => s.user)!
   const [page, setPage] = useState(1)
   const [q, setQ] = useState('')
-  const { data, loading, error, reload } = useGet<{ users: AdminUser[]; total: number; page: number; pages: number }>('/admin/users', q.trim() ? { page: 1, limit: 100 } : { page, limit: 20 })
+  const [only, setOnly] = useState<'all' | 'pending'>('all')
+  const filter = only === 'pending' ? { status: 'pending' } : {}
+  const { data, loading, error, reload } = useGet<{ users: AdminUser[]; total: number; page: number; pages: number }>('/admin/users', q.trim() ? { page: 1, limit: 100, ...filter } : { page, limit: 20, ...filter })
+  // Đếm tài khoản chờ duyệt để hiện trên nút lọc
+  const pending = useGet<{ total: number }>('/admin/users', { status: 'pending', page: 1, limit: 1 })
   const { busy, run } = useBusy()
-  const [f, setF] = useState<{ name: string; email: string; password: string; role: Role } | null>(null)
-  async function create() { if (!f) return; const r = await run(() => post('/admin/users', f), 'Đã tạo người dùng'); if (r) { setF(null); reload() } }
-  const upd = async (u: AdminUser, body: Partial<AdminUser>, ok: string) => { await run(() => patch(`/admin/users/${u.id}`, body), ok); reload() }
+  const [f, setF] = useState<{ name: string; email: string; password: string; role: Role; audience: Audience } | null>(null)
+  async function create() { if (!f) return; const r = await run(() => post('/admin/users', { ...f, ...(f.role === 'reader' ? {} : { audience: undefined }) }), 'Đã tạo người dùng'); if (r) { setF(null); reload() } }
+  const upd = async (u: AdminUser, body: Partial<AdminUser>, ok: string) => { await run(() => patch(`/admin/users/${u.id}`, body), ok); reload(); pending.reload() }
   const list = (data?.users || []).filter((u) => (u.name + u.email).toLowerCase().includes(q.toLowerCase()))
   const pwBad = !!f && f.password.length < 10
+  const nPending = pending.data?.total || 0
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Người dùng & vai trò" subtitle="Chỉ quản trị viên. Tự đăng ký luôn là Người đọc — nâng quyền tại đây." actions={<button className="btn" onClick={() => setF({ name: '', email: '', password: '', role: 'contributor' })}><Plus size={16} />Tạo người dùng</button>} />
-      <div className="card !p-3"><SearchBox className="w-72" value={q} onChange={setQ} placeholder="Lọc theo tên / email…" /></div>
+      <PageHeader title="Người dùng & vai trò" subtitle="Người tự đăng ký phải được duyệt mới vào được, và luôn là Người đọc. Đổi vai trò, khối làm việc, khóa tài khoản tại đây." actions={<button className="btn" onClick={() => setF({ name: '', email: '', password: '', role: 'reader', audience: 'office' })}><Plus size={16} />Tạo người dùng</button>} />
+      {nPending > 0 && only !== 'pending' && (
+        <div className="card !p-3 flex items-center gap-3 flex-wrap !border-amber-300 !bg-amber-50"><UserCheck size={20} className="text-amber-700" /><span className="flex-1 font-semibold text-amber-900">Có {nPending} tài khoản mới đang chờ bạn duyệt.</span><button className="btn sm" onClick={() => { setOnly('pending'); setPage(1) }}>Xem và duyệt</button></div>)}
+      <div className="card !p-3 flex items-center gap-3 flex-wrap"><SearchBox className="w-72" value={q} onChange={setQ} placeholder="Lọc theo tên / email…" />
+        <Seg sm value={only} onChange={(v) => { setOnly(v); setPage(1) }} options={[{ value: 'all', label: 'Tất cả' }, { value: 'pending', label: nPending ? `Chờ duyệt (${nPending})` : 'Chờ duyệt' }]} /></div>
       <ErrorBox error={error} onRetry={reload} />
-      <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Người dùng</th><th>Vai trò</th><th>Trạng thái</th><th>2FA</th><th>Tạo lúc</th><th /></tr></thead><tbody>
-        {loading && !data && <tr><td colSpan={6}><Loading /></td></tr>}
-        {data && list.length === 0 && <tr><td colSpan={6}><Empty /></td></tr>}
-        {list.map((u) => (<tr key={u.id}><td><div className="font-bold">{u.name} {u.id === me.id && <Pill sm tone="soft">Bạn</Pill>}</div><div className="text-xs text-muted">{u.email} · #{u.id}</div></td>
+      <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Người dùng</th><th>Vai trò</th><th title="Chỉ áp dụng cho Người đọc: quyết định giao diện và tính năng AI">Khối làm việc</th><th>Trạng thái</th><th>2FA</th><th>Tạo lúc</th><th /></tr></thead><tbody>
+        {loading && !data && <tr><td colSpan={7}><Loading /></td></tr>}
+        {data && list.length === 0 && <tr><td colSpan={7}><Empty text={only === 'pending' ? 'Không có tài khoản nào chờ duyệt.' : undefined} /></td></tr>}
+        {list.map((u) => (<tr key={u.id}><td><div className="font-bold">{u.name} {u.id === me.id && <Pill sm tone="soft">Bạn</Pill>}</div><div className="text-xs text-muted">{u.email}</div></td>
           <td><select className="select !w-48 !py-1.5" disabled={busy || u.id === me.id} value={u.role} onChange={(e) => upd(u, { role: e.target.value as Role }, 'Đã đổi vai trò')}>{Object.entries(ROLE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
-          <td>{u.status === 'active' ? <Pill sm tone="ok">Hoạt động</Pill> : <Pill sm tone="bad"><Lock size={11} />Bị khóa</Pill>}</td><td>{u.totp_enabled ? <ShieldCheck size={17} className="text-green-600" /> : '—'}</td><td>{dt(u.created_at)}</td>
-          <td className="num">{u.id !== me.id && (u.status === 'active' ? <button className="btn outline sm" disabled={busy} onClick={() => upd(u, { status: 'locked' }, 'Đã khóa tài khoản')}><Lock size={13} />Khóa</button> : <button className="btn sm" disabled={busy} onClick={() => upd(u, { status: 'active' }, 'Đã mở khóa')}><Unlock size={13} />Mở khóa</button>)}</td></tr>))}
+          <td>{u.role === 'reader'
+            ? <select className="select !w-36 !py-1.5" disabled={busy} value={u.audience || ''} onChange={(e) => upd(u, { audience: e.target.value as Audience }, 'Đã đổi khối làm việc')}>{!u.audience && <option value="">Chưa chọn</option>}{Object.entries(AUDIENCE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+            : <span className="text-muted text-xs">Giao diện đầy đủ</span>}</td>
+          <td>{u.status === 'active' ? <Pill sm tone="ok">Hoạt động</Pill> : u.status === 'pending' ? <Pill sm tone="warn">Chờ duyệt</Pill> : <Pill sm tone="bad"><Lock size={11} />Bị khóa</Pill>}</td><td>{u.totp_enabled ? <ShieldCheck size={17} className="text-green-600" /> : '—'}</td><td>{dt(u.created_at)}</td>
+          <td className="num">{u.id !== me.id && (u.status === 'pending'
+            ? <span className="inline-flex gap-1.5"><button className="btn sm" disabled={busy} onClick={() => upd(u, { status: 'active' }, `Đã duyệt tài khoản ${u.name}`)}><UserCheck size={13} />Duyệt</button><button className="btn outline sm" disabled={busy} onClick={() => upd(u, { status: 'locked' }, 'Đã từ chối (khóa) tài khoản')}>Từ chối</button></span>
+            : u.status === 'active' ? <button className="btn outline sm" disabled={busy} onClick={() => upd(u, { status: 'locked' }, 'Đã khóa tài khoản')}><Lock size={13} />Khóa</button> : <button className="btn sm" disabled={busy} onClick={() => upd(u, { status: 'active' }, 'Đã mở khóa')}><Unlock size={13} />Mở khóa</button>)}</td></tr>))}
       </tbody></table></div>
       {data && !q.trim() && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
       {data && q.trim() && data.total > 100 && <div className="text-xs text-muted">Đang lọc trong 100 người dùng đầu tiên ({data.total} người). Gõ cụ thể hơn để tìm nhanh.</div>}
@@ -42,7 +57,8 @@ export function Users() {
         <div className="grid gap-4"><Field label="Họ tên *"><input className="input" autoFocus value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
           <Field label="Email *"><input className="input" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
           <Field label="Mật khẩu (≥ 10 ký tự) *"><input className="input" type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />{pwBad && f.password && <span className="text-xs text-red-600 font-semibold">Cần ít nhất 10 ký tự</span>}</Field>
-          <Field label="Vai trò"><select className="select" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as Role })}>{Object.entries(ROLE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field></div></Modal>}
+          <Field label="Vai trò"><select className="select" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as Role })}>{Object.entries(ROLE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
+          {f.role === 'reader' && <Field label="Khối làm việc" hint="Văn phòng: giao diện đầy đủ. Sản xuất: chữ to, nói để hỏi, chụp ảnh hỏi, báo hỏng."><Seg value={f.audience} onChange={(v) => setF({ ...f, audience: v })} options={[{ value: 'office', label: 'Văn phòng' }, { value: 'field', label: 'Sản xuất' }]} /></Field>}</div></Modal>}
     </div>)
 }
 
@@ -55,14 +71,14 @@ const KNOWN: { key: string; kind: SettingKind; group: string; title: string; hel
   { key: 'ai_agents_per_user', kind: 'number', group: 'Agent cá nhân', title: 'Số Agent tối đa mỗi người', help: 'Mặc định 10', def: '10' },
   { key: 'ai_agent_turn_max_usd', kind: 'number', group: 'Agent cá nhân', title: 'Chi phí tối đa một lượt chat với Agent (USD)', help: 'Mặc định 0.5; quá mức thì Agent phải trả lời luôn', def: '0.5' },
   { key: 'ai_conversation_retention_days', kind: 'number', group: 'Agent cá nhân', title: 'Số ngày lưu hội thoại với Agent', help: 'Mặc định 30; 0 = giữ mãi', def: '30' },
-  { key: 'ai_feature_ask', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Hỏi đáp trong tài liệu', help: 'Chế độ documents (mặc định)' },
-  { key: 'ai_feature_ask_general', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Hỏi đáp ngoài tài liệu', help: 'Chế độ general — kiến thức chung, không gửi tài liệu nội bộ. Tắt nếu không muốn cho hỏi ngoài tài liệu' },
-  { key: 'ai_feature_ask_hybrid', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Hỏi đáp kết hợp', help: 'Chế độ hybrid — tài liệu trước, bổ sung kiến thức chung có gắn nhãn' },
-  { key: 'ai_feature_suggest', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Gợi ý tóm tắt / thẻ / rủi ro', help: 'POST /ai/suggest' },
-  { key: 'ai_feature_duplicates', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Phát hiện trùng lặp / mâu thuẫn', help: 'POST /ai/duplicates' },
-  { key: 'ai_feature_prompt_test', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Chạy & chấm kiểm thử prompt', help: 'POST /ai/prompt-tests/run' },
-  { key: 'ai_feature_vision', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Hỏi AI về ảnh / PDF', help: 'POST /ai/analyze — AI nhìn trực tiếp vào tệp và trả lời (không lưu)' },
-  { key: 'ai_feature_vision_extract', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'AI đọc chữ trong ảnh / PDF và lưu', help: 'POST /attachments/{id}/ai-extract — lưu chữ để tìm kiếm và để AI dùng' },
+  { key: 'ai_feature_ask', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Hỏi đáp trong tài liệu', help: 'Chỉ trả lời từ tài liệu công ty đã duyệt (mặc định)' },
+  { key: 'ai_feature_ask_general', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Hỏi đáp ngoài tài liệu', help: 'Kiến thức chung, không gửi tài liệu nội bộ. Tắt nếu không muốn cho hỏi ngoài tài liệu' },
+  { key: 'ai_feature_ask_hybrid', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Hỏi đáp kết hợp', help: 'Tài liệu công ty trước, bổ sung kiến thức chung có gắn nhãn' },
+  { key: 'ai_feature_suggest', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Gợi ý tóm tắt / thẻ / rủi ro', help: 'AI gợi ý tóm tắt, thẻ và mức rủi ro khi soạn bài' },
+  { key: 'ai_feature_duplicates', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Phát hiện trùng lặp / mâu thuẫn', help: 'AI tìm bài trùng hoặc mâu thuẫn trước khi tạo bài mới' },
+  { key: 'ai_feature_prompt_test', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Chạy & chấm kiểm thử câu lệnh AI', help: 'Chạy thử câu lệnh AI với dữ liệu mẫu và chấm điểm' },
+  { key: 'ai_feature_vision', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Hỏi AI về ảnh / PDF', help: 'AI nhìn trực tiếp vào tệp và trả lời (không lưu)' },
+  { key: 'ai_feature_vision_extract', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'AI đọc chữ trong ảnh / PDF và lưu', help: 'Lưu chữ để tìm kiếm và để AI dùng' },
   { key: 'ai_feature_agent', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Agent cá nhân hóa', help: 'Tạo và chat với Agent (tra cứu tài liệu, đọc tệp, xem ảnh/PDF)' },
   { key: 'ai_auto_ingest', kind: 'bool', group: 'Đọc & ghi nhớ tài liệu', title: 'Tự đọc tệp khi tải lên', help: 'Tệp mới được đọc, chia đoạn và ghi nhớ ở nền ngay sau khi tải lên (cần INGEST_WORKER=true trên máy chủ)' },
   { key: 'ai_ocr_double_check', kind: 'bool', group: 'Đọc & ghi nhớ tài liệu', title: 'Đọc ảnh/PDF quét hai lượt', help: 'AI đọc chữ rồi tự soát lại lần hai để giảm sai số; tốn thêm chi phí' },
@@ -76,26 +92,26 @@ const KNOWN: { key: string; kind: SettingKind; group: string; title: string; hel
   { key: 'ai_feature_embed_query', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Tạo vector cho câu hỏi', help: 'Cần để tìm theo ngữ nghĩa lúc hỏi đáp và tìm đoạn' },
   { key: 'ai_feature_rag_expand', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Mở rộng câu hỏi (tính năng)', help: 'Cho phép gọi AI mở rộng câu hỏi khi tìm' },
   { key: 'ai_feature_rag_rerank', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'Chấm lại thứ tự đoạn (tính năng)', help: 'Cho phép gọi AI chấm lại thứ tự đoạn' },
-  { key: 'ai_feature_compare', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'So sánh tài liệu', help: 'POST /knowledge/compare — đối chiếu 2–5 tài liệu' },
-  { key: 'ai_ask_rewrite', kind: 'bool', group: 'Hội thoại & suy luận', title: 'Hiểu câu hỏi nối tiếp', help: 'POST /ai/ask với conversation_id: AI viết lại câu ngắn như “còn bước cuối?” thành câu đủ ý dựa trên các câu trước rồi mới tìm tài liệu' },
-  { key: 'ai_ask_effort', kind: 'select', group: 'Hội thoại & suy luận', title: 'Mức suy luận khi hỏi đáp', help: 'Mức suy luận của mô hình khi soạn câu trả lời /ai/ask', def: 'high', options: [['low', 'Thấp — nhanh, rẻ'], ['medium', 'Vừa'], ['high', 'Cao — kỹ hơn, chậm và tốn hơn']] },
+  { key: 'ai_feature_compare', kind: 'bool', group: 'AI — bật/tắt từng tính năng', title: 'So sánh tài liệu', help: 'Đối chiếu 2–5 tài liệu' },
+  { key: 'ai_ask_rewrite', kind: 'bool', group: 'Hội thoại & suy luận', title: 'Hiểu câu hỏi nối tiếp', help: 'AI viết lại câu ngắn như “còn bước cuối?” thành câu đủ ý dựa trên các câu trước rồi mới tìm tài liệu' },
+  { key: 'ai_ask_effort', kind: 'select', group: 'Hội thoại & suy luận', title: 'Mức suy luận khi hỏi đáp', help: 'Mức suy luận của mô hình khi soạn câu trả lời', def: 'high', options: [['low', 'Thấp — nhanh, rẻ'], ['medium', 'Vừa'], ['high', 'Cao — kỹ hơn, chậm và tốn hơn']] },
   { key: 'ai_agent_final_pass', kind: 'bool', group: 'Hội thoại & suy luận', title: 'Agent trả lời lại có suy luận sau khi tra cứu', help: 'Sau các vòng gọi công cụ (không suy luận), Agent soạn câu trả lời cuối thêm một lượt có suy luận; tắt để nhanh và rẻ hơn' },
   { key: 'ai_agent_final_effort', kind: 'select', group: 'Hội thoại & suy luận', title: 'Mức suy luận lượt trả lời cuối của Agent', help: 'Áp dụng khi bật lượt trả lời cuối', def: 'high', options: [['low', 'Thấp — nhanh, rẻ'], ['medium', 'Vừa'], ['high', 'Cao — kỹ hơn, chậm và tốn hơn']] },
-  { key: 'ai_feature_file_chat', kind: 'bool', group: 'Hỏi bằng tệp', title: 'Trò chuyện kèm tệp kiểu ChatGPT', help: 'POST /ai/file-chat — AI nhìn ảnh/PDF trực tiếp, đọc Word/Excel, chép lời ghi âm; dùng ở trang Hỏi về tệp và nút đính kèm của trợ lý' },
-  { key: 'ai_feature_web_search', kind: 'bool', group: 'Tìm trên Internet', title: 'Cho AI tìm trên Internet', help: 'POST /ai/web/ask — chỉ gửi câu hỏi, không gửi tài liệu nội bộ; luôn ghi nguồn và xác minh nguồn' },
+  { key: 'ai_feature_file_chat', kind: 'bool', group: 'Hỏi bằng tệp', title: 'Trò chuyện kèm tệp kiểu ChatGPT', help: 'AI nhìn ảnh/PDF trực tiếp, đọc Word/Excel, chép lời ghi âm; dùng ở trang Hỏi về tệp và nút đính kèm của trợ lý' },
+  { key: 'ai_feature_web_search', kind: 'bool', group: 'Tìm trên Internet', title: 'Cho AI tìm trên Internet', help: 'Chỉ gửi câu hỏi, không gửi tài liệu nội bộ; luôn ghi nguồn và xác minh nguồn' },
   { key: 'ai_web_scope_default', kind: 'select', group: 'Tìm trên Internet', title: 'Phạm vi tìm mặc định', help: 'Khi người dùng không chọn', def: 'balanced', options: [['balanced', 'Ưu tiên chính thống, thiếu thì mở rộng'], ['official', 'Chỉ trang chính thống'], ['open', 'Mọi trang (trừ trang bị chặn)']] },
   { key: 'ai_feature_web_learn', kind: 'bool', group: 'Tìm trên Internet', title: 'Cho AI khái quát câu hỏi để học câu trả lời tốt', help: 'Gọi mô hình nhỏ để bỏ thông tin riêng và quyết định câu trả lời có dùng lại được không' },
   { key: 'ai_web_auto_learn', kind: 'bool', group: 'Tìm trên Internet', title: 'Tự học câu trả lời có nguồn tốt', help: 'Tắt thì chỉ học khi người dùng bấm Hữu ích' },
   { key: 'ai_web_learn_min_level', kind: 'select', group: 'Tìm trên Internet', title: 'Mức xác minh tối thiểu để tự học', help: 'Mức cao cần nguồn chính thống, không có liên kết hỏng, nhiều trang xác nhận', def: 'high', options: [['high', 'Cao'], ['medium', 'Khá']] },
   { key: 'ai_web_learned_days', kind: 'number', group: 'Tìm trên Internet', title: 'Hạn dùng tối đa của câu trả lời đã học (ngày)', help: 'Mặc định 30; AI có thể đặt ngắn hơn với tin tức, giá cả', def: '30' },
   { key: 'ai_web_hide_after_unhelpful', kind: 'number', group: 'Tìm trên Internet', title: 'Tự ẩn sau số lượt “chưa đúng”', help: 'Mặc định 2 (và phải nhiều hơn lượt hữu ích)', def: '2' },
-  { key: 'ai_feature_transcribe', kind: 'bool', group: 'Chép lời ghi âm', title: 'Cho AI chép lời file ghi âm', help: 'POST /ai/transcribe, nút micro, file ghi âm trong hỏi bằng tệp / nhập tri thức / tệp đính kèm. Mô hình AI_MODEL_TRANSCRIBE (mặc định gpt-4o-transcribe)' },
+  { key: 'ai_feature_transcribe', kind: 'bool', group: 'Chép lời ghi âm', title: 'Cho AI chép lời file ghi âm', help: 'Nút micro, file ghi âm trong hỏi bằng tệp / nhập tri thức / tệp đính kèm. Mô hình AI_MODEL_TRANSCRIBE (mặc định gpt-4o-transcribe)' },
   { key: 'ai_transcribe_double_check', kind: 'bool', group: 'Chép lời ghi âm', title: 'Chép lời bằng hai mô hình rồi đối chiếu', help: 'Mặc định bật: chính xác hơn với tên riêng và con số, tốn gấp đôi; tắt để chỉ dùng một mô hình' },
-  { key: 'ai_transcribe_max_minutes', kind: 'number', group: 'Chép lời ghi âm', title: 'Độ dài tối đa một bản ghi (phút)', help: 'Mặc định 60. Bản ghi dài hơn bị từ chối (413)', def: '60' },
+  { key: 'ai_transcribe_max_minutes', kind: 'number', group: 'Chép lời ghi âm', title: 'Độ dài tối đa một bản ghi (phút)', help: 'Mặc định 60. Bản ghi dài hơn bị từ chối', def: '60' },
   { key: 'ai_transcribe_language', kind: 'select', group: 'Chép lời ghi âm', title: 'Ngôn ngữ mặc định khi chép lời', help: 'Dùng khi người dùng không chọn ngôn ngữ (ghi âm từ nút micro, tệp đính kèm, hỏi bằng tệp)', def: 'vi', options: [['vi', 'Tiếng Việt'], ['en', 'Tiếng Anh'], ['auto', 'Tự nhận biết']] },
-  { key: 'ai_feature_smart_import', kind: 'bool', group: 'Nhập tri thức thông minh', title: 'Cho AI đọc tệp và soạn bản nháp mục', help: 'POST /ai/draft-item, /ai/draft-item/text — AI phân loại, điền mọi trường, gắn thẻ, kiểm tra trùng; người dùng xem lại rồi mới tạo. Đọc ảnh/PDF hai lượt dùng chung khóa ai_ask_file_double_check.' },
+  { key: 'ai_feature_smart_import', kind: 'bool', group: 'Nhập tri thức thông minh', title: 'Cho AI đọc tệp và soạn bản nháp mục', help: 'AI phân loại, điền mọi trường, gắn thẻ, kiểm tra trùng; người dùng xem lại rồi mới tạo. Đọc ảnh/PDF hai lượt theo cài đặt “Đọc ảnh/PDF hai lượt khi hỏi bằng tệp”.' },
   { key: 'ai_ask_file_double_check', kind: 'bool', group: 'Hỏi bằng tệp', title: 'Đọc ảnh/PDF hai lượt khi hỏi bằng tệp', help: 'AI đọc lại lần hai để giảm sai số chữ (số tiền, mã lỗi); chậm và tốn chi phí hơn', def: 'false' },
-  { key: 'ai_feature_ask_file', kind: 'bool', group: 'Hỏi bằng tệp', title: 'Cho phép hỏi bằng tệp', help: 'POST /ai/ask-file — người đọc trở lên gửi ảnh/PDF/Word/Excel kèm câu hỏi, đối chiếu kho rồi trả lời (tệp không lưu)' },
+  { key: 'ai_feature_ask_file', kind: 'bool', group: 'Hỏi bằng tệp', title: 'Cho phép hỏi bằng tệp', help: 'Người đọc trở lên gửi ảnh/PDF/Word/Excel kèm câu hỏi, đối chiếu kho rồi trả lời (tệp không lưu)' },
   { key: 'ai_feature_ask_file_read', kind: 'bool', group: 'Hỏi bằng tệp', title: 'AI đọc chữ trong tệp gửi lên', help: 'Tắt thì chỉ đọc được tệp có sẵn chữ (Word, Excel, văn bản); ảnh và PDF quét bị bỏ qua' },
   { key: 'ai_memory_enabled', kind: 'bool', group: 'Trí nhớ của trợ lý', title: 'Bật trí nhớ dài hạn', help: 'Chắt lọc sự thật, sở thích, quyết định, việc dang dở từ hội thoại với Agent để dùng ở lần sau', def: 'true' },
   { key: 'ai_memory_max_per_user', kind: 'number', group: 'Trí nhớ của trợ lý', title: 'Số ký ức tối đa mỗi người', help: 'Vượt mức thì bỏ ký ức ít quan trọng, lâu không dùng (mặc định 500)', def: '500' },
@@ -116,9 +132,8 @@ function SettingRow({ def, value, onSave, busy }: { def: (typeof KNOWN)[number];
   return (
     <div className="flex items-start gap-4 p-3 rounded-lg border border-line bg-white">
       <div className="flex-1 min-w-0">
-        <div className="font-bold text-[13.5px]">{def.title} {value === undefined && <Pill sm tone="gray">chưa đặt</Pill>}</div>
+        <div className="font-bold text-[13.5px]" title={`Khóa cấu hình: ${def.key}`}>{def.title} {value === undefined && <Pill sm tone="gray">chưa đặt</Pill>}</div>
         <div className="text-xs text-muted mt-0.5 leading-snug">{def.help}</div>
-        <code className="text-[11px] text-brand-700">{def.key}</code>
         {bad && <div className="text-xs text-red-600 font-semibold mt-1">{bad}</div>}
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -167,8 +182,8 @@ export function AdminSettings() {
   async function runJob() { const r = await run(() => post<NonNullable<typeof job>>('/admin/jobs/freshness')); if (r) setJob(r) }
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Cấu hình máy chủ" subtitle="Chỉ quản trị viên. Thay đổi có hiệu lực ngay. Các khóa bên dưới lấy từ tài liệu Swagger (PUT /admin/settings/{key})."
-        actions={<button className="btn outline" onClick={() => setEdit({ key: '', value: '', description: '' })}><Plus size={16} />Đặt khóa khác</button>} />
+      <PageHeader title="Cấu hình máy chủ" subtitle="Chỉ quản trị viên. Thay đổi có hiệu lực ngay cho toàn hệ thống."
+        actions={<button className="btn outline" onClick={() => setEdit({ key: '', value: '', description: '' })}><Plus size={16} />Cấu hình nâng cao</button>} />
       <ErrorBox error={error} onRetry={reload} />
       {loading && !data ? <Loading /> : groups.map((g) => (
         <Section key={g} title={g}>
@@ -332,7 +347,7 @@ export function Connection() {
       <Section title="Máy chủ Memorable API" right={<Pill tone={n.online ? 'ok' : n.online === false ? 'bad' : 'gray'}>{n.online ? `Online · ${n.ms} ms` : n.online === false ? 'Offline' : 'Đang kiểm tra'}</Pill>}>
         <div className="flex gap-3 items-end"><Field label="Địa chỉ máy chủ (cổng API)" className="flex-1"><input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder={APP_CONFIG.server} /></Field>
           <button className="btn" disabled={!url || url === cfg?.serverUrl} onClick={save}>Lưu</button><button className="btn outline" onClick={() => n.ping()}>Kiểm tra</button></div>
-        <p className="text-xs text-muted mb-0">Tài liệu Swagger của máy chủ chạy ở cổng 3002; ứng dụng gọi API ở cổng 3001. Đổi địa chỉ sẽ áp dụng cho các yêu cầu tiếp theo.</p>
+        <p className="text-xs text-muted mb-0">Đổi địa chỉ máy chủ sẽ áp dụng ngay cho các thao tác tiếp theo.</p>
       </Section>
       <Section title="Tài khoản đang đăng nhập"><div className="grid grid-cols-2 gap-4">
         <div><div className="text-[11px] font-bold uppercase text-muted">Họ tên</div><div className="font-bold">{prof?.name ?? user.name}</div></div>

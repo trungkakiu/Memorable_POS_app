@@ -7,7 +7,7 @@ import {
   AlertTriangle, ArrowDown, ArrowUp, Bot, CheckCircle2, ChevronDown, Download, ExternalLink, FileSpreadsheet, FileText, Info, Loader2, PenLine, Plus, ShieldAlert, Sparkles, Trash2, UploadCloud, Wand2, X,
 } from 'lucide-react'
 import { ApiError, LocalFile, download, fromBrowserFile, pickLocalFiles, post, postFiles } from '../lib/api'
-import { CommitResult, DraftStep, ParseResult, RunbookDraft, SEVERITY_LIST, SEVERITY_TEXT } from '../lib/incident'
+import { CommitResult, DraftStep, ParseResult, RunbookDraft, SEVERITY_LIST, SEVERITY_TEXT , RUNBOOK_FIELD, RUNBOOK_REQUIRED, runbookMissing } from '../lib/incident'
 import { Field, PageHeader, Pill } from '../components/ui'
 import { useAuth } from '../store/auth'
 import { toast } from '../store/ui'
@@ -20,17 +20,11 @@ const FIELD_ROWS: { k: keyof RunbookDraft; l: string; rows?: number; ph?: string
   { k: 'contact_info', l: 'Liên hệ hỗ trợ', ph: 'Ai / số nào để gọi khi cần' },
   { k: 'summary', l: 'Tóm tắt', ph: 'Một câu mô tả quy trình' },
 ]
-const REQUIRED: (keyof RunbookDraft)[] = ['title', 'affected_system', 'severity_level', 'symptom', 'prerequisites', 'contact_info', 'verification']
+const REQUIRED: string[] = [...RUNBOOK_REQUIRED]
 
-/** Kiểm tra lại ngay trên máy khi người dùng sửa (giống quy tắc runbook của máy chủ) */
-const missingOf = (r: RunbookDraft) => {
-  const m = REQUIRED.filter((k) => !String(r[k] || '').trim()).map((k) => k)
-  if (!r.steps.length) m.push('steps')
-  if (r.steps.some((s) => !s.action.trim() || !s.expected.trim())) m.push('steps.expected' as keyof RunbookDraft)
-  if (r.risk_level === 'R3' && !r.rollback.trim()) m.push('rollback')
-  return m as string[]
-}
-const LABEL: Record<string, string> = { title: 'Tên quy trình', affected_system: 'Hệ thống', severity_level: 'Mức độ', symptom: 'Dấu hiệu', prerequisites: 'Chuẩn bị trước', contact_info: 'Liên hệ', verification: 'Cách xác nhận', rollback: 'Cách hoàn tác', steps: 'Các bước', 'steps.expected': 'Việc làm / kết quả của bước' }
+/** Kiểm tra lại ngay trên máy khi người dùng sửa: dùng chung luật với trang tạo mục và máy chủ */
+const missingOf = (r: RunbookDraft) => runbookMissing(r)
+const LABEL = RUNBOOK_FIELD
 const emptyDraft = (): RunbookDraft => ({ title: '', summary: '', affected_system: '', severity_level: 'medium', error_group: '', symptom: '', prerequisites: '', verification: '', rollback: '', contact_info: '', risk_level: 'R2', steps: [{ action: '', expected: '', dangerous: false }] })
 
 export default function RunbookImport() {
@@ -44,8 +38,10 @@ export default function RunbookImport() {
   const [res, setRes] = useState<ParseResult | null>(null)
   const [drafts, setDrafts] = useState<RunbookDraft[]>([])
   const [open, setOpen] = useState<number>(0)
-  const [space, setSpace] = useState<number>(spaces[0]?.id || 0)
-  const [submit, setSubmit] = useState(false)
+  // Gợi ý mảng phù hợp với quy trình sự cố; không tự chọn mảng đầu danh sách (dễ lưu nhầm chỗ)
+  const [space, setSpace] = useState<number>(() => spaces.find((s) => /sự cố|quy trình|vận hành|kỹ thuật|IT|SOP/i.test(s.name))?.id || 0)
+  // Mặc định gửi duyệt: chỉ quy trình đã duyệt mới hiện cho nhân viên và được gợi ý khi báo sự cố
+  const [submit, setSubmit] = useState(true)
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState<CommitResult | null>(null)
 
@@ -168,7 +164,7 @@ export default function RunbookImport() {
           {drafts.length > 0 && (
             <div className="rb-commit">
               <Field label="Lưu vào mảng"><select className="select" value={space} onChange={(e) => setSpace(Number(e.target.value))}><option value={0} disabled>Chọn mảng…</option>{spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
-              <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer self-end pb-2"><input type="checkbox" checked={submit} onChange={(e) => setSubmit(e.target.checked)} />Gửi duyệt luôn</label>
+              <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer self-end pb-2"><input type="checkbox" checked={submit} onChange={(e) => setSubmit(e.target.checked)} />Gửi duyệt luôn<span className="font-normal text-xs text-muted">(chỉ quy trình đã duyệt mới hiện cho nhân viên)</span></label>
               <div className="ml-auto flex gap-2 items-end">
                 {ready.length < drafts.length && ready.length > 0 && <button className="btn outline" disabled={saving} onClick={() => void commit(ready)}>Chỉ tạo {ready.length} quy trình đủ thông tin</button>}
                 <button className="btn" disabled={saving || ready.length === 0 || !space} onClick={() => void commit(ready.length === drafts.length ? drafts : ready)}>{saving ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}Tạo {ready.length === drafts.length ? drafts.length : ready.length} quy trình</button>

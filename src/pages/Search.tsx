@@ -2,13 +2,13 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { SearchX, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { ApiError, get, post } from '../lib/api'
-import { dt, FRESH_LABEL, STATUS_LABEL, TRUST_LABEL, TYPE_LABEL } from '../lib/format'
+import { dt, FRESH_LABEL, STATUS_LABEL, TRUST_LABEL, TYPE_LABEL, plainText } from '../lib/format'
 import type { ItemRow } from '../lib/types'
 import { Empty, Modal, PageHeader, SearchBox } from '../components/ui'
 import { AttachStrip } from '../components/Attachments'
 import { ErrorBox, FreshPill, Loading, Pager, StatusPill, TypePill, useBusy } from '../components/shared'
 import { useAuth } from '../store/auth'
-import { toast } from '../store/ui'
+import { SearchTabs } from '../components/PageTabs'
 import { Pill } from '../components/ui'
 
 interface Hit extends ItemRow { score: number; snippet?: string }
@@ -48,6 +48,7 @@ export default function Search() {
 
   return (
     <div className="flex flex-col gap-4 max-w-[1100px]">
+      <SearchTabs />
       <PageHeader title="Tìm kiếm tri thức" subtitle="Gõ có dấu hoặc không dấu đều được; mã lỗi như ERR_504 khớp chính xác và lên đầu" />
       <form onSubmit={submit} className="card !p-4 flex flex-col gap-3">
         <div className="flex gap-3">
@@ -78,7 +79,7 @@ export default function Search() {
                 <div className="flex items-center gap-2 flex-wrap"><TypePill t={r.type} /><StatusPill s={r.status} /><FreshPill f={r.freshness} />
                   <Pill sm tone="gray">{TRUST_LABEL[r.trust_label || ''] || r.trust_label}</Pill><span className="text-xs text-muted ml-auto">Điểm {r.score?.toFixed(1)}</span></div>
                 <div className="font-extrabold text-lg mt-2 text-brand-800">{r.title}</div>
-                {r.snippet && <div className="text-sm text-ink/80 mt-1" dangerouslySetInnerHTML={undefined}>{r.snippet}</div>}
+                {r.snippet && <div className="text-sm text-ink/80 mt-1">{plainText(r.snippet)}</div>}
                 <div className="text-xs text-muted mt-2">{r.space?.name} · Hạn rà soát {dt(r.next_review_date, false)}</div>
                 <div className="mt-2" onClick={(e) => e.stopPropagation()}><AttachStrip itemId={r.id} size={52} max={6} /></div>
               </div>))}</div>)}
@@ -90,7 +91,6 @@ export default function Search() {
             {!fb.helpful && <label className="check"><input type="checkbox" checked={req} onChange={(e) => setReq(e.target.checked)} />Đề nghị bổ sung nội dung này vào kho tri thức</label>}</div>
         </Modal>)}
       {!data && !loading && !error && <Empty text="Nhập từ khóa để bắt đầu (Ctrl+K từ bất kỳ đâu)" />}
-      <div className="hidden">{toast.info.length}</div>
     </div>
   )
 }
