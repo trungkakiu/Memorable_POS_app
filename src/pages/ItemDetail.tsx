@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   Archive, ArrowLeft, Check, CheckCircle2, Clipboard, Download, FileUp, GitCompare, History, Pencil, Play, RotateCcw, Send, SkipForward,
@@ -25,7 +25,10 @@ export default function ItemDetail() {
   const user = useAuth((s) => s.user)!
   const { tags: allTags } = useAuth()
   const { data: it, loading, error, reload } = useGet<Item>(`/items/${id}`)
-  const [tab, setTab] = useState<Tab>('content')
+  // ?tab=run&incident=ID (mở từ Trung tâm sự cố): vào thẳng chế độ chạy, lần chạy gắn với sự cố
+  const [sp] = useSearchParams()
+  const incidentId = Number(sp.get('incident')) || null
+  const [tab, setTab] = useState<Tab>(sp.get('tab') === 'run' ? 'run' : 'content')
   const { busy: busyRun, run } = useBusy()
   const [busy2, setBusy2] = useState(false)
   const busy = busyRun || busy2
@@ -36,7 +39,12 @@ export default function ItemDetail() {
   const [offDlg, setOffDlg] = useState(false)
   const [offNote, setOffNote] = useState('')
 
-  useEffect(() => { setTab('content'); void post('/usage-events', { event_type: 'view', item_id: Number(id) }).catch(() => undefined) }, [id])
+  // Chỉ về tab Nội dung khi chuyển sang mục khác; lần mở đầu giữ tab theo ?tab= (VD mở thẳng chế độ chạy quy trình từ sự cố)
+  const shownId = useRef(id)
+  useEffect(() => {
+    if (shownId.current !== id) { shownId.current = id; setTab('content') }
+    void post('/usage-events', { event_type: 'view', item_id: Number(id) }).catch(() => undefined)
+  }, [id])
 
   if (loading && !it) return <Loading />
   if (error) return <div className="flex flex-col gap-4"><button className="btn outline w-fit" onClick={() => nav(-1)}><ArrowLeft size={15} />Quay lại</button><ErrorBox error={error} onRetry={reload} /></div>
@@ -78,18 +86,20 @@ export default function ItemDetail() {
   const x = (it.detail || {}) as Record<string, any>
   const hasDetail = it.type === 'prompt' || it.type === 'runbook'
   const tabs: { v: Tab; l: string }[] = [
-    { v: 'content', l: 'Nội dung' }, { v: 'merged', l: 'Bản gộp (bài + tệp)' }, ...(hasDetail ? [{ v: 'detail' as Tab, l: it.type === 'prompt' ? 'Chi tiết prompt' : 'Chi tiết runbook' }] : []),
+    { v: 'content', l: 'Nội dung' }, { v: 'merged', l: 'Bản gộp (bài + tệp)' }, ...(hasDetail ? [{ v: 'detail' as Tab, l: it.type === 'prompt' ? 'Chi tiết câu lệnh' : 'Chi tiết quy trình' }] : []),
     { v: 'versions', l: 'Phiên bản' }, { v: 'files', l: `Tệp (${it.attachments?.length ?? 0})` },
-    ...(it.type === 'prompt' ? [{ v: 'tests' as Tab, l: 'Kiểm thử' }] : []), ...(it.type === 'runbook' ? [{ v: 'run' as Tab, l: 'Chạy runbook' }] : []),
+    ...(it.type === 'prompt' ? [{ v: 'tests' as Tab, l: 'Kiểm thử' }] : []), ...(it.type === 'runbook' ? [{ v: 'run' as Tab, l: 'Làm theo quy trình' }] : []),
   ]
 
   return (
     <div className="flex flex-col gap-4">
       <section className="panel">
         <div className="px-5 pt-4 pb-3 flex flex-col gap-2">
-          <button className="btn ghost sm w-fit !px-0" onClick={() => nav('/items')}><ArrowLeft size={15} />Kho tri thức</button>
+          {incidentId
+            ? <button className="btn ghost sm w-fit !px-0" onClick={() => nav(`/incidents?open=${incidentId}`)}><ArrowLeft size={15} />Về sự cố #{incidentId}</button>
+            : <button className="btn ghost sm w-fit !px-0" onClick={() => nav('/items')}><ArrowLeft size={15} />Kho tri thức</button>}
           <h1 className="m-0 text-[22px] font-extrabold leading-snug text-ink">{it.title}</h1>
-          <div className="flex items-center gap-3 flex-wrap"><ItemBadges it={it} />{official && <Pill tone="ok"><ShieldCheck size={12} />Nguồn chính thống</Pill>}<Tags tags={it.tags} />
+          <div className="flex items-center gap-3 flex-wrap"><ItemBadges it={it} />{official && <Pill tone="ok"><ShieldCheck size={12} />Nguồn chính thống</Pill>}<Tags tags={it.tags} max={8} />
             {w && <button className="btn outline sm" onClick={() => setTagEdit((it.tags || []).map((t) => t.id))}><Tag size={13} />Gán thẻ</button>}
             {(w || mod) && <button className="btn outline sm" disabled={busy} title="AI đọc nội dung và gắn nhóm kiến thức, chủ đề phù hợp" onClick={() => void autoTag()}><Bot size={13} />AI gắn thẻ</button>}</div>
         </div>
@@ -103,6 +113,7 @@ export default function ItemDetail() {
           {w && (it.status === 'approved' || it.status === 'overdue') && <button className="btn" disabled={busy} onClick={() => act(`/items/${id}/renew`, {}, 'Đã gia hạn ngày rà soát')}><RefreshCw size={15} />Xác nhận còn đúng</button>}
           {w && it.status === 'archived' && <button className="btn" disabled={busy} onClick={() => act(`/items/${id}/restore`, {}, 'Đã khôi phục về nháp')}><RotateCcw size={15} />Khôi phục</button>}
           {w && it.status !== 'archived' && <button className="btn outline" onClick={archive}><Archive size={15} />Lưu trữ</button>}
+          {can(user.role, 'ask') && <button className="btn outline" onClick={() => nav(`/compare?ids=${id}`)}><GitCompare size={15} />So sánh với bài khác</button>}
           <button className="btn outline" onClick={() => exportIt('md')}><Download size={15} />.md</button>
           <button className="btn outline" onClick={() => exportIt('json')}><Download size={15} />.json</button>
         
@@ -136,7 +147,7 @@ export default function ItemDetail() {
       {tab === 'versions' && <Versions id={Number(id)} canWrite={w} onRestored={reload} />}
       {tab === 'files' && <Files id={Number(id)} atts={it.attachments || []} canWrite={w} onChange={reload} />}
       {tab === 'tests' && <Tests id={Number(id)} canWrite={w} />}
-      {tab === 'run' && <RunbookRun id={Number(id)} />}
+      {tab === 'run' && <RunbookRun id={Number(id)} incidentId={incidentId} />}
 
       {offDlg && (
         <Modal title={official ? 'Gỡ nguồn chính thống' : 'Xác nhận nguồn chính thống'} size="sm" onClose={() => setOffDlg(false)}
@@ -198,20 +209,20 @@ function PromptRender({ id, vars }: { id: number; vars: PromptVar[] }) {
   }
   async function copy() {
     if (!out) return
-    await navigator.clipboard.writeText(out.text); toast.ok('Đã sao chép prompt')
+    await navigator.clipboard.writeText(out.text); toast.ok('Đã sao chép câu lệnh')
     void post('/usage-events', { event_type: 'copy_prompt', item_id: id }).catch(() => undefined)
   }
   return (
     <Section title="Điền biến & sao chép">
       <div className="flex flex-col gap-3">
-        {vars.length === 0 && <div className="text-muted text-sm">Prompt không có biến.</div>}
+        {vars.length === 0 && <div className="text-muted text-sm">Câu lệnh này không có biến cần điền.</div>}
         {vars.map((v) => (
           <Field key={v.name} label={`${v.name}${v.type ? ` (${v.type})` : ''}`} hint={v.description}>
             {v.type === 'boolean' ? <label className="check"><input type="checkbox" checked={!!vals[v.name]} onChange={(e) => setVals({ ...vals, [v.name]: e.target.checked })} />Đúng</label>
               : v.type === 'text' ? <textarea className="textarea" rows={3} placeholder={v.example} value={String(vals[v.name] ?? '')} onChange={(e) => setVals({ ...vals, [v.name]: e.target.value })} />
                 : <input className="input" type={v.type === 'number' ? 'number' : 'text'} placeholder={v.example} value={String(vals[v.name] ?? '')} onChange={(e) => setVals({ ...vals, [v.name]: e.target.value })} />}
           </Field>))}
-        <button className="btn" disabled={busy} onClick={render}><Play size={14} />Tạo prompt hoàn chỉnh</button>
+        <button className="btn" disabled={busy} onClick={render}><Play size={14} />Tạo câu lệnh hoàn chỉnh</button>
         {out && (
           <div className="border-[1.5px] border-brand-300 rounded-lg bg-brand-50 p-3">
             {out.missing_variables.length > 0 && <div className="text-amber-700 text-sm font-semibold mb-2">Thiếu biến: {out.missing_variables.join(', ')}</div>}
@@ -245,7 +256,7 @@ function Versions({ id, canWrite, onRestored }: { id: number; canWrite: boolean;
           <select className="select !w-24 !py-1.5" value={cmp?.from ?? ''} onChange={(e) => setCmp({ from: Number(e.target.value), to: cmp?.to ?? nums[nums.length - 1] })}><option value="">Từ</option>{nums.map((n) => <option key={n} value={n}>v{n}</option>)}</select>→
           <select className="select !w-24 !py-1.5" value={cmp?.to ?? ''} onChange={(e) => setCmp({ from: cmp?.from ?? nums[0], to: Number(e.target.value) })}><option value="">Đến</option>{nums.map((n) => <option key={n} value={n}>v{n}</option>)}</select>
           <button className="btn sm" disabled={!cmp?.from || !cmp?.to || busy} onClick={compare}>So sánh</button></div>)}>
-        <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Phiên bản</th><th>Thời gian</th><th>Ghi chú</th><th>Mã băm</th><th /></tr></thead><tbody>
+        <div className="tbl-wrap max-h-[420px]"><table className="tbl"><thead><tr><th>Phiên bản</th><th>Thời gian</th><th>Ghi chú</th><th>Mã kiểm tra</th><th /></tr></thead><tbody>
           {vs.map((v) => (
             <tr key={v.id}><td className="font-bold">v{v.version_number} {v.id === data?.current_version_id && <Pill sm tone="ok">Hiện hành</Pill>}</td><td>{dt(v.edited_at)}</td><td>{v.change_note || '—'}</td><td className="font-mono text-xs text-muted">{v.content_hash?.slice(0, 10)}</td>
               <td className="num"><div className="flex gap-1 justify-end"><button className="btn outline sm" onClick={() => open(v.version_number)}><History size={13} />Xem</button>
@@ -313,7 +324,7 @@ function Tests({ id, canWrite }: { id: number; canWrite: boolean }) {
       <Section title="Ca kiểm thử" right={canWrite && <div className="flex gap-2"><button className="btn outline" disabled={busy} onClick={aiRun}><Sparkles size={15} />Chạy & chấm bằng AI</button><button className="btn" onClick={() => setAdd(true)}>Thêm ca</button></div>}>
         {tests.loading ? <Loading /> : tests.error ? <ErrorBox error={tests.error} onRetry={tests.reload} /> : !tests.data?.length ? <Empty text="Chưa có ca kiểm thử" icon={<FlaskConical size={40} strokeWidth={1.4} />} /> : (
           <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Tên ca</th><th>Đầu vào mẫu</th><th>Loại tiêu chí</th><th>Tiêu chí</th><th /></tr></thead><tbody>
-            {tests.data.map((t) => (<tr key={t.id}><td className="font-bold">{t.test_name}</td><td className="max-w-[220px] truncate font-mono text-xs">{t.input_sample || '—'}</td><td><Pill sm tone="soft">{crit[t.criteria_type] || t.criteria_type}</Pill></td><td className="max-w-[260px] whitespace-pre-wrap text-xs">{t.criteria}</td>
+            {tests.data.map((t) => (<tr key={t.id}><td className="font-bold">{t.test_name}</td><td className="font-mono text-xs"><div className="max-w-[220px] truncate">{t.input_sample || '—'}</div></td><td><Pill sm tone="soft">{crit[t.criteria_type] || t.criteria_type}</Pill></td><td className="max-w-[260px] whitespace-pre-wrap text-xs">{t.criteria}</td>
               <td className="num"><div className="flex gap-1 justify-end">{canWrite && <button className="btn outline sm" onClick={() => setManual(t.id)}>Ghi kết quả</button>}{canWrite && <button className="btn ghost icon" onClick={() => rm(t.id)}><Trash2 size={15} /></button>}</div></td></tr>))}
           </tbody></table></div>)}
       </Section>
@@ -345,14 +356,15 @@ function Tests({ id, canWrite }: { id: number; canWrite: boolean }) {
 }
 
 interface RunData { run_id: number; started_at: string; steps: { index: number; action: string; expected: string; dangerous: boolean }[]; verification?: string; rollback?: string }
-function RunbookRun({ id }: { id: number }) {
+function RunbookRun({ id, incidentId }: { id: number; incidentId?: number | null }) {
+  const nav = useNavigate()
   const [rn, setRn] = useState<RunData | null>(null)
   const [state, setState] = useState<Record<number, 'done' | 'skipped' | 'failed'>>({})
   const [notes, setNotes] = useState<Record<number, string>>({})
   const [finished, setFinished] = useState<{ duration_minutes: number | null } | null>(null)
   const { busy, run } = useBusy()
   async function start() {
-    const r = await run(() => post<RunData>(`/items/${id}/runs`, {})); if (r) { setRn(r); setState({}); setNotes({}); setFinished(null); void post('/usage-events', { event_type: 'run_runbook', item_id: id }).catch(() => undefined) }
+    const r = await run(() => post<RunData>(`/items/${id}/runs`, incidentId ? { incident_id: incidentId } : {})); if (r) { setRn(r); setState({}); setNotes({}); setFinished(null); void post('/usage-events', { event_type: 'run_runbook', item_id: id }).catch(() => undefined) }
   }
   async function mark(step: RunData['steps'][number], st: 'done' | 'skipped' | 'failed') {
     let confirmed = false
@@ -366,16 +378,21 @@ function RunbookRun({ id }: { id: number }) {
   async function finish() {
     const r = await run(() => patch<{ duration_minutes: number | null }>(`/runs/${rn!.run_id}`, { finish: true }), 'Đã kết thúc lần chạy'); if (r) setFinished(r)
   }
+  const incidentBar = incidentId ? (
+    <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-900 px-3 py-2.5 mb-3 flex items-center gap-2 flex-wrap text-sm">
+      <AlertTriangle size={16} className="shrink-0" /><span className="flex-1">Lần chạy này gắn với <b>sự cố #{incidentId}</b>: từng bước được ghi vào dòng thời gian của sự cố.</span>
+      <button className="btn outline sm" onClick={() => nav(`/incidents?open=${incidentId}`)}>Về sự cố</button></div>) : null
   if (!rn) return (
-    <Section title="Chạy runbook khi xử lý sự cố">
+    <Section title="Làm theo quy trình khi xử lý sự cố">{incidentBar}
       <div className="empty"><Play size={40} strokeWidth={1.4} /><div>Bắt đầu một lần chạy để ghi lại từng bước đã làm (có tính thời gian xử lý).</div><button className="btn lg" disabled={busy} onClick={start}><Play size={16} />Bắt đầu chạy</button></div>
     </Section>)
   const done = Object.keys(state).length
   return (
     <Section title={`Đang chạy #${rn.run_id}`} right={<div className="flex items-center gap-3"><Pill tone="soft">{done}/{rn.steps.length} bước</Pill>
       {!finished && <button className="btn success" disabled={busy} onClick={finish}><Check size={15} />Kết thúc</button>}{finished && <button className="btn outline" onClick={start}>Chạy lại</button>}</div>}>
+      {incidentBar}
       <div className="progress mb-4"><i style={{ width: `${(done / Math.max(1, rn.steps.length)) * 100}%` }} /></div>
-      {finished && <div className="rounded-lg bg-green-50 border border-green-200 text-green-900 p-3 mb-4 font-semibold">Hoàn tất. Thời gian xử lý: {finished.duration_minutes != null ? `${finished.duration_minutes} phút` : 'chưa xác định'}.</div>}
+      {finished && <div className="rounded-lg bg-green-50 border border-green-200 text-green-900 p-3 mb-4 font-semibold flex items-center gap-3 flex-wrap"><span className="flex-1">Hoàn tất. Thời gian xử lý: {finished.duration_minutes != null ? `${finished.duration_minutes} phút` : 'chưa xác định'}.</span>{incidentId && <button className="btn sm" onClick={() => nav(`/incidents?open=${incidentId}`)}>Về sự cố để đóng</button>}</div>}
       <div className="flex flex-col gap-3">
         {rn.steps.map((s) => { const st = state[s.index]; return (
           <div key={s.index} className={clsx('p-4 rounded-lg border-[1.5px]', s.dangerous ? 'border-red-300 bg-red-50/60' : 'border-line', st === 'done' && '!border-green-400 !bg-green-50', st === 'failed' && '!border-red-400 !bg-red-100')}>
@@ -409,7 +426,7 @@ function Merged({ id, atts }: { id: number; atts: Attachment[] }) {
     </Section>)
 }
 
-const AUTO_TAG_STATUS: Record<string, string> = { disabled: 'Quản trị đã tắt AI gắn thẻ (ai_auto_tag)', not_taggable: 'Mục nháp, hạn chế hoặc đã lưu trữ không gửi cho AI', no_content: 'Mục quá ít nội dung để gắn thẻ', missing: 'Không tìm thấy mục' }
+const AUTO_TAG_STATUS: Record<string, string> = { disabled: 'Quản trị đã tắt tính năng AI tự gắn thẻ', not_taggable: 'Mục nháp, hạn chế hoặc đã lưu trữ không gửi cho AI', no_content: 'Mục quá ít nội dung để gắn thẻ', missing: 'Không tìm thấy mục' }
 
 /** Mục liên quan: chung thẻ (kể cả khác nhóm) và gần nghĩa nội dung */
 function RelatedPanel({ id }: { id: number }) {

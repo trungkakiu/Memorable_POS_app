@@ -3,6 +3,7 @@ import { MemoryPanel } from '../components/Memory'
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
+import { AgentTabs } from '../components/PageTabs'
 import {
   AlertTriangle, Bot, Check, Copy, Eye, FileText, Layers, MessageSquare, Pencil, Plus, Power, Save, Send, Sparkles, Trash2, Users, Wand2, X, Brain, Loader2, Search,
 } from 'lucide-react'
@@ -28,12 +29,12 @@ const errMsg = (e: unknown) => (e instanceof ApiError ? e.full : String(e))
 export function PromptPreviewModal({ agent, onClose }: { agent: Pick<Agent, 'id' | 'name'>; onClose: () => void }) {
   const { data, loading, error } = useGet<{ system_prompt: string; knowledge_mode: KnowledgeMode; tools: string[]; skills: { id: number; name: string }[] }>(`/agents/${agent.id}/prompt-preview`)
   return (
-    <Modal title={`System prompt: ${agent.name}`} size="lg" onClose={onClose} footer={<button className="btn" onClick={onClose}>Đóng</button>}>
+    <Modal title={`Chỉ dẫn hệ thống: ${agent.name}`} size="lg" onClose={onClose} footer={<button className="btn" onClick={onClose}>Đóng</button>}>
       {loading ? <Loading /> : error ? <ErrorBox error={error} /> : data && (
         <div className="flex flex-col gap-3">
           <div className="flex gap-2 flex-wrap items-center"><Pill tone="soft">{KNOWLEDGE_LABEL[data.knowledge_mode]}</Pill>
             {data.tools.map((t) => <Pill key={t} tone="gray" sm>{t}</Pill>)}{data.skills.map((s) => <Pill key={s.id} tone="ok" sm>{s.name}</Pill>)}</div>
-          <p className="m-0 text-xs text-muted">Đây là chỉ dẫn thực tế Agent gửi cho AI (luật nền tảng, luật chế độ tri thức, skill, chỉ dẫn riêng). Không tốn chi phí AI.</p>
+          <p className="m-0 text-xs text-muted">Đây là chỉ dẫn thực tế Agent gửi cho AI (luật nền tảng, luật chế độ tri thức, kỹ năng, chỉ dẫn riêng). Không tốn chi phí AI.</p>
           <pre className="m-0 text-[12.5px] whitespace-pre-wrap font-mono bg-[#1f1b2e] text-[#eae6f7] rounded-lg p-4 max-h-[55vh] overflow-auto">{data.system_prompt}</pre>
           <button className="btn outline sm w-fit" onClick={() => { void navigator.clipboard.writeText(data.system_prompt); toast.ok('Đã sao chép system prompt') }}><Copy size={13} />Sao chép</button>
         </div>)}
@@ -62,7 +63,8 @@ export function AgentList() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Agent cá nhân hóa" subtitle="Ghép skill prompting, chỉ dẫn riêng và chế độ tri thức thành trợ lý của chính bạn. Agent tự tra cứu tài liệu, đọc tệp đính kèm, xem ảnh/PDF — luôn theo quyền của người đang chat."
+      <AgentTabs />
+      <PageHeader title="Agent cá nhân hóa" subtitle="Ghép kỹ năng, chỉ dẫn riêng và chế độ tri thức thành trợ lý của chính bạn. Agent tự tra cứu tài liệu, đọc tệp đính kèm, xem ảnh/PDF — luôn theo quyền của người đang chat."
         actions={<button className="btn" onClick={() => nav('/agents/new')}><Plus size={16} />Tạo Agent</button>} />
       {!agentOn && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-900 p-3 text-sm font-semibold flex gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" />Tính năng Agent đang bị tắt trên máy chủ (cài đặt ai_feature_agent) — bạn vẫn quản lý được Agent nhưng chưa chat được.</div>}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -89,13 +91,13 @@ export function AgentList() {
                 {a.model_tier === 'fast' && <Pill sm tone="warn">Nhanh</Pill>}
               </div>
               <div className="flex gap-1.5 flex-wrap">{a.skills.map((s) => <SkillTag key={s.id} s={s} />)}
-                {a.skills_unavailable > 0 && <Pill sm tone="bad" >{a.skills_unavailable} skill đã tắt</Pill>}{a.skills.length === 0 && <span className="text-xs text-muted">Chưa chọn skill</span>}</div>
+                {a.skills_unavailable > 0 && <Pill sm tone="bad" >{a.skills_unavailable} kỹ năng đã tắt</Pill>}{a.skills.length === 0 && <span className="text-xs text-muted">Chưa chọn kỹ năng</span>}</div>
               {a.custom_instructions && <div className="text-xs bg-brand-50 border border-line-soft rounded-md px-2.5 py-2 text-muted line-clamp-2"><b className="text-brand-700">Chỉ dẫn riêng:</b> {a.custom_instructions}</div>}
             </div>
             <div className="px-4 py-3 border-t border-line-soft bg-brand-50/60 flex gap-1.5 flex-wrap">
               <button className="btn sm" disabled={!a.is_active} onClick={() => nav(`/agents/${a.id}/chat`)}><MessageSquare size={13} />Chat</button>
               <button className="btn outline sm" disabled={!a.is_active} title="Chọn Agent này trong bóng chat" onClick={() => useInBubble(a)}><Sparkles size={13} />Dùng trong bóng chat</button>
-              <button className="btn outline sm" onClick={() => setPreview(a)}><Eye size={13} />Prompt</button>
+              <button className="btn outline sm" onClick={() => setPreview(a)}><Eye size={13} />Chỉ dẫn</button>
               {a.is_mine ? <>
                 <button className="btn outline sm" onClick={() => nav(`/agents/${a.id}/edit`)}><Pencil size={13} />Sửa</button>
                 <button className="btn ghost sm icon" title={a.is_active ? 'Tạm tắt' : 'Bật lại'} disabled={busy} onClick={() => toggle(a)}><Power size={14} /></button>
@@ -120,7 +122,7 @@ function SkillPicker({ catalog, value, onChange, max }: { catalog: SkillCatalog;
       const clash = all.filter((o) => o.exclusive_group === s.exclusive_group && value.includes(o.id))
       if (clash.length) { next = value.filter((x) => !clash.some((c) => c.id === x)); toast.info(`“${s.name}” loại trừ “${clash.map((c) => c.name).join(', ')}” — đã thay thế`) }
     }
-    if (next.length >= max) return toast.warn(`Mỗi Agent tối đa ${max} skill`)
+    if (next.length >= max) return toast.warn(`Mỗi Agent tối đa ${max} kỹ năng`)
     onChange([...next, s.id])
   }
   return (
@@ -194,7 +196,7 @@ export function AgentForm() {
       const r = edit ? await put<Agent>(`/agents/${id}`, { ...body, custom_instructions: f.custom_instructions.trim() }) : await post<Agent>('/agents', body)
       toast.ok(edit ? 'Đã lưu Agent' : 'Đã tạo Agent'); void useChat.getState().loadAgents(); nav(`/agents/${r.id}/chat`)
     } catch (e) {
-      const m = e instanceof ApiError ? (e.status === 409 ? `${e.message} (trùng tên Agent của bạn hoặc đã đủ số Agent tối đa)` : e.status === 422 ? `${e.full} (kiểm tra skill: không quá ${max}, không chọn hai skill cùng nhóm loại trừ, chỉ dẫn không chứa bí mật)` : e.full) : String(e)
+      const m = e instanceof ApiError ? (e.status === 409 ? `${e.message} (trùng tên Agent của bạn hoặc đã đủ số Agent tối đa)` : e.status === 422 ? `${e.full} (kiểm tra kỹ năng: không quá ${max}, không chọn hai kỹ năng cùng nhóm loại trừ, chỉ dẫn không chứa bí mật)` : e.full) : String(e)
       setServerErr(m); toast.error(m)
     }
   }
@@ -203,14 +205,14 @@ export function AgentForm() {
   if (loadErr) return <ErrorBox error={loadErr} />
   return (
     <div className="flex flex-col gap-4 max-w-[1100px]">
-      <PageHeader title={edit ? 'Sửa Agent' : 'Tạo Agent cá nhân'} subtitle="Skill và chỉ dẫn riêng chỉ chỉnh phong cách làm việc — không ghi đè luật nền tảng (quyền dữ liệu, trích nguồn, bảo mật)."
-        actions={<>{edit && <button className="btn outline" onClick={() => setPreview(true)}><Eye size={15} />Xem system prompt</button>}<button className="btn outline" onClick={() => nav('/agents')}>Hủy</button>
+      <PageHeader title={edit ? 'Sửa Agent' : 'Tạo Agent cá nhân'} subtitle="Kỹ năng và chỉ dẫn riêng chỉ chỉnh phong cách làm việc — không ghi đè luật nền tảng (quyền dữ liệu, trích nguồn, bảo mật)."
+        actions={<>{edit && <button className="btn outline" onClick={() => setPreview(true)}><Eye size={15} />Xem chỉ dẫn hệ thống</button>}<button className="btn outline" onClick={() => nav('/agents')}>Hủy</button>
           <button className="btn" disabled={busy || !f.name.trim()} onClick={() => void run(save)}><Save size={15} />{edit ? 'Lưu Agent' : 'Tạo Agent'}</button></>} />
       {serverErr && <div className="rounded-lg bg-red-50 border border-red-200 text-red-800 p-3 text-sm flex gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" />{serverErr}</div>}
       <ErrorBox error={ec} />
 
       {!edit && presets && presets.length > 0 && (
-        <Section title="Bắt đầu từ mẫu dựng sẵn" right={<span className="text-xs text-muted">Chọn mẫu để điền sẵn skill và chế độ tri thức, rồi tinh chỉnh</span>}>
+        <Section title="Bắt đầu từ mẫu dựng sẵn" right={<span className="text-xs text-muted">Chọn mẫu để điền sẵn kỹ năng và chế độ tri thức, rồi tinh chỉnh</span>}>
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
             {presets.map((p) => (
               <button type="button" key={p.key} onClick={() => applyPreset(p)}
@@ -258,8 +260,8 @@ export function AgentForm() {
         <p className="m-0 mt-2.5 text-xs text-muted">Sau mỗi cuộc trò chuyện, hệ thống tóm tắt ở nền và chắt lọc sự thật, sở thích, quyết định, việc dang dở. Ký ức chỉ chủ tài khoản xem được, quản lý tại Agent › Trí nhớ và hội thoại. Tắt trí nhớ: Agent chỉ dùng lịch sử của hội thoại hiện tại.</p>
       </Section>
 
-      <Section title={`Skill prompting (${f.skill_ids.length}/${max})`} right={f.skill_ids.length > 0 && <button className="btn ghost sm" onClick={() => up('skill_ids', [])}><X size={13} />Bỏ chọn hết</button>}>
-        {catalog ? <SkillPicker catalog={catalog} value={f.skill_ids} onChange={(v) => up('skill_ids', v)} max={max} /> : <Empty text="Không tải được danh mục skill" />}
+      <Section title={`Kỹ năng (${f.skill_ids.length}/${max})`} right={f.skill_ids.length > 0 && <button className="btn ghost sm" onClick={() => up('skill_ids', [])}><X size={13} />Bỏ chọn hết</button>}>
+        {catalog ? <SkillPicker catalog={catalog} value={f.skill_ids} onChange={(v) => up('skill_ids', v)} max={max} /> : <Empty text="Không tải được danh mục kỹ năng" />}
       </Section>
 
       <Section title="Chỉ dẫn riêng">
@@ -337,25 +339,25 @@ export function AgentChat() {
   if (!agent) return null
   const mine = agent.is_mine || (me.role === 'admin' && false)
   return (
-    <div className="flex flex-col gap-3 h-[calc(100vh-136px)] min-h-[460px]">
+    <div className="chat-page flex flex-col gap-3">
       <div className="page-head">
         <div className="min-w-0 pl-2 flex items-center gap-3">
           <span className="w-11 h-11 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white grid place-items-center shrink-0"><Bot size={22} /></span>
           <div className="min-w-0"><h1 className="truncate">{agent.name}</h1>
             <div className="flex gap-1.5 flex-wrap mt-1"><Pill sm tone="soft">{KNOWLEDGE_LABEL[agent.knowledge_mode]}</Pill>{agent.visibility === 'team' && <Pill sm tone="ok"><Users size={11} />Chia sẻ</Pill>}
-              {agent.skills.map((s) => <SkillTag key={s.id} s={s} />)}{!agent.is_active && <Pill sm tone="bad">Đang tắt</Pill>}</div></div>
+              {agent.skills.slice(0, 3).map((s) => <SkillTag key={s.id} s={s} />)}{agent.skills.length > 3 && <Pill sm tone="gray"><span title={agent.skills.slice(3).map((s) => s.name).join(', ')}>+{agent.skills.length - 3} kỹ năng</span></Pill>}{!agent.is_active && <Pill sm tone="bad">Đang tắt</Pill>}</div></div>
         </div>
         <div className="actions">
           {convId && <button className="btn outline" disabled={summBusy} title="Tóm tắt và chắt lọc ký ức ngay thay vì đợi chạy nền" onClick={() => void summarize()}>{summBusy ? <Loader2 size={15} className="animate-spin" /> : <Brain size={15} />}Tóm tắt và ghi nhớ</button>}
           <button className="btn outline" onClick={() => nav('/agents/memory')}><Brain size={15} />Trí nhớ</button>
-          <button className="btn outline" onClick={() => setPreview(true)}><Eye size={15} />Prompt</button>
+          <button className="btn outline" onClick={() => setPreview(true)}><Eye size={15} />Chỉ dẫn</button>
           {mine && <button className="btn outline" onClick={() => nav(`/agents/${aid}/edit`)}><Pencil size={15} />Sửa</button>}
           <button className="btn outline" onClick={() => nav('/agents')}>Danh sách</button>
         </div>
       </div>
       {!agentOn && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-900 p-2.5 text-sm font-semibold">Tính năng Agent đang bị tắt trên máy chủ — chưa chat được.</div>}
-      <div className="grid lg:grid-cols-[280px_1fr] gap-3 flex-1 min-h-0">
-        <div className="panel min-h-0">
+      <div className="grid grid-rows-[auto_minmax(0,1fr)] lg:grid-rows-1 lg:grid-cols-[280px_1fr] gap-3 flex-1 min-h-0">
+        <div className="panel min-h-0 max-lg:max-h-44">
           <div className="panel-head !py-2.5"><div className="panel-title">Hội thoại</div>
             <button className="btn sm" onClick={() => { setConvId(null); setMsgs([]) }}><Plus size={13} />Mới</button></div>
           <div className="flex-1 overflow-auto p-2 flex flex-col gap-1">
@@ -365,7 +367,7 @@ export function AgentChat() {
               <div key={c.id} className={clsx('group flex items-start gap-2 rounded-md p-2 cursor-pointer border', convId === c.id ? 'bg-brand-soft border-brand-300 bg-brand-50' : 'border-transparent hover:bg-brand-50')} onClick={() => void openConv(c.id)}>
                 <MessageSquare size={14} className="text-brand-600 mt-0.5 shrink-0" />
                 <div className="min-w-0 flex-1"><div className="text-[13px] font-bold truncate">{c.title}</div><div className="text-[11px] text-muted">{dt(c.updated_at)} · {c.messages} tin</div></div>
-                <button className="border-0 bg-transparent text-muted hover:text-red-600 cursor-pointer p-0.5 opacity-0 group-hover:opacity-100" aria-label="Xóa hội thoại" onClick={(e) => { e.stopPropagation(); void removeConv(c) }}><Trash2 size={13} /></button>
+                <button className="border-0 bg-transparent text-muted hover:text-red-600 cursor-pointer p-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 max-md:opacity-100" aria-label="Xóa hội thoại" onClick={(e) => { e.stopPropagation(); void removeConv(c) }}><Trash2 size={13} /></button>
               </div>))}
           </div>
         </div>
@@ -426,6 +428,7 @@ export function AgentMemoryPage() {
   }
   return (
     <div className="flex flex-col gap-4">
+      <AgentTabs />
       <PageHeader title="Trí nhớ và hội thoại" subtitle="Trí nhớ dài hạn được chắt lọc từ các cuộc trò chuyện với Agent. Chỉ bạn xem được; có thể sửa, ghim, xóa từng ký ức hoặc tìm lại hội thoại cũ theo nghĩa." />
       <Seg value={tab} onChange={setTab} options={[{ value: 'memory', label: 'Trí nhớ dài hạn' }, { value: 'search', label: 'Tìm lại hội thoại và ký ức' }]} />
       {tab === 'memory' ? <MemoryPanel agents={agents || []} /> : (
@@ -470,23 +473,24 @@ export function SkillsLibrary() {
     if (!f) return
     const body: Record<string, unknown> = { name: f.name.trim(), category: f.category, description: f.description.trim() || undefined, instruction: f.instruction.trim(), exclusive_group: f.exclusive_group.trim() || undefined }
     if (f.id) { body.is_active = f.is_active; if (!f.exclusive_group.trim()) body.exclusive_group = f.exclusive_group.trim() } else if (f.slug.trim()) body.slug = f.slug.trim()
-    const r = await run(() => (f.id ? put(`/agents/skills/${f.id}`, body) : post('/agents/skills', body)), f.id ? 'Đã lưu skill' : 'Đã thêm skill')
+    const r = await run(() => (f.id ? put(`/agents/skills/${f.id}`, body) : post('/agents/skills', body)), f.id ? 'Đã lưu kỹ năng' : 'Đã thêm kỹ năng')
     if (r) { setF(null); reload() }
   }
   async function disable(s: Skill) {
-    if (!(await confirmDialog('Tắt skill', `Tắt skill “${s.name}”? Các Agent đang dùng sẽ báo “skill đã tắt”.`, { okText: 'Tắt' }))) return
-    const r = await run(() => del(`/agents/skills/${s.id}`), 'Đã tắt skill'); if (r) reload()
+    if (!(await confirmDialog('Tắt kỹ năng', `Tắt kỹ năng “${s.name}”? Các Agent đang dùng sẽ báo “kỹ năng đã tắt”.`, { okText: 'Tắt' }))) return
+    const r = await run(() => del(`/agents/skills/${s.id}`), 'Đã tắt kỹ năng'); if (r) reload()
   }
   const edit = (s: Skill) => setF({ id: s.id, slug: s.slug, name: s.name, category: s.category, description: s.description || '', instruction: s.instruction || '', exclusive_group: s.exclusive_group || '', is_active: s.is_active !== false, is_system: s.is_system })
   const valid = f && f.name.trim() && f.instruction.trim()
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Thư viện skill prompting" subtitle="Các đoạn chỉ dẫn ngắn để ghép thành Agent. Hai skill cùng nhóm loại trừ không dùng chung được; skill chỉ chỉnh phong cách, không ghi đè luật nền tảng."
-        actions={manage && <button className="btn" onClick={() => setF({ slug: '', name: '', category: 'style', description: '', instruction: '', exclusive_group: '', is_active: true })}><Plus size={16} />Thêm skill</button>} />
+      <AgentTabs />
+      <PageHeader title="Thư viện kỹ năng" subtitle="Các đoạn chỉ dẫn ngắn để ghép thành Agent. Hai kỹ năng cùng nhóm loại trừ không dùng chung được; kỹ năng chỉ chỉnh phong cách, không ghi đè luật nền tảng."
+        actions={manage && <button className="btn" onClick={() => setF({ slug: '', name: '', category: 'style', description: '', instruction: '', exclusive_group: '', is_active: true })}><Plus size={16} />Thêm kỹ năng</button>} />
       <div className="flex items-center gap-3 flex-wrap">
         <select className="select !w-52" value={cat} onChange={(e) => setCat(e.target.value)}><option value="">Tất cả nhóm</option>{Object.entries(SKILL_CATEGORY).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-        {manage && <label className="check text-sm"><input type="checkbox" checked={inactive} onChange={(e) => setInactive(e.target.checked)} />Hiện cả skill đã tắt</label>}
-        {data && <span className="text-xs text-muted">{data.total} skill · mỗi Agent tối đa {data.limits.max_skills_per_agent}</span>}
+        {manage && <label className="check text-sm"><input type="checkbox" checked={inactive} onChange={(e) => setInactive(e.target.checked)} />Hiện cả kỹ năng đã tắt</label>}
+        {data && <span className="text-xs text-muted">{data.total} kỹ năng · mỗi Agent tối đa {data.limits.max_skills_per_agent}</span>}
       </div>
       <ErrorBox error={error} onRetry={reload} />
       {loading && !data && <Loading />}
@@ -507,14 +511,14 @@ export function SkillsLibrary() {
           </div>
         </Section>))}
       {f && (
-        <Modal title={f.id ? 'Sửa skill' : 'Thêm skill'} size="md" onClose={() => setF(null)} footer={<><button className="btn outline" onClick={() => setF(null)}>Hủy</button><button className="btn" disabled={busy || !valid} onClick={save}>Lưu</button></>}>
+        <Modal title={f.id ? 'Sửa kỹ năng' : 'Thêm kỹ năng'} size="md" onClose={() => setF(null)} footer={<><button className="btn outline" onClick={() => setF(null)}>Hủy</button><button className="btn" disabled={busy || !valid} onClick={save}>Lưu</button></>}>
           <div className="grid gap-4">
-            <div className="grid grid-cols-2 gap-4"><Field label="Tên skill *"><input className="input" maxLength={100} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
+            <div className="grid grid-cols-2 gap-4"><Field label="Tên kỹ năng *"><input className="input" maxLength={100} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
               <Field label="Nhóm *"><select className="select" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{Object.entries(SKILL_CATEGORY).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field></div>
-            {!f.id && <Field label="Mã slug (tùy chọn)" hint="Để trống: hệ thống tự tạo từ tên"><input className="input font-mono" maxLength={60} value={f.slug} onChange={(e) => setF({ ...f, slug: e.target.value })} /></Field>}
+            {!f.id && <Field label="Mã định danh (không bắt buộc)" hint="Để trống: hệ thống tự tạo từ tên"><input className="input font-mono" maxLength={60} value={f.slug} onChange={(e) => setF({ ...f, slug: e.target.value })} /></Field>}
             <Field label="Mô tả ngắn"><input className="input" maxLength={300} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
-            <Field label="Chỉ dẫn gửi cho AI * (tối đa 800 ký tự)" hint="Nên viết tiếng Anh, ngắn gọn, dạng mệnh lệnh. Không chứa bí mật hay thông tin cá nhân."><textarea className="textarea font-mono text-[13px]" rows={5} maxLength={800} value={f.instruction} onChange={(e) => setF({ ...f, instruction: e.target.value })} /></Field>
-            <Field label="Nhóm loại trừ (tùy chọn)" hint="Hai skill cùng nhóm này không dùng chung được trong một Agent"><input className="input" maxLength={30} value={f.exclusive_group} onChange={(e) => setF({ ...f, exclusive_group: e.target.value })} placeholder="register" /></Field>
+            <Field label="Chỉ dẫn gửi cho AI * (tối đa 800 ký tự)" hint="Viết ngắn gọn, dạng mệnh lệnh (tiếng Việt hoặc tiếng Anh đều được). Không chứa bí mật hay thông tin cá nhân."><textarea className="textarea font-mono text-[13px]" rows={5} maxLength={800} value={f.instruction} onChange={(e) => setF({ ...f, instruction: e.target.value })} /></Field>
+            <Field label="Nhóm loại trừ (tùy chọn)" hint="Hai kỹ năng cùng nhóm này không dùng chung được trong một Agent"><input className="input" maxLength={30} value={f.exclusive_group} onChange={(e) => setF({ ...f, exclusive_group: e.target.value })} placeholder="register" /></Field>
             {f.id && <label className="check"><input type="checkbox" checked={f.is_active} onChange={(e) => setF({ ...f, is_active: e.target.checked })} />Đang bật</label>}
           </div>
         </Modal>)}

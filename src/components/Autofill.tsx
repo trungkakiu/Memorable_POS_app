@@ -473,7 +473,7 @@ function PrefillBox({ pre, fields, c, onProfile, onScan }: { pre: Prefill | null
         })}</div>)}
       {lack.length > 0 && (
         <div className="af-lack">
-          <span className="min-w-0 flex-1">Hồ sơ còn thiếu: <b>{lack.map((f) => f.label).join(', ')}</b>. Bổ sung một lần, các mẫu sau tự điền.</span>
+          <span className="min-w-0 flex-1">Thông tin của bạn còn thiếu: <b>{lack.map((f) => f.label).join(', ')}</b>. Bổ sung một lần, các mẫu sau tự điền.</span>
           <button className="af-mini" onClick={onScan}><ScanLine size={14} />Quét CCCD</button>
           <button className="af-mini" onClick={onProfile}><Pencil size={13} />Bổ sung hồ sơ</button>
         </div>)}
@@ -523,7 +523,7 @@ function FieldInput({ f, value, cell, missing, admin, auto, onChange, onAuto }: 
         <span className="font-bold">{f.label}</span>
         <span className="af-type">{TYPE_LABEL[f.type]}</span>
         {admin && <code className="af-key">{f.key}</code>}
-        {!changed && src === 'profile' && <span className="af-conf prof" title="Lấy từ hồ sơ của bạn"><UserRound size={12} />Hồ sơ</span>}
+        {!changed && src === 'profile' && <span className="af-conf prof" title="Lấy từ Thông tin của tôi"><UserRound size={12} />Thông tin của tôi</span>}
         {!changed && src === 'account' && <span className="af-conf prof" title="Lấy từ tài khoản đăng nhập"><UserRound size={12} />Tài khoản</span>}
         {!changed && src === 'today' && <span className="af-conf day" title="Ngày làm đơn: hôm nay"><CalendarDays size={12} />Hôm nay</span>}
         {!changed && src === 'ai' && level === 'ok' && <span className="af-conf ok" title={`AI điền, độ chắc chắn ${Math.round(cell!.confidence * 100)}%`}><Sparkles size={12} />AI · chắc chắn</span>}
@@ -637,7 +637,7 @@ function Hint({ children }: { children: ReactNode }) { return <p className="rd-s
 export function ReaderAutofillPage() {
   return (
     <div className="flex flex-col gap-5 max-w-[1240px] mx-auto w-full">
-      <div><h1 className="rd-h2 !text-[1.6em] !mb-0"><Wand2 size={26} className="text-brand-600" />Điền mẫu tự động</h1>
+      <div><h1 className="rd-h2 !text-[1.6em] !mb-0"><Wand2 size={26} className="text-brand-600" />Điền giấy tờ</h1>
         <Hint>Lưu mẫu giấy tờ một lần. Thông tin của bạn tự điền từ hồ sơ; phần còn lại dán thông tin hoặc gửi ảnh để AI điền, xem lại rồi tải về.</Hint></div>
       <AutofillWorkbench variant="reader" />
     </div>)

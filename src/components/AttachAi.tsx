@@ -75,7 +75,7 @@ export function AnalyzeModal({ att, onClose, initialQuestion }: { att: Pick<Atta
       <div className="flex flex-col gap-4">
         <div className="text-xs text-muted leading-relaxed rounded-lg bg-brand-50 border border-line-soft px-3 py-2">AI nhìn trực tiếp vào ảnh/PDF (đọc chữ, bảng, biểu đồ, sơ đồ, ảnh chụp màn hình). Câu trả lời <b>không được lưu</b>; muốn lưu chữ để tìm kiếm hãy dùng “AI đọc chữ”. Tệp của mục “Hạn chế” không bao giờ gửi cho AI.</div>
         <div className="flex gap-2 flex-wrap">{PRESETS.map((p) => <button key={p} className="cat-chip" disabled={busy} onClick={() => void run(p)}>{p}</button>)}</div>
-        <div className="flex flex-col gap-3 max-h-[46vh] overflow-auto">
+        <div className="flex flex-col gap-3">
           {turns.map((t, i) => (
             <div key={i} className="flex flex-col gap-2">
               <div className="self-end bg-brand-600 text-white rounded-lg px-3 py-2 text-sm max-w-[85%]">{t.q}</div>
@@ -126,7 +126,7 @@ export function ExtractModal({ att, onClose, onDone }: { att: Pick<Attachment, '
             <li>Tệp dài có thể chỉ đọc phần đầu. Văn bản đọc ra được quét bí mật; nếu có bí mật sẽ bị chặn và không lưu.</li>
             <li><b>Tốn chi phí AI.</b> Chỉ chủ sở hữu mục (hoặc quản trị) được thực hiện.</li>
           </ul>
-          <label className="check"><input type="checkbox" checked={masked} onChange={(e) => setMasked(e.target.checked)} />Chữ trong tệp đã che thông tin nhạy cảm (confirm_masked)</label>
+          <label className="check"><input type="checkbox" checked={masked} onChange={(e) => setMasked(e.target.checked)} />Chữ trong tệp đã che thông tin nhạy cảm</label>
           {err && <div className="rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-2 flex gap-2"><AlertTriangle size={15} className="shrink-0 mt-0.5" />{err}</div>}
         </div>
       ) : (

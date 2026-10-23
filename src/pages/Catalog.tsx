@@ -8,6 +8,8 @@ import { Empty, Field, Modal, PageHeader, Pill } from '../components/ui'
 import { ErrorBox, Loading, useBusy } from '../components/shared'
 import { useAuth } from '../store/auth'
 import { confirmDialog } from '../store/ui'
+import { useClientPage } from '../components/ShowMore'
+import { Pager } from '../components/shared'
 
 export { Tags } from './TagsAdmin'
 
@@ -19,6 +21,7 @@ export function Synonyms() {
   const [word, setWord] = useState(''); const [syn, setSyn] = useState('')
   async function add() { const r = await run(() => post('/synonyms', { word: word.trim(), synonym_with: syn.trim() }), 'Đã thêm từ đồng nghĩa'); if (r) { setWord(''); setSyn(''); reload() } }
   async function rm(s: Synonym) { if (await confirmDialog('Xóa từ đồng nghĩa', `Xóa “${s.word} ↔ ${s.synonym_with}”?`, { danger: true, okText: 'Xóa' })) { await run(() => del(`/synonyms/${s.id}`), 'Đã xóa'); reload() } }
+  const synPg = useClientPage(data || [], 50)
   return (
     <div className="flex flex-col gap-4 max-w-[900px]">
       <PageHeader title="Từ đồng nghĩa" subtitle="Giúp tìm kiếm hiểu “lỗi” = “error”, “khởi động lại” = “restart”…" />
@@ -27,7 +30,8 @@ export function Synonyms() {
       <ErrorBox error={error} onRetry={reload} />{loading && !data && <Loading />}
       {data && data.length === 0 && <Empty text="Chưa có từ đồng nghĩa" />}
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Từ</th><th>Đồng nghĩa với</th><th /></tr></thead><tbody>
-        {data?.map((s) => <tr key={s.id}><td className="font-bold">{s.word}</td><td>{s.synonym_with}</td><td className="num">{w && <button className="btn ghost icon" onClick={() => rm(s)}><Trash2 size={15} /></button>}</td></tr>)}</tbody></table></div>
+        {synPg.rows.map((s) => <tr key={s.id}><td className="font-bold">{s.word}</td><td>{s.synonym_with}</td><td className="num">{w && <button className="btn ghost icon" onClick={() => rm(s)} aria-label={`Xóa ${s.word}`}><Trash2 size={15} /></button>}</td></tr>)}</tbody></table></div>
+      <Pager page={synPg.page} pages={synPg.pages} total={synPg.total} onPage={synPg.setPage} />
     </div>)
 }
 

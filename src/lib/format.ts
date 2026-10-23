@@ -29,7 +29,7 @@ export const bytes = (n: number) => (n > 1048576 ? (n / 1048576).toFixed(1) + ' 
 export const ROLE_LABEL: Record<string, string> = {
   reader: 'Người đọc', contributor: 'Người đóng góp', moderator: 'Kiểm duyệt viên', admin: 'Quản trị', sponsor: 'Người bảo trợ',
 }
-export const TYPE_LABEL: Record<string, string> = { document: 'Tài liệu', article: 'Bài viết', prompt: 'Prompt', runbook: 'Runbook' }
+export const TYPE_LABEL: Record<string, string> = { document: 'Tài liệu', article: 'Bài viết', prompt: 'Câu lệnh AI', runbook: 'Quy trình xử lý' }
 export const STATUS_LABEL: Record<string, string> = { draft: 'Nháp', pending: 'Chờ duyệt', approved: 'Đã duyệt', overdue: 'Quá hạn', archived: 'Lưu trữ' }
 export const STATUS_TONE: Record<string, 'gray' | 'warn' | 'ok' | 'bad' | 'soft'> = { draft: 'gray', pending: 'warn', approved: 'ok', overdue: 'bad', archived: 'gray' }
 export const FRESH_LABEL: Record<string, string> = { fresh: 'Còn hạn', due_soon: 'Sắp đến hạn', overdue: 'Quá hạn' }
@@ -47,7 +47,50 @@ export const COST_ITEM: Record<string, string> = {
   backup_storage: 'Lưu trữ sao lưu', other: 'Khác',
 }
 export const NOTICE_TYPE: Record<string, string> = {
-  review_requested: 'Cần duyệt', item_approved: 'Đã được duyệt', item_rejected: 'Bị trả lại', review_due: 'Đến hạn rà soát',
+  review_requested: 'Cần duyệt', item_approved: 'Đã được duyệt', item_rejected: 'Bị trả lại', item_returned: 'Bị trả lại',
+  review_due: 'Đến hạn rà soát', review_overdue: 'Quá hạn rà soát', review_escalation: 'Nhiều bài quá hạn',
+  conflict_detected: 'Có thể mâu thuẫn', text_review: 'Kiểm tra chữ trong tệp', official_source: 'Bản chính thức', account_pending: 'Tài khoản chờ duyệt',
+}
+/** Tên tệp do máy sinh (ảnh lưu từ Zalo, Messenger: toàn số và mã) hiện thành "Ảnh đính kèm.jpg"; tên gốc để ở tooltip */
+export const niceFileName = (name: string) => {
+  const dot = name.lastIndexOf('.')
+  const base = dot > 0 ? name.slice(0, dot) : name
+  const ext = dot > 0 ? name.slice(dot + 1).toLowerCase() : ''
+  const rest = base.replace(/[0-9a-f]{6,}/gi, '').replace(/[\d_\-\s.()]+/g, ' ')
+  if (base.length < 20 || /[a-zà-ỹđ]{3,}/i.test(rest)) return name
+  const kind = /^(jpe?g|jfif|png|gif|webp|bmp|heic|heif|avif|tiff?)$/.test(ext) ? 'Ảnh đính kèm' : /^(mp3|m4a|wav|ogg|oga|opus|aac|flac|amr|webm|wma)$/.test(ext) ? 'Ghi âm đính kèm' : ext === 'pdf' ? 'Tài liệu PDF' : 'Tệp đính kèm'
+  return ext ? `${kind}.${ext}` : kind
+}
+/** Bỏ ký hiệu Markdown (**đậm**, # tiêu đề, `mã`, [chữ](liên kết)) để hiện đoạn trích dạng chữ thường */
+export const plainText = (md: string | null | undefined) => (md || '')
+  .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+  .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+  .replace(/(\*\*|__|\*|`)/g, '')
+  .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, '')
+  .replace(/\s+/g, ' ')
+  .trim()
+export const noticeType = (t: string) => NOTICE_TYPE[t] || 'Thông báo'
+
+// Thông báo cũ do máy chủ ghi bằng tiếng Anh: dịch khi hiển thị (thông báo mới đã là tiếng Việt)
+const NOTICE_EN: [RegExp, (m: RegExpExecArray) => string][] = [
+  [/^Item #(\d+) "(.*)" is waiting for review \((R\d)\)$/s, (m) => `Bài #${m[1]} “${m[2]}” đang chờ duyệt (mức rủi ro ${m[3]})`],
+  [/^Your item #(\d+) "(.*)" was approved$/s, (m) => `Bài #${m[1]} “${m[2]}” của bạn đã được duyệt`],
+  [/^Item #(\d+) "(.*)" was returned: (.*)$/s, (m) => `Bài #${m[1]} “${m[2]}” bị trả lại: ${m[3]}`],
+  [/^Item #(\d+) "(.*)" is due for review on (.*)$/s, (m) => `Bài #${m[1]} “${m[2]}” đến hạn rà soát ngày ${m[3]}`],
+  [/^Item #(\d+) "(.*)" is overdue for review$/s, (m) => `Bài #${m[1]} “${m[2]}” đã quá hạn rà soát`],
+  [/^(\d+) item\(s\) have been overdue for review for more than 30 days$/, (m) => `${m[1]} bài đã quá hạn rà soát hơn 30 ngày`],
+  [/^(?:The file "(.*)"|The content) of item #(\d+) "(.*)" may contradict (\d+) existing item\(s\): (.*?)\. Open the item to review\.$/s,
+    (m) => `${m[1] ? `Tệp “${m[1]}”` : 'Nội dung'} của bài #${m[2]} “${m[3]}” có thể mâu thuẫn với ${m[4]} bài đang có: ${m[5]}. Mở bài để kiểm tra.`],
+  [/^The text of "(.*)" in item #(\d+) was (verified|rejected \(it will not be used by AI\))(?:: (.*))?$/s,
+    (m) => `Chữ đọc từ tệp “${m[1]}” của bài #${m[2]} ${m[3] === 'verified' ? 'đã được xác nhận đúng' : 'bị từ chối (AI sẽ không dùng)'}${m[4] ? `: ${m[4]}` : ''}`],
+  [/^Item #(\d+) "(.*)" was (marked as an OFFICIAL source|removed from the official sources)(?:: (.*))?$/s,
+    (m) => `Bài #${m[1]} “${m[2]}” ${m[3].startsWith('marked') ? 'được xác nhận là bản chính thức' : 'không còn là bản chính thức'}${m[4] ? `: ${m[4]}` : ''}`],
+]
+export const noticeText = (content: string, plain = false) => {
+  let t = content
+  for (const [re, f] of NOTICE_EN) { const m = re.exec(content); if (m) { t = f(m); break } }
+  // Người đọc không cần mã bài (#12) và mức rủi ro (R2)
+  return plain ? t.replace(/\s*\(mức rủi ro R\d\)/g, '').replace(/(Bài|bài) #\d+ /g, '$1 ') : t
 }
 export const ACTION_LABEL = (a: string) => a
 export const TRUST_LABEL: Record<string, string> = { approved: 'Đã duyệt', pending: 'Chờ duyệt', draft: 'Bản nháp', overdue: 'Quá hạn', archived: 'Lưu trữ' }

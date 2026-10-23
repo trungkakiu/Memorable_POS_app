@@ -156,17 +156,7 @@ td > .empty, .tbl-wrap .empty { border: 0; background: transparent; }
   .logo { width: 40px; height: 40px; border-radius: $r-lg; background: $gradient; display: grid; place-items: center; color: #fff; box-shadow: 0 6px 14px -6px rgba(98, 40, 200, .8); }
   .t1 { font-weight: 900; color: $brand; font-size: 17px; line-height: 1; letter-spacing: .01em; }
   .t2 { font-weight: 600; color: $muted; font-size: 10.5px; text-transform: uppercase; margin-top: 4px; letter-spacing: .03em; } }
-.topnav { display: flex; gap: 2px; flex: 1; justify-content: center; min-width: 0;
-  .nav-item { position: relative;
-    > button { display: flex; align-items: center; gap: 5px; border: 0; background: transparent; cursor: pointer; font-weight: 700; font-size: 12.5px; height: 38px;
-      text-transform: uppercase; padding: 0 11px; border-radius: $r-md; color: $ink-2; white-space: nowrap; letter-spacing: .02em;
-      &:hover { color: $brand-dark; background: $brand-soft; } &.on { color: $brand-dark; background: $brand-soft; box-shadow: inset 0 -2px 0 $brand; } }
-    .menu { display: none; position: absolute; top: calc(100% + 2px); left: 0; min-width: 240px; background: #fff; border: 1px solid $line;
-      border-radius: $r-lg; padding: 6px; box-shadow: $shadow-pop; z-index: 60;
-      a { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: $r-md; font-weight: 600; color: $ink-2; text-decoration: none; font-size: 13.5px;
-        cursor: pointer; &:hover { background: $brand-soft; color: $brand-dark; } } }
-    &:hover .menu { display: block; } } }
-.hdr-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.hdr-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
 .user-chip { display: flex; align-items: center; gap: 10px; padding: 4px 12px 4px 4px; border: 1px solid $line; border-radius: $r-md; background: $brand-tint; margin: 0 4px;
   .av { width: 30px; height: 30px; border-radius: $r-md; background: $gradient; color: #fff; font-weight: 800; display: grid; place-items: center; font-size: 13px; }
   .n { font-weight: 700; font-size: 12.5px; line-height: 1.15; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -213,20 +203,6 @@ td > .empty, .tbl-wrap .empty { border: 0; background: transparent; }
     &.on { background: #ece3ff; color: $brand-deep; font-weight: 800; .dot { background: $brand; box-shadow: 0 0 0 3px rgba(122, 46, 230, .2); } } }
 
   .sb-badge { min-width: 20px; height: 18px; padding: 0 6px; border-radius: 5px; background: $danger; color: #fff; font-size: 10.5px; font-weight: 800; display: inline-grid; place-items: center; line-height: 1; flex-shrink: 0; }
-
-  .sb-notif { margin: 0 10px 10px; border: 1px solid $line; border-radius: $r-lg; background: #fff; box-shadow: $shadow-xs; overflow: hidden; flex-shrink: 0;
-    .head { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; background: linear-gradient(180deg, #fff, $brand-tint); border-bottom: 1px solid $line-soft;
-      .ttl { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: $ink-2; svg { color: $brand; } }
-      .more { border: 0; background: none; color: $brand; font-size: 11.5px; font-weight: 700; cursor: pointer; &:hover { text-decoration: underline; } } }
-    .list { display: flex; flex-direction: column; max-height: 168px; overflow-y: auto; }
-    .none { display: flex; align-items: center; gap: 8px; padding: 14px 12px; font-size: 12.5px; color: $muted; svg { color: $success; } }
-    .row { display: flex; align-items: flex-start; gap: 9px; padding: 9px 12px; border: 0; border-bottom: 1px solid $line-soft; background: #fff; text-align: left; cursor: pointer; width: 100%;
-      .dot { width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: #d4d0e0; flex-shrink: 0; }
-      .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; b { font-size: 12.5px; color: $ink; } .msg { font-size: 11.5px; color: $muted; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; } }
-      .time { font-size: 10.5px; color: #9aa1b2; flex-shrink: 0; margin-top: 2px; }
-      &.unread { background: #faf6ff; .dot { background: $brand; box-shadow: 0 0 0 3px rgba(122, 46, 230, .2); } }
-      &:hover { background: $brand-soft; } &:last-child { border-bottom: 0; } }
-    .foot { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 32px; border: 0; border-top: 1px solid $line-soft; background: $brand-tint; color: $brand-dark; font-size: 11.5px; font-weight: 700; cursor: pointer; &:hover { background: $brand-soft; } } }
 
   .sb-toggle { display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; margin: 0 10px 10px; border: 1px solid $line; border-radius: $r-md; background: #fff; color: $muted; font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0;
     &:hover { background: $brand-soft; color: $brand-dark; border-color: $brand-line; } }

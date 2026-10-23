@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { BadgeCheck, BookOpenCheck, DatabaseZap, FileSearch, Loader2, RefreshCw, ScanSearch, Search } from 'lucide-react'
 import { ApiError, get, useGet } from '../lib/api'
 import { can } from '../lib/permissions'
-import { INGEST_LABEL, INGEST_METHOD, INGEST_TONE, TEXT_REVIEW_LABEL, TEXT_REVIEW_TONE, TIER_LABEL, TIER_TONE, bytes } from '../lib/format'
+import { INGEST_LABEL, INGEST_METHOD, INGEST_TONE, TEXT_REVIEW_LABEL, TEXT_REVIEW_TONE, TIER_LABEL, TIER_TONE, bytes, niceFileName } from '../lib/format'
 import type { ItemDetail, KSearchResult, KSource, KStats } from '../lib/types'
 import { ComparePanel, IngestModal, MarkdownModal, PassageCard, PolicySelect, ReviewTextModal } from '../components/Knowledge'
 import { Empty, Field, PageHeader, Pill, Stat } from '../components/ui'
@@ -63,7 +63,7 @@ export function KnowledgeSources() {
         {data && data.sources.length === 0 && <tr><td colSpan={7}><Empty text="Chưa có tệp nào khớp bộ lọc" icon={<FileSearch size={42} strokeWidth={1.4} />} /></td></tr>}
         {data?.sources.map((s) => (
           <tr key={s.attachment_id}>
-            <td className="max-w-[260px]"><div className="font-bold truncate" title={s.filename}>{s.filename}</div><div className="text-xs text-muted">{s.filetype.toUpperCase()} · {bytes(s.filesize)}{s.pages ? ` · ${s.pages} trang` : ''}{s.doc_type ? ` · ${s.doc_type}` : ''}</div></td>
+            <td className="max-w-[260px]"><div className="font-bold truncate" title={s.filename}>{niceFileName(s.filename)}</div><div className="text-xs text-muted">{s.filetype.toUpperCase()} · {bytes(s.filesize)}{s.pages ? ` · ${s.pages} trang` : ''}{s.doc_type ? ` · ${s.doc_type}` : ''}</div></td>
             <td className="max-w-[240px]"><button className="bg-transparent border-0 p-0 text-left font-semibold text-brand-800 cursor-pointer hover:underline truncate block max-w-full" onClick={() => nav(`/items/${s.item.id}`)}>{s.item.title}</button>
               {s.item.is_official && <Pill sm tone="ok">Chính thống</Pill>}</td>
             <td><Pill sm tone={TIER_TONE[s.tier] || 'gray'}>{TIER_LABEL[s.tier] || s.tier}</Pill>{s.tier_flags?.length > 0 && <div className="text-[11px] text-amber-700 mt-1">{s.tier_flags.includes('ai_text_unverified') ? 'chữ AI chưa kiểm chứng' : s.tier_flags.join(', ')}</div>}</td>

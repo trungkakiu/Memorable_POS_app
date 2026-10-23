@@ -3,10 +3,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   AlertTriangle, ArrowLeft, Check, CheckCircle2, ClipboardCopy, Clock, Download, Eye, FileText, FolderOpen, Frown, Info, ListChecks, Loader2, MessageCircleQuestion, Phone, Play, Printer,
-  RotateCcw, GitCompare, ShieldAlert, ShieldCheck, BookOpenText, SkipForward, Sparkles, Undo2, User as UserIcon, XCircle,
+  RotateCcw, GitCompare, MoreHorizontal, ShieldAlert, ShieldCheck, BookOpenText, SkipForward, Sparkles, Undo2, User as UserIcon, Volume2, VolumeX, XCircle,
 } from 'lucide-react'
 import { ApiError, download, get, isAudioName, patch, post } from '../lib/api'
-import { bytes as fmtBytes, FILE_ICON, SEVERITY_LABEL } from '../lib/format'
+import { bytes as fmtBytes, FILE_ICON, niceFileName, SEVERITY_LABEL } from '../lib/format'
 import { KIND_LABEL, extOf, kindOf } from '../lib/preview'
 import { can } from '../lib/permissions'
 import type { Attachment, ItemDetail, ItemRow, ItemType, PromptVar, RelatedItem, RunbookStep } from '../lib/types'
@@ -23,6 +23,8 @@ import { TYPE_ICON, TYPE_PLAIN, friendlyDate } from './common'
 import { FavStar, MiniRow } from './Pages'
 import { DOC_ACTIONS, runDocAction } from './aiAgent'
 import { RunState, useReaderCtx, useWorkspace } from './workspace'
+import { speak, stopSpeak, useCanSpeak } from '../field/speak'
+import { useIsField } from '../lib/persona'
 
 // bài đã tự gỡ khỏi danh sách cá nhân trong phiên này (để câu báo không mất khi hiệu ứng chạy lại)
 const forgotten = new Set<number>()
@@ -50,7 +52,7 @@ function ReaderFiles({ atts }: { atts: Attachment[] }) {
               <div className="flex items-center gap-3.5">
                 {image ? <button className="shrink-0 border-0 p-0 bg-transparent cursor-zoom-in" onClick={() => setView(a)} aria-label={`Xem ${a.filename}`}><AttachImage id={a.id} alt={a.filename} className="w-[72px] h-[72px] object-cover rounded-md border border-line" /></button>
                   : <span className="rd-ico md text-3xl" style={{ width: 56, height: 56 }}>{FILE_ICON[extOf(a.filename)] || '📎'}</span>}
-                <div className="min-w-0 flex-1"><div className="font-bold leading-snug break-words">{a.filename}</div><div className="text-[0.82em] text-muted mt-0.5">{KIND_PLAIN[kindOf(a.filename)] || KIND_LABEL[kindOf(a.filename)]} · {fmtBytes(a.filesize)}{a.page_count ? ` · ${a.page_count} trang` : ''}</div></div>
+                <div className="min-w-0 flex-1"><div className="font-bold leading-snug break-words" title={a.filename}>{niceFileName(a.filename)}</div><div className="text-[0.82em] text-muted mt-0.5">{KIND_PLAIN[kindOf(a.filename)] || KIND_LABEL[kindOf(a.filename)]} · {fmtBytes(a.filesize)}{a.page_count ? ` · ${a.page_count} trang` : ''}</div></div>
               </div>
               {(a.text_review === 'unreviewed' || a.text_review === 'verified' || a.ingest_status === 'pending' || a.ingest_status === 'processing' || a.ingest_status === 'failed') && (
                 <div className="flex gap-2 flex-wrap">
@@ -78,7 +80,18 @@ function ReaderFiles({ atts }: { atts: Attachment[] }) {
 //  Làm theo từng bước (có nhớ tiến độ để làm tiếp)
 // ====================================================================
 interface RunData { run_id: number; steps: RunState['steps']; verification?: string; rollback?: string }
-function RunWizard({ itemId, title, verification, rollback, contact, resume, onExit }: { itemId: number; title: string; verification: string; rollback: string; contact: string; resume?: RunState; onExit: () => void }) {
+function RunWizard({ itemId, title, verification, rollback, contact, resume, incidentId, onExit }: { itemId: number; title: string; verification: string; rollback: string; contact: string; resume?: RunState; incidentId?: number | null; onExit: () => void }) {
+  const navTo = useNavigate()
+  // Đang xử lý một sự cố đã báo: hỏi kết quả sau khi làm xong để đóng sự cố hoặc báo cần hỗ trợ
+  const [outcome, setOutcome] = useState<null | 'fixed' | 'help' | 'saving'>(null)
+  async function report(fixed: boolean) {
+    if (!incidentId) return
+    setOutcome('saving')
+    try {
+      await patch(`/incidents/${incidentId}`, fixed ? { status: 'resolved', conclusion: `Đã khắc phục theo hướng dẫn “${title}”.` } : { description: `Đã làm theo hướng dẫn “${title}” nhưng lỗi vẫn còn, cần bộ phận kỹ thuật hỗ trợ.` })
+      setOutcome(fixed ? 'fixed' : 'help')
+    } catch (e) { setOutcome(null); setErr((e as ApiError).full) }
+  }
   const ws = useWorkspace()
   const [run, setRun] = useState<{ run_id: number; steps: RunState['steps'] } | null>(resume ? { run_id: resume.runId, steps: resume.steps } : null)
   const [idx, setIdx] = useState(resume?.idx ?? 0)
@@ -95,7 +108,7 @@ function RunWizard({ itemId, title, verification, rollback, contact, resume, onE
 
   useEffect(() => {
     if (resume) return
-    post<RunData>(`/items/${itemId}/runs`, {}).then((r) => { setRun({ run_id: r.run_id, steps: r.steps }); persist({ run_id: r.run_id, steps: r.steps }, 0, {}); void post('/usage-events', { event_type: 'run_runbook', item_id: itemId }).catch(() => undefined) })
+    post<RunData>(`/items/${itemId}/runs`, incidentId ? { incident_id: incidentId } : {}).then((r) => { setRun({ run_id: r.run_id, steps: r.steps }); persist({ run_id: r.run_id, steps: r.steps }, 0, {}); void post('/usage-events', { event_type: 'run_runbook', item_id: itemId }).catch(() => undefined) })
       .catch((e) => setErr(e instanceof ApiError && e.status === 409 ? 'Hướng dẫn này chưa có bước nào.' : (e as ApiError).full))
   }, [itemId]) // eslint-disable-line
 
@@ -111,7 +124,7 @@ function RunWizard({ itemId, title, verification, rollback, contact, resume, onE
     } catch (e) { setErr((e as ApiError).full) } finally { setBusy(false) }
   }
   function next() { setFailed(false); if (!run) return; if (idx + 1 >= run.steps.length) void finish(); else { setIdx(idx + 1); persist(run, idx + 1, res) } }
-  function restart() { ws.clearRun(itemId); setRun(null); setEnd(null); setRes({}); setIdx(0); setFailed(false); post<RunData>(`/items/${itemId}/runs`, {}).then((r) => { setRun({ run_id: r.run_id, steps: r.steps }); persist({ run_id: r.run_id, steps: r.steps }, 0, {}) }) }
+  function restart() { ws.clearRun(itemId); setRun(null); setEnd(null); setRes({}); setIdx(0); setFailed(false); setOutcome(null); post<RunData>(`/items/${itemId}/runs`, incidentId ? { incident_id: incidentId } : {}).then((r) => { setRun({ run_id: r.run_id, steps: r.steps }); persist({ run_id: r.run_id, steps: r.steps }, 0, {}) }) }
 
   if (err && !run) return <div className="rd-callout bad"><Frown size={22} /><div><b className="block">Chưa bắt đầu được</b>{err}<div className="mt-3"><button className="rd-btn secondary sm" onClick={onExit}>Quay lại</button></div></div></div>
   if (!run) return <div className="rd-card p-10 flex flex-col items-center gap-3 text-muted"><Loader2 size={30} className="animate-spin text-brand-500" />Đang chuẩn bị các bước…</div>
@@ -128,7 +141,20 @@ function RunWizard({ itemId, title, verification, rollback, contact, resume, onE
         {verification && <div className="rd-callout info"><CheckCircle2 size={22} className="shrink-0 mt-0.5" /><div><b className="block mb-1">Kiểm tra xem đã xử lý xong chưa</b><div className="whitespace-pre-wrap">{verification}</div></div></div>}
         {(bad > 0 && contact) && <div className="rd-callout warn"><Phone size={22} className="shrink-0 mt-0.5" /><div><b className="block mb-1">Cần hỗ trợ thêm? Hãy liên hệ</b>{contact}</div></div>}
         {rollback && <div className="rd-callout warn"><Undo2 size={22} className="shrink-0 mt-0.5" /><div><b className="block mb-1">Nếu bạn lỡ làm sai — cách quay lại như cũ</b><div className="whitespace-pre-wrap">{rollback}</div></div></div>}
-        <div className="flex gap-3 flex-wrap"><button className="rd-btn" onClick={onExit}>Hoàn tất</button><button className="rd-btn secondary" onClick={restart}><RotateCcw size={18} />Làm lại từ đầu</button></div>
+        {incidentId && (
+          <div className="rd-card p-5 flex flex-col gap-3 border-2 !border-[#7a2ee6]">
+            {outcome === 'fixed' ? <div className="flex gap-3 items-start"><CheckCircle2 size={24} className="text-emerald-600 shrink-0" /><div><b className="block text-[1.1em]">Tuyệt vời! Sự cố đã được đóng.</b>Cảm ơn bạn đã tự xử lý. Kết quả đã được ghi lại cho bộ phận kỹ thuật.</div></div>
+              : outcome === 'help' ? <div className="flex gap-3 items-start"><Phone size={24} className="text-amber-600 shrink-0" /><div><b className="block text-[1.1em]">Đã báo bộ phận kỹ thuật</b>Sự cố vẫn mở, người phụ trách sẽ tiếp tục xử lý. Bạn theo dõi ở mục <b>Sự cố của tôi</b>.</div></div>
+                : (<>
+                  <b className="text-[1.15em]">Lỗi đã hết chưa?</b>
+                  <div className="text-muted text-[0.92em]">Câu trả lời của bạn giúp đóng sự cố #{incidentId} hoặc báo bộ phận kỹ thuật vào hỗ trợ.</div>
+                  <div className="flex gap-3 flex-wrap">
+                    <button className="rd-btn good" disabled={outcome === 'saving'} onClick={() => void report(true)}>{outcome === 'saving' ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={20} />}Đã hết lỗi</button>
+                    <button className="rd-btn secondary" disabled={outcome === 'saving'} onClick={() => void report(false)}><Phone size={18} />Vẫn còn lỗi, cần hỗ trợ</button>
+                  </div>
+                </>)}
+          </div>)}
+        <div className="flex gap-3 flex-wrap"><button className="rd-btn" onClick={incidentId ? () => navTo('/su-co') : onExit}>{incidentId ? 'Về trang xử lý sự cố' : 'Hoàn tất'}</button><button className="rd-btn secondary" onClick={restart}><RotateCcw size={18} />Làm lại từ đầu</button></div>
       </div>)
   }
 
@@ -161,7 +187,7 @@ function RunWizard({ itemId, title, verification, rollback, contact, resume, onE
           <div className="flex gap-3 flex-wrap">
             <button className="rd-btn good lg" disabled={busy || (step.dangerous && !sure)} onClick={() => void mark('done')}>{busy ? <Loader2 size={20} className="animate-spin" /> : <Check size={22} />}Xong, sang bước tiếp theo</button>
             <button className="rd-btn secondary lg" disabled={busy} onClick={() => void mark('skipped')}><SkipForward size={20} />Bỏ qua bước này</button>
-            <button className="rd-btn secondary lg" style={{ color: '#d92d20', borderColor: '#fda29b' }} disabled={busy} onClick={() => void mark('failed')}><XCircle size={20} />Mình không làm được</button>
+            <button className="rd-btn secondary lg" style={{ color: '#d92d20', borderColor: '#fda29b' }} disabled={busy} onClick={() => void mark('failed')}><XCircle size={20} />Tôi không thực hiện được</button>
           </div>
         </>)}
     </div>)
@@ -227,8 +253,15 @@ export default function ReaderRead() {
   const saved = ws.runs[Number(id)]
   const official = useIsOfficial(Number(id))
   const [whole, setWhole] = useState<{ markdown: string } | 'loading' | null>(null)
+  const [more, setMore] = useState(false)
+  // Khối Sản xuất: bớt nút phụ, thẻ chủ đề, mục lục; thêm Nghe đọc
+  const field = useIsField()
+  const canSpeak = useCanSpeak()
+  const [reading, setReading] = useState(false)
+  useEffect(() => () => stopSpeak(), [])
 
   useEffect(() => {
+    stopSpeak(); setReading(false)
     setIt(null); setErr(''); setGuided(false); setRelated([]); setWhole(null)
     get<ItemDetail>(`/items/${id}`).then((d) => {
       setIt(d)
@@ -239,12 +272,13 @@ export default function ReaderRead() {
         .then((r) => setRelated((r.related || []).map((x) => ({ id: x.id, title: x.title, type: x.type, why: x.shared_tags.length ? `Cùng chủ đề: ${x.shared_tags.slice(0, 2).map((s) => s.name).join(', ')}` : x.semantic_score != null ? 'Nội dung gần giống' : undefined }))))
         .catch(() => get<{ results: ItemRow[] }>('/search', { q: d.title.slice(0, 80), limit: 6 }).then((r) => setRelated((r.results || []).filter((x) => x.id !== d.id).slice(0, 4))).catch(() => undefined))
       if (sp.get('resume') === '1' && useWorkspace.getState().runs[d.id]) setGuided(true)
+      if (sp.get('run') === '1' && d.type === 'runbook') setGuided(true) // mở từ trang Xử lý sự cố: vào thẳng chế độ làm theo từng bước
     }).catch((e) => {
       if (e instanceof ApiError && e.status === 404) {
         // bài đã bị gỡ: dọn khỏi các danh sách cá nhân để không gặp lại lỗi này
         if (useWorkspace.getState().forgetItem(Number(id))) forgotten.add(Number(id))
         const n = forgotten.has(Number(id))
-        setErr(`Bài này không còn trong thư viện (có thể đã bị gỡ hoặc bạn không còn quyền xem).${n ? ' Mình đã bỏ bài này khỏi danh sách Đã lưu / Đã xem của bạn.' : ''}`)
+        setErr(`Bài này không còn trong thư viện (có thể đã bị gỡ hoặc bạn không còn quyền xem).${n ? ' Bài này đã được bỏ khỏi danh sách Đánh dấu sao và Đã xem của bạn.' : ''}`)
       } else setErr(e instanceof ApiError ? e.full : String(e))
     })
     void post('/usage-events', { event_type: 'view', item_id: Number(id) }).catch(() => undefined)
@@ -266,24 +300,46 @@ export default function ReaderRead() {
   const copyAll = async () => { await navigator.clipboard.writeText(`${it.title}\n\n${it.summary ? it.summary + '\n\n' : ''}${content}`); toast.ok('Đã sao chép nội dung bài') }
   const jump = (h: string) => { const el = Array.from(document.querySelectorAll('.md-body h2, .md-body h3')).find((e) => (e.textContent || '').trim() === h); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
   const ctx = { id: it.id, title: it.title, type: it.type }
+  const startable = it.type === 'runbook' && steps.length > 0
+  function readAloud() {
+    if (reading) { stopSpeak(); setReading(false); return }
+    const body = steps.length ? steps.map((s, i) => `Bước ${i + 1}. ${s.action}`).join('. ') : content
+    if (speak([it!.title, it!.summary || '', body].filter(Boolean).join('. '), () => setReading(false))) setReading(true)
+  }
   async function toggleWhole() {
     if (whole) { setWhole(null); return }
     setWhole('loading')
     try { const r = await get<{ markdown: string }>(`/items/${it!.id}/markdown`, { attachments: true }); setWhole({ markdown: r.markdown }) } catch (e) { setWhole(null); toast.error(e) }
   }
 
+  // Khối Sản xuất đang làm theo từng bước: chỉ hiện các bước, không hiện phần mô tả dài phía trên
+  if (field && guided && startable) return (
+    <div className="flex flex-col gap-4 w-full">
+      <h1 className="doc !mb-0">{it.title}</h1>
+      <RunWizard itemId={it.id} title={it.title} verification={str(x.verification)} rollback={str(x.rollback)} contact={str(x.contact_info)} resume={sp.get('incident') ? undefined : saved} incidentId={Number(sp.get('incident')) || null} onExit={() => setGuided(false)} />
+    </div>)
+
   return (
     <div className="flex flex-col gap-5 max-w-[900px] mx-auto w-full">
       <div className="flex items-center gap-3 flex-wrap">
         <button className="rd-btn secondary sm" onClick={() => nav(-1)}><ArrowLeft size={16} />Quay lại</button>
-        {it.space?.name && <button className="rd-btn secondary sm" onClick={() => nav(`/browse/space/${it.space!.id}`)}><FolderOpen size={16} />{it.space.name}</button>}
+        {it.space?.name && !field && <button className="rd-btn secondary sm" onClick={() => nav(`/browse/space/${it.space!.id}`)}><FolderOpen size={16} />{it.space.name}</button>}
       </div>
       <article className="rd-paper flex flex-col gap-6">
         <header className="flex flex-col gap-4">
           <div className="flex gap-2.5 flex-wrap items-center"><span className="rd-chip"><Ico size={16} />{TYPE_PLAIN[it.type]}</span>
-            {official && !old && <span className="rd-chip ok" title="Đã được người kiểm duyệt xác nhận là bản chính thức"><ShieldCheck size={15} />Nguồn chính thống</span>}
-            {!official && !old && !unofficial && <span className="rd-chip ok"><CheckCircle2 size={15} />Đã được kiểm duyệt</span>}</div>
-          <div className="flex items-start gap-4"><h1 className="doc flex-1 !mb-0">{it.title}</h1><FavStar it={ctx} /></div>
+            {official && !old && <span className="rd-chip ok" title="Người kiểm duyệt đã xác nhận đây là bản công ty dùng chính thức"><ShieldCheck size={15} />Bản chính thức</span>}
+            {!official && !old && !unofficial && <span className="rd-chip ok"><CheckCircle2 size={15} />Đã duyệt</span>}</div>
+          <div className="flex items-start gap-4"><h1 className="doc flex-1 !mb-0">{it.title}</h1>{!field && <FavStar it={ctx} />}</div>
+          {field ? (
+            <div className="flex flex-col gap-3">
+              {startable && <button className="fd-btn primary lg" onClick={() => setGuided(true)}><Play size={26} />{saved ? 'Làm tiếp từng bước' : 'Bắt đầu làm theo từng bước'}</button>}
+              <div className="grid grid-cols-2 gap-3">
+              {canSpeak && <button className="fd-btn soft" onClick={readAloud}>{reading ? <VolumeX size={24} /> : <Volume2 size={24} />}{reading ? 'Dừng đọc' : 'Nghe đọc'}</button>}
+              <button className="fd-btn soft" onClick={() => nav('/hoi')}><MessageCircleQuestion size={24} />Hỏi trợ lý</button>
+              </div>
+            </div>
+          ) : (<>
           {(it.tags?.length ?? 0) > 0 && (
             <div className="flex gap-2 flex-wrap items-center text-[0.9em]"><span className="text-muted font-semibold">Thuộc:</span>
               {[...(it.tags || [])].sort((a, b) => (a.kind === 'category' ? 0 : 1) - (b.kind === 'category' ? 0 : 1)).map((tg) => (
@@ -297,16 +353,24 @@ export default function ReaderRead() {
             <button className="rd-btn sm" onClick={() => { chat.setOpen(true); void runDocAction(ctx, DOC_ACTIONS[0]) }}><Sparkles size={17} />Trợ lý tóm tắt bài này</button>
             <button className="rd-btn secondary sm" onClick={() => chat.setOpen(true)}><MessageCircleQuestion size={17} />Hỏi về bài này</button>
             {(atts.length > 0 || content) && <button className={clsx('rd-btn sm', whole ? '' : 'secondary')} onClick={() => void toggleWhole()}><BookOpenText size={17} />{whole ? 'Về cách xem thường' : 'Xem cả bài + nội dung tệp'}</button>}
-            <button className="rd-btn secondary sm" onClick={() => nav(`/compare?ids=${it.id}`)}><GitCompare size={17} />So sánh với bài khác</button>
-            <button className="rd-btn secondary sm" onClick={() => void copyAll()}><ClipboardCopy size={17} />Sao chép</button>
-            <button className="rd-btn secondary sm" onClick={() => window.print()}><Printer size={17} />In</button>
+            <div className="relative">
+              <button className="rd-btn secondary sm" onClick={() => setMore(!more)} aria-haspopup="menu" aria-expanded={more}><MoreHorizontal size={17} />Thêm</button>
+              {more && (<>
+                <div className="fixed inset-0 z-40" onClick={() => setMore(false)} aria-hidden />
+                <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[260px] bg-white border border-line rounded-lg shadow-[0_24px_50px_-18px_rgba(60,20,120,.5)] p-2 flex flex-col gap-1.5" role="menu">
+                  <button className="rd-tool" role="menuitem" onClick={() => { setMore(false); nav(`/compare?ids=${it.id}`) }}><GitCompare size={18} />So sánh với bài khác</button>
+                  <button className="rd-tool" role="menuitem" onClick={() => { setMore(false); void copyAll() }}><ClipboardCopy size={18} />Sao chép nội dung</button>
+                  <button className="rd-tool" role="menuitem" onClick={() => { setMore(false); window.print() }}><Printer size={18} />In bài</button>
+                </div></>)}
+            </div>
           </div>
+          </>)}
         </header>
 
         {old && <div className="rd-callout warn"><AlertTriangle size={24} className="shrink-0" /><div><b className="block mb-1">Bài này đã lâu chưa được kiểm tra lại</b>Nội dung có thể không còn đúng. Hãy hỏi {it.owner?.name ? <b>{it.owner.name}</b> : 'người phụ trách'} trước khi làm theo.</div></div>}
         {unofficial && <div className="rd-callout info"><Info size={24} className="shrink-0" /><div><b className="block mb-1">Bài này chưa được duyệt chính thức</b>Hãy xem đây là bản tham khảo.</div></div>}
         {it.summary && <div className="rd-callout info"><FileText size={22} className="shrink-0 mt-0.5" /><div><b className="block mb-1">Tóm tắt nhanh</b>{it.summary}</div></div>}
-        {headings.length >= 3 && it.type !== 'runbook' && <div className="flex flex-col gap-2"><div className="text-[0.8em] font-bold uppercase tracking-wide text-muted flex items-center gap-1.5"><ListChecks size={14} />Trong bài này</div><div className="rd-toc">{headings.map((h) => <button key={h} onClick={() => jump(h)}>{h}</button>)}</div></div>}
+        {headings.length >= 3 && it.type !== 'runbook' && !field && <div className="flex flex-col gap-2"><div className="text-[0.8em] font-bold uppercase tracking-wide text-muted flex items-center gap-1.5"><ListChecks size={14} />Trong bài này</div><div className="rd-toc">{headings.map((h) => <button key={h} onClick={() => jump(h)}>{h}</button>)}</div></div>}
 
         {whole && (
           <section className="flex flex-col gap-3">
@@ -327,7 +391,7 @@ export default function ReaderRead() {
               </section>)}
             {steps.length > 0 && (
               <section className="flex flex-col gap-4">
-                {guided ? <RunWizard itemId={it.id} title={it.title} verification={str(x.verification)} rollback={str(x.rollback)} contact={str(x.contact_info)} resume={saved} onExit={() => setGuided(false)} /> : (<>
+                {guided ? <RunWizard itemId={it.id} title={it.title} verification={str(x.verification)} rollback={str(x.rollback)} contact={str(x.contact_info)} resume={sp.get('incident') ? undefined : saved} incidentId={Number(sp.get('incident')) || null} onExit={() => setGuided(false)} /> : (<>
                   {saved && (
                     <div className="rd-card rd-resume p-5 flex items-center gap-5 flex-wrap"><span className="rd-ico md g"><Play size={24} /></span>
                       <div className="flex-1 min-w-[220px]"><div className="font-black">Bạn đang làm dở hướng dẫn này</div><div className="text-[0.9em] text-muted mt-1">Đã làm {Object.keys(saved.results).length}/{saved.total} bước · {friendlyDate(new Date(saved.at).toISOString())}</div></div>
@@ -348,12 +412,14 @@ export default function ReaderRead() {
           <PromptTool id={it.id} vars={vars} guide={str(x.usage_guide)} exIn={str(x.example_input)} exOut={str(x.example_output)} limits={str(x.limitations)} /></section>}
 
         {content && !whole && <section>{(it.type === 'runbook' || it.type === 'prompt') && <h2 className="rd-h2 mb-3">{it.type === 'prompt' ? 'Nội dung câu lệnh gốc' : 'Chi tiết thêm'}</h2>}<Md>{content}</Md></section>}
-        {!content && it.type !== 'runbook' && it.type !== 'prompt' && <div className="rd-callout info"><Info size={22} />Bài này chưa có nội dung chi tiết{atts.length ? ' — hãy xem các tệp đính kèm ở trên.' : '.'}</div>}
+        {!content && !whole && it.type !== 'runbook' && it.type !== 'prompt' && (atts.length
+          ? <div className="rd-callout info items-center flex-wrap"><Info size={22} className="shrink-0" /><span className="flex-1 min-w-[200px]">Nội dung bài này nằm trong tệp đính kèm.</span><button className="rd-btn sm" onClick={() => void toggleWhole()}><BookOpenText size={17} />Đọc nội dung từ tệp</button></div>
+          : <div className="rd-callout info"><Info size={22} />Bài này chưa có nội dung chi tiết.</div>)}
 
         {it.owner?.name && <div className="rd-callout info"><UserIcon size={22} className="shrink-0 mt-0.5" /><div><b className="block mb-0.5">Cần hỏi thêm?</b>Hãy liên hệ <b>{it.owner.name}</b> — người phụ trách bài này.</div></div>}
       </article>
 
-      {related.length > 0 && (
+      {related.length > 0 && !field && (
         <section className="flex flex-col gap-2">
           <h2 className="rd-h2">Có thể bạn cũng cần xem</h2>
           <div className="rd-card p-2 grid md:grid-cols-2 gap-x-2">{related.map((r) => <div key={r.id}><MiniRow id={r.id} title={r.title} type={r.type} />{r.why && <div className="text-[0.78em] text-muted -mt-1.5 pb-1.5 pl-[62px]">{r.why}</div>}</div>)}</div>

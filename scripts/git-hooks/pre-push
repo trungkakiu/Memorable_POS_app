@@ -1,12 +1,34 @@
 #!/bin/sh
-# Chỉ cho phép push khi chủ kho đồng ý: mỗi lần push, Windows hiện hộp thoại hỏi (kèm danh sách commit sắp đẩy).
-# Bấm Yes thì push, bấm No hoặc để quá 2 phút thì hủy. Áp dụng cho mọi cách push: terminal, VS Code, AI agent.
+# Quy trình review trước khi gộp vào main (áp dụng cho mọi cách push trên máy này: terminal, VS Code, AI agent):
+#   1. KHÔNG được push thẳng vào main/master: làm trên nhánh khác, push nhánh đó rồi mở Pull Request.
+#      Claude review Pull Request, chủ kho review rồi bấm Merge trên GitHub (GitHub cũng chặn push thẳng vào main).
+#   2. Push nhánh khác: Windows hiện hộp thoại hỏi chủ kho (kèm danh sách commit). Yes thì push; No hoặc quá 2 phút thì hủy.
 # Cài: cp scripts/git-hooks/pre-push .git/hooks/pre-push   (hook không được đẩy theo kho, mỗi bản clone phải cài lại)
 remote="$1"
 url="$2"
 repo=$(basename "$(git rev-parse --show-toplevel 2>/dev/null)")
 z40=0000000000000000000000000000000000000000
 
+refs=$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/prepush-refs-$$.txt")
+cat > "$refs"
+
+# ---- 1. Chặn push thẳng vào nhánh chính
+blocked=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "$local_ref" ] && continue
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/master) blocked="$blocked ${remote_ref#refs/heads/}" ;;
+  esac
+done < "$refs"
+if [ -n "$blocked" ]; then
+  rm -f "$refs"
+  echo "pre-push: PUSH BỊ CHẶN - không được push thẳng vào:$blocked" >&2
+  echo "  Hãy tạo nhánh mới (vd: git switch -c feat/ten-thay-doi), push nhánh đó rồi mở Pull Request." >&2
+  echo "  Claude và chủ kho review Pull Request trước khi Merge vào main." >&2
+  exit 1
+fi
+
+# ---- 2. Hỏi chủ kho trước khi push nhánh khác
 msg=$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/prepush-$$.txt")
 {
   echo "Có lệnh PUSH từ kho \"$repo\" lên $remote"
@@ -20,10 +42,12 @@ msg=$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/prepush-$$.txt")
     n=$(git rev-list --count "$range" 2>/dev/null || echo "?")
     echo "Số commit: $n"
     git log --format='  - %h %s (%an)' -n 8 "$range" 2>/dev/null
-  done
+  done < "$refs"
   echo
+  echo "Nhánh này sẽ được gộp vào main qua Pull Request sau khi review."
   echo "Anh có cho phép push không?"
 } > "$msg"
+rm -f "$refs"
 
 # Hộp thoại luôn nằm trên cùng (4096), Yes/No (4), dấu hỏi (32); tự hủy sau 120 giây. Trả 6 = Yes.
 ans=$(powershell.exe -NoProfile -NonInteractive -Command "\$t = Get-Content -LiteralPath '$(cygpath -w "$msg" 2>/dev/null || echo "$msg")' -Encoding UTF8 -Raw; \$r = (New-Object -ComObject WScript.Shell).Popup(\$t, 120, 'Xác nhận git push', 4 + 32 + 4096); Write-Output \$r" 2>/dev/null | tr -d '\r')

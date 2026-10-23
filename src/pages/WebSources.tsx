@@ -8,6 +8,7 @@ import { Md, Pager } from '../components/shared'
 import { SourceCard, VerifyMeter, linkWebCites } from '../components/WebAnswer'
 import { confirmDialog, toast } from '../store/ui'
 import type { WebCitation, WebVerification } from '../store/chat'
+import { useClientPage } from '../components/ShowMore'
 
 type Tier = 'official' | 'trusted' | 'blocked'
 interface Source { id: number; domain: string; name: string; tier: Tier; tier_label: string; category: string; note: string | null; active: boolean; cited_count: number; last_cited_at: string | null; created_at: string }
@@ -42,7 +43,9 @@ function SourcesTab() {
   const [q, setQ] = useState('')
   const { data, loading, reload } = useGet<SourceList>('/ai/web/sources', { tier: tier || undefined, q: q.trim() || undefined })
   const [edit, setEdit] = useState<Partial<Source> | null>(null)
-  const rows = data?.rows || []
+  const allRows = data?.rows || []
+  const pg = useClientPage(allRows, 50)
+  const rows = pg.rows
   const counts = useMemo(() => ({ official: rows.filter((r) => r.tier === 'official').length, trusted: rows.filter((r) => r.tier === 'trusted').length, blocked: rows.filter((r) => r.tier === 'blocked').length }), [rows])
 
   async function toggle(r: Source) { try { await patch(`/ai/web/sources/${r.id}`, { active: !r.active }); void reload() } catch (e) { toast.error(e) } }
@@ -81,6 +84,7 @@ function SourcesTab() {
                 </td>
               </tr>))}
           </tbody></table></div>
+        <Pager page={pg.page} pages={pg.pages} total={pg.total} onPage={pg.setPage} />
       </div>
       <div className="flex flex-col gap-4">
         <ClassifyCard />

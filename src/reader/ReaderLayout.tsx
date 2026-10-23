@@ -2,7 +2,7 @@ import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'reac
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  AudioLines, Wand2, BookMarked, Brain, ChevronDown, FileSearch, GitCompare, Clock, Compass, FolderOpen, History, Home, LayoutDashboard, LogOut, Menu, MessageCircleQuestion, Minus, PlayCircle, Plus, Search, Star, Timer, Type, X,
+  AudioLines, Bell, Wand2, BookMarked, Brain, ChevronDown, FileSearch, GitCompare, Clock, Compass, FolderOpen, History, Home, LayoutDashboard, LifeBuoy, ListChecks, Siren, LogOut, Menu, MessageCircleQuestion, Minus, PlayCircle, Plus, Search, Star, Timer, Type, X,
 } from 'lucide-react'
 import { ApiError, get, post } from '../lib/api'
 import { ROLE_LABEL, WORK_TYPE, num, todayStr } from '../lib/format'
@@ -12,6 +12,9 @@ import { useChat } from '../store/chat'
 import { toast } from '../store/ui'
 import type { ItemRow, ItemType } from '../lib/types'
 import { AssistantPanel } from './Assistant'
+import { NotificationBell } from '../components/Notifications'
+import { useNotices } from '../store/notices'
+import { usePersona } from '../lib/persona'
 import { TOPIC_COLORS, TYPE_ICON, TYPE_PLAIN, addRecent, useReaderUi, useUiMode } from './common'
 import { useWorkspace } from './workspace'
 
@@ -62,9 +65,11 @@ function RailLink({ to, icon, label, badge, onClick, active }: { to?: string; ic
 }
 
 function Rail({ onTime, onClose }: { onTime: () => void; onClose: () => void }) {
+  const loc = useLocation()
   const spaces = useAuth((s) => s.spaces)
   const runs = useWorkspace((s) => Object.keys(s.runs).length)
   const favs = useWorkspace((s) => s.favs.length)
+  const unread = useNotices((s) => s.unread)
   const chat = useChat()
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [allSpaces, setAllSpaces] = useState(false)
@@ -75,28 +80,34 @@ function Rail({ onTime, onClose }: { onTime: () => void; onClose: () => void }) 
       <div className="rd-rail-head"><b>Menu</b><button onClick={onClose} aria-label="Đóng menu"><X size={20} /></button></div>
       <div className="grp"><div className="cap">Bắt đầu</div>
         <RailLink to="/" icon={<Home size={19} />} label="Trang chủ" />
+        <RailLink onClick={() => { if (location.hash === '#/' || location.hash === '') window.dispatchEvent(new CustomEvent('rd:focus-chat')); else chat.setOpen(!chat.open) }} active={chat.open} icon={<MessageCircleQuestion size={19} />} label="Hỏi trợ lý" />
       </div>
-      <div className="grp"><div className="cap">Việc của tôi</div>
-        <RailLink to="/me?tab=runs" icon={<PlayCircle size={19} />} label="Đang làm dở" badge={runs} />
-        <RailLink to="/me?tab=saved" icon={<Star size={19} />} label="Đã lưu" badge={favs} />
-        <RailLink to="/me?tab=recent" icon={<History size={19} />} label="Đã xem gần đây" />
-        <RailLink to="/memory" icon={<Brain size={19} />} label="Trợ lý ghi nhớ" />
+      <div className="grp"><div className="cap">Việc giấy tờ</div>
+        <RailLink to="/autofill" icon={<Wand2 size={19} />} label="Điền giấy tờ" />
+        <RailLink to="/transcribe" icon={<AudioLines size={19} />} label="Ghi âm thành chữ" />
+        <RailLink onClick={() => { window.location.hash = '#/'; setTimeout(() => window.dispatchEvent(new CustomEvent('rd:focus-chat')), 150) }} icon={<FileSearch size={19} />} label="Hỏi về tệp của tôi" />
+        <RailLink to="/compare" icon={<GitCompare size={19} />} label="So sánh các bài" />
+        <RailLink onClick={onTime} icon={<Timer size={19} />} label="Ghi giờ làm" />
       </div>
-      <div className="grp"><div className="cap">Thư viện</div>
-        {TYPES.map((t) => { const Ico = TYPE_ICON[t]; return <RailLink key={t} to={`/browse/type/${t}`} icon={<Ico size={19} />} label={TYPE_RAIL[t]} badge={counts[t]} /> })}
+      <div className="grp"><div className="cap">Tra cứu</div>
+        {TYPES.filter((t) => t !== 'runbook').map((t) => { const Ico = TYPE_ICON[t]; return <RailLink key={t} to={`/browse/type/${t}`} icon={<Ico size={19} />} label={TYPE_RAIL[t]} badge={counts[t]} /> })}
+        <RailLink to="/browse/type/runbook" icon={<LifeBuoy size={19} />} label="Hướng dẫn xử lý lỗi" badge={counts.runbook} />
       </div>
       <div className="grp"><div className="cap">Chủ đề</div>
         {shown.map((s, i) => <RailLink key={s.id} to={`/browse/space/${s.id}`} icon={<FolderOpen size={19} style={{ color: TOPIC_COLORS[i % TOPIC_COLORS.length] }} />} label={s.name} />)}
         {spaces.length > 5 && <button className="rd-rail-more" onClick={() => setAllSpaces(!allSpaces)}>{allSpaces ? 'Thu gọn' : `Xem thêm ${spaces.length - 5} chủ đề`}<ChevronDown size={14} className={clsx(allSpaces && 'rotate-180')} /></button>}
         {spaces.length === 0 && <div className="px-3 py-2 text-[0.85em] text-muted">Chưa có chủ đề</div>}
       </div>
-      <div className="grp"><div className="cap">Công cụ</div>
-        <RailLink onClick={() => { if (location.hash === '#/' || location.hash === '') window.dispatchEvent(new CustomEvent('rd:focus-chat')); else chat.setOpen(!chat.open) }} active={chat.open} icon={<MessageCircleQuestion size={19} />} label="Hỏi trợ lý" />
-        <RailLink onClick={() => { window.location.hash = '#/'; setTimeout(() => window.dispatchEvent(new CustomEvent('rd:focus-chat')), 150) }} icon={<FileSearch size={19} />} label="Hỏi về tệp của tôi" />
-        <RailLink to="/autofill" icon={<Wand2 size={19} />} label="Điền mẫu tự động" />
-        <RailLink to="/transcribe" icon={<AudioLines size={19} />} label="Chép lời ghi âm" />
-        <RailLink to="/compare" icon={<GitCompare size={19} />} label="So sánh các bài" />
-        <RailLink onClick={onTime} icon={<Timer size={19} />} label="Ghi giờ làm" />
+      <div className="grp"><div className="cap">Báo lỗi</div>
+        <RailLink to="/su-co" icon={<Siren size={19} />} label="Báo lỗi, hỏng hóc" active={loc.pathname === '/su-co' && !loc.search.includes('tab=mine')} />
+        <RailLink to="/su-co?tab=mine" icon={<ListChecks size={19} />} label="Lỗi tôi đã báo" />
+      </div>
+      <div className="grp"><div className="cap">Của tôi</div>
+        <RailLink to="/me?tab=runs" icon={<PlayCircle size={19} />} label="Đang làm dở" badge={runs} />
+        <RailLink to="/me?tab=saved" icon={<Star size={19} />} label="Đánh dấu sao" badge={favs} />
+        <RailLink to="/me?tab=recent" icon={<History size={19} />} label="Đã xem gần đây" />
+        <RailLink to="/thong-bao" icon={<Bell size={19} />} label="Thông báo" badge={unread} />
+        <RailLink to="/memory" icon={<Brain size={19} />} label="Trợ lý ghi nhớ" />
       </div>
     </aside>)
 }
@@ -168,6 +179,9 @@ export default function ReaderLayout() {
   const toggleAssistant = () => { if (onHome) window.dispatchEvent(new CustomEvent('rd:focus-chat')); else chat.toggle() }
 
   useEffect(() => { init(user.id) }, [user.id]) // eslint-disable-line
+  // Thông báo của người dùng: lấy ngay khi vào và làm mới mỗi 45 giây
+  const refreshNotices = useNotices((s) => s.refresh)
+  useEffect(() => { void refreshNotices(); const t = setInterval(() => void refreshNotices(), 45000); return () => clearInterval(t) }, []) // eslint-disable-line
   useEffect(() => { const h = () => setTime(true); window.addEventListener('rd:time', h); return () => window.removeEventListener('rd:time', h) }, [])
   useEffect(() => { document.querySelector('.rd-scroll')?.scrollTo({ top: 0 }); setNavOpen(false) }, [loc.pathname, loc.search])
   useEffect(() => {
@@ -195,6 +209,7 @@ export default function ReaderLayout() {
           </button>
           <SearchBox />
           <button className={clsx('rd-btn sm', !(chat.open && !onHome) && 'secondary')} onClick={toggleAssistant} aria-pressed={chat.open && !onHome} title="Mở / đóng trợ lý (Ctrl+J)" aria-label="Hỏi trợ lý"><MessageCircleQuestion size={19} /><span className="rd-hide-sm">Hỏi trợ lý</span></button>
+          <NotificationBell reader allPath="/thong-bao" />
           <div className="relative" ref={menuRef}>
             <button className="flex items-center gap-2.5 h-[50px] pl-1.5 pr-3 rounded-lg border border-line bg-white cursor-pointer hover:bg-brand-50" onClick={() => setMenu(!menu)} aria-haspopup="menu" aria-expanded={menu}>
               <span className="w-9 h-9 rounded-md bg-gradient-to-br from-brand-500 to-brand-700 text-white font-extrabold grid place-items-center">{initials}</span>
@@ -212,7 +227,7 @@ export default function ReaderLayout() {
                   </div>
                   <div className="text-xs text-muted mt-1.5 text-center">Đang ở mức {Math.round(scale * 100)}%</div>
                 </div>
-                {user.role !== 'reader' && <button className="rd-tool" onClick={() => { setSimple(false); setMenu(false) }}><LayoutDashboard size={18} />Chuyển về giao diện quản lý</button>}
+                {user.role !== 'reader' && <button className="rd-tool" onClick={() => { usePersona.getState().setPersona('manager'); setSimple(false); setMenu(false) }}><LayoutDashboard size={18} />Chuyển về giao diện quản lý</button>}
                 <button className="rd-tool" onClick={() => { logout(); nav('/login') }}><LogOut size={18} />Đăng xuất</button>
               </div>)}
           </div>

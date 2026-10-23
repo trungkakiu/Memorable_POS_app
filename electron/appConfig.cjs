@@ -8,8 +8,8 @@ const fs = require('node:fs')
 const ROOT = path.join(__dirname, '..')
 
 const DEFAULTS = {
-  MEMORABLE_SERVER: 'https://memorable.clearlink.io.vn',
-  MEMORABLE_LEGACY_SERVERS: 'http://26.118.183.122:3001',
+  MEMORABLE_SERVER: 'https://khokienthuc.traduocvietnam.com',
+  MEMORABLE_LEGACY_SERVERS: 'http://26.118.183.122:3001,https://memorable.clearlink.io.vn',
   MEMORABLE_DEV_SERVER: 'http://localhost:3001',
   MEMORABLE_TIMEOUT_SEC: '30',
   MEMORABLE_DOWNLOAD_TIMEOUT_SEC: '120',

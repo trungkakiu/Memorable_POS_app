@@ -250,7 +250,7 @@ export default function TranscribeWorkbench({ variant = 'reader' }: { variant?: 
 export function ReaderTranscribePage() {
   return (
     <div className="flex flex-col gap-6 max-w-[980px] mx-auto w-full">
-      <div><h1 className="rd-h2 !mb-1">Chép lời ghi âm</h1><p className="rd-sub !mb-0">Biến bản ghi âm cuộc họp, cuộc gọi hay ghi chú giọng nói thành chữ. AI chép giúp bạn, có mốc thời gian để bấm nghe lại.</p></div>
+      <div><h1 className="rd-h2 !mb-1">Ghi âm thành chữ</h1><p className="rd-sub !mb-0">Biến bản ghi âm cuộc họp, cuộc gọi hay lời nhắn thành văn bản, có mốc thời gian để bấm nghe lại. Chữ do máy nghe ra, có thể sai tên riêng và con số.</p></div>
       <TranscribeWorkbench variant="reader" />
     </div>)
 }
@@ -259,7 +259,7 @@ export function ReaderTranscribePage() {
 export function AdminTranscribePage() {
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Chép lời ghi âm (AI)" subtitle="POST /ai/transcribe · cắt đoạn ở khoảng lặng, chép song song, có mốc thời gian · không lưu âm thanh" />
+      <PageHeader title="Chép lời ghi âm (AI)" subtitle="Biến file ghi âm cuộc họp, cuộc gọi thành văn bản có mốc thời gian. Âm thanh không được lưu lại." />
       <TranscribeWorkbench variant="admin" />
     </div>)
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { ReactNode, useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { del, post, put, useGet } from '../lib/api'
 import { can } from '../lib/permissions'
@@ -9,6 +9,12 @@ import { ErrorBox, Loading, Pager, useBusy } from '../components/shared'
 import { useAuth } from '../store/auth'
 import { confirmDialog } from '../store/ui'
 import { DateRange } from '../components/ui'
+
+/** Đầu trang: ở trang riêng là thẻ tiêu đề; nhúng trong tab Báo cáo thì chỉ còn một dòng tiêu đề nhỏ kèm nút thao tác */
+function Head({ embedded, title, subtitle, actions }: { embedded?: boolean; title: string; subtitle?: string; actions?: ReactNode }) {
+  if (!embedded) return <PageHeader title={title} subtitle={subtitle} actions={actions} />
+  return <div className="flex items-center gap-3 flex-wrap pt-1"><div className="min-w-0 flex-1"><div className="font-extrabold text-[15px]">{title}</div>{subtitle && <div className="text-xs text-muted">{subtitle}</div>}</div>{actions}</div>
+}
 
 export function TimeLogs() {
   const [page, setPage] = useState(1)
@@ -33,7 +39,7 @@ export function TimeLogs() {
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Ngày</th><th>Loại việc</th><th className="num">Số giờ</th><th>Có AI hỗ trợ</th><th>Ghi chú</th><th /></tr></thead><tbody>
         {loading && !data && <tr><td colSpan={6}><Loading /></td></tr>}
         {data && data.time_logs.length === 0 && <tr><td colSpan={6}><Empty text="Chưa có giờ công trong khoảng này" /></td></tr>}
-        {data?.time_logs.map((t) => (<tr key={t.id}><td className="font-bold">{dt(t.log_date, false)}</td><td>{WORK_TYPE[t.work_type] || t.work_type}</td><td className="num font-bold">{num(t.hours, 2)}</td><td>{t.claude_supported ? <Pill sm tone="ok">Có</Pill> : <Pill sm tone="gray">Không</Pill>}</td><td className="max-w-[320px] truncate">{t.notes || '—'}</td>
+        {data?.time_logs.map((t) => (<tr key={t.id}><td className="font-bold">{dt(t.log_date, false)}</td><td>{WORK_TYPE[t.work_type] || t.work_type}</td><td className="num font-bold">{num(t.hours, 2)}</td><td>{t.claude_supported ? <Pill sm tone="ok">Có</Pill> : <Pill sm tone="gray">Không</Pill>}</td><td><div className="max-w-[320px] truncate">{t.notes || '—'}</div></td>
           <td className="num"><button className="btn ghost icon" onClick={() => rm(t)}><Trash2 size={15} /></button></td></tr>))}
       </tbody></table></div>
       {data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
@@ -49,7 +55,7 @@ export function TimeLogs() {
   )
 }
 
-export function Costs() {
+export function Costs({ embedded }: { embedded?: boolean } = {}) {
   const user = useAuth((s) => s.user)!
   const w = can(user.role, 'moderate')
   const [page, setPage] = useState(1)
@@ -65,13 +71,13 @@ export function Costs() {
   const pageTotal = data?.costs.reduce((a, b) => a + Number(b.amount), 0) ?? 0
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Chi phí" subtitle="Chi phí thực tế theo tháng (hosting, gói Claude, API, tên miền…)" actions={w && <button className="btn" onClick={() => setF(blank)}><Plus size={16} />Ghi chi phí</button>} />
+      <Head embedded={embedded} title="Sổ chi phí" subtitle="Ghi chi phí thực tế theo tháng (hosting, gói Claude, API, tên miền…)" actions={w && <button className="btn" onClick={() => setF(blank)}><Plus size={16} />Ghi chi phí</button>} />
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4"><Stat label="Tổng số bản ghi" value={num(data?.total)} /><Stat label="Tổng trang này" value={money(pageTotal)} /></div>
       <ErrorBox error={error} onRetry={reload} />
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Kỳ</th><th>Khoản mục</th><th className="num">Số tiền</th><th>Nguồn</th><th>Ghi chú</th><th /></tr></thead><tbody>
         {loading && !data && <tr><td colSpan={6}><Loading /></td></tr>}
         {data && data.costs.length === 0 && <tr><td colSpan={6}><Empty text="Chưa có chi phí" /></td></tr>}
-        {data?.costs.map((c) => (<tr key={c.id}><td className="font-bold">{c.period}</td><td><Pill sm tone="soft">{COST_ITEM[c.cost_item] || c.cost_item}</Pill></td><td className="num font-bold">{money(c.amount)}</td><td>{c.source}</td><td className="max-w-[260px] truncate">{c.notes || '—'}</td>
+        {data?.costs.map((c) => (<tr key={c.id}><td className="font-bold">{c.period}</td><td><Pill sm tone="soft">{COST_ITEM[c.cost_item] || c.cost_item}</Pill></td><td className="num font-bold">{money(c.amount)}</td><td>{c.source}</td><td><div className="max-w-[260px] truncate">{c.notes || '—'}</div></td>
           <td className="num">{w && <button className="btn outline sm" onClick={() => setF({ id: c.id, cost_item: c.cost_item, amount: Number(c.amount), period: c.period, source: c.source, notes: c.notes || '' })}><Pencil size={13} />Sửa</button>}</td></tr>))}
       </tbody></table></div>
       {data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
@@ -87,7 +93,7 @@ export function Costs() {
   )
 }
 
-export function Benchmarks() {
+export function Benchmarks({ embedded }: { embedded?: boolean } = {}) {
   const user = useAuth((s) => s.user)!
   const w = can(user.role, 'moderate')
   const [page, setPage] = useState(1)
@@ -99,16 +105,16 @@ export function Benchmarks() {
   async function save() { if (!f) return; const r = await run(() => post('/benchmarks', { ...f, performer_id: Number(f.performer_id), minutes: Number(f.minutes), notes: f.notes || undefined }), 'Đã ghi bài đo'); if (r) { setF(null); reload() } }
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Bài đo baseline" subtitle="Đo thời gian hoàn thành tác vụ mẫu để tính KPI K1" actions={w && <button className="btn" onClick={() => setF(blank)}><Plus size={16} />Ghi bài đo</button>} />
-      <div className="card !p-4"><input className="input !w-64" placeholder="Lọc theo đợt đo (batch)…" value={batch} onChange={(e) => { setBatch(e.target.value); setPage(1) }} /></div>
+      <Head embedded={embedded} title="Đo thời gian tác vụ mẫu" subtitle="Ghi thời gian làm một việc mẫu trước và sau khi dùng hệ thống, để biết tiết kiệm được bao nhiêu" actions={w && <button className="btn" onClick={() => setF(blank)}><Plus size={16} />Ghi bài đo</button>} />
+      <div className="card !p-4"><input className="input !w-64" placeholder="Lọc theo đợt đo…" value={batch} onChange={(e) => { setBatch(e.target.value); setPage(1) }} /></div>
       <ErrorBox error={error} onRetry={reload} />
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Đợt</th><th>Mã tác vụ</th><th>Người thực hiện</th><th className="num">Phút</th><th>Kết quả</th><th>Ghi chú</th><th>Đo lúc</th></tr></thead><tbody>
         {loading && !data && <tr><td colSpan={7}><Loading /></td></tr>}
         {data && data.benchmarks.length === 0 && <tr><td colSpan={7}><Empty text="Chưa có bài đo" /></td></tr>}
-        {data?.benchmarks.map((b) => (<tr key={b.id}><td><Pill sm tone="soft">{b.batch}</Pill></td><td className="font-bold">{b.task_code}</td><td>#{b.performer_id}</td><td className="num font-bold">{num(b.minutes, 2)}</td><td>{b.success ? <Pill sm tone="ok">Thành công</Pill> : <Pill sm tone="bad">Thất bại</Pill>}</td><td className="max-w-[240px] truncate">{b.notes || '—'}</td><td>{dt(b.measured_at)}</td></tr>))}
+        {data?.benchmarks.map((b) => (<tr key={b.id}><td><Pill sm tone="soft">{b.batch}</Pill></td><td className="font-bold">{b.task_code}</td><td>#{b.performer_id}</td><td className="num font-bold">{num(b.minutes, 2)}</td><td>{b.success ? <Pill sm tone="ok">Thành công</Pill> : <Pill sm tone="bad">Thất bại</Pill>}</td><td><div className="max-w-[240px] truncate">{b.notes || '—'}</div></td><td>{dt(b.measured_at)}</td></tr>))}
       </tbody></table></div>
       {data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
-      {f && <Modal title="Ghi bài đo baseline" size="sm" onClose={() => setF(null)} footer={<><button className="btn outline" onClick={() => setF(null)}>Hủy</button><button className="btn" disabled={busy || !f.batch.trim() || !f.task_code.trim()} onClick={save}>Ghi</button></>}>
+      {f && <Modal title="Ghi một lần đo" size="sm" onClose={() => setF(null)} footer={<><button className="btn outline" onClick={() => setF(null)}>Hủy</button><button className="btn" disabled={busy || !f.batch.trim() || !f.task_code.trim()} onClick={save}>Ghi</button></>}>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Đợt đo *"><input className="input" value={f.batch} onChange={(e) => setF({ ...f, batch: e.target.value })} /></Field>
           <Field label="Mã tác vụ *"><input className="input" value={f.task_code} onChange={(e) => setF({ ...f, task_code: e.target.value })} placeholder="T01" /></Field>

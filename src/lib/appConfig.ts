@@ -8,7 +8,7 @@ const num = (v: string | undefined, d: number) => { const n = Number(v); return 
 
 export const APP_CONFIG = {
   /** Địa chỉ máy chủ Memorable API mặc định */
-  server: url(raw.MEMORABLE_SERVER, 'https://memorable.clearlink.io.vn'),
+  server: url(raw.MEMORABLE_SERVER, 'https://khokienthuc.traduocvietnam.com'),
   /** Máy chủ dùng khi chạy giao diện trong trình duyệt lúc phát triển (npm run dev không có Electron) */
   devServer: url(raw.MEMORABLE_DEV_SERVER, 'http://localhost:3001'),
   /** Giới hạn dung lượng tệp gửi lên (phải khớp với máy chủ) */

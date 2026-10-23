@@ -5,6 +5,7 @@ import clsx from 'clsx'
 import { AlertTriangle, BadgeCheck, CircleHelp, ExternalLink, Globe2, History, Link2Off, Lock, RefreshCw, ShieldAlert, ShieldCheck, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { Md } from './shared'
 import type { LearnedRef, WebCitation, WebInfo } from '../store/chat'
+import { LimitedList } from './ShowMore'
 
 export const TIER_STYLE: Record<WebCitation['tier'], { label: string; cls: string; icon: ReactNode }> = {
   official: { label: 'Chính thống', cls: 'bg-green-50 text-green-800 border-green-200', icon: <BadgeCheck size={13} /> },
@@ -76,7 +77,7 @@ export function WebBlock({ w, plain, onAsk, onRate, onOpenLearned, onRefresh }: 
       {w.citations.length > 0 && (
         <div className="flex flex-col gap-2">
           <div className="text-[0.82em] font-bold text-muted">Nguồn{official ? ` (${official} trang chính thống)` : ''} — bấm để mở trang gốc:</div>
-          {w.citations.map((c) => <SourceCard key={c.n} c={c} plain={plain} />)}
+          <LimitedList items={w.citations} first={4} noun="nguồn" className="flex flex-col gap-2" render={(c) => <SourceCard key={c.n} c={c} plain={plain} />} />
         </div>)}
       {!plain && (w.queries?.length || w.consulted_count) ? <div className="text-[11.5px] text-muted">Đã tìm: {(w.queries || []).map((q) => `“${q}”`).join(', ')}{w.consulted_count ? ` · xem qua ${w.consulted_count} trang` : ''} · phạm vi {w.scope} → {w.scope_used}</div> : null}
       {w.similar && w.similar.length > 0 && onOpenLearned && (

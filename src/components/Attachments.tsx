@@ -4,7 +4,7 @@ import { AlertCircle, CheckCircle2, Clipboard, ClipboardPaste, Download, Eye, Fi
 import {
   ApiError, LocalFile, checkFile, del, download, fetchAttachment, forgetAttachment, fromBrowserFile, get, isAiVisionName, isAudioName, pickLocalFiles, uploadAttachment, uploadAttachments, AUDIO_MB, UPLOAD_MB,
 } from '../lib/api'
-import { bytes as fmtBytes, FILE_ICON } from '../lib/format'
+import { bytes as fmtBytes, FILE_ICON, niceFileName } from '../lib/format'
 import { KIND_LABEL, extOf, isPreviewable, kindOf } from '../lib/preview'
 import type { Attachment } from '../lib/types'
 import { FileSource, FileViewer, PreviewModal } from './FileViewer'
@@ -41,7 +41,7 @@ export function AttachChip({ att, size = 64, onOpen }: { att: Attachment; size?:
       title={`${att.filename} — bấm để xem trước`} onClick={() => onOpen(att)}>
       {image ? <AttachImage id={att.id} alt={att.filename} className="w-full h-full object-cover" />
         : <span className="flex items-center gap-2 h-full px-2.5 pr-3"><span className="text-2xl">{FILE_ICON[att.filetype] || '📎'}</span>
-          <span className="min-w-0"><span className="block text-xs font-bold truncate max-w-[130px]">{att.filename}</span><span className="block text-[10.5px] text-muted">{KIND_LABEL[kindOf(att.filename)]} · {fmtBytes(att.filesize)}</span></span></span>}
+          <span className="min-w-0"><span className="block text-xs font-bold truncate max-w-[130px]">{niceFileName(att.filename)}</span><span className="block text-[10.5px] text-muted">{KIND_LABEL[kindOf(att.filename)]} · {fmtBytes(att.filesize)}</span></span></span>}
       <span className="absolute inset-0 bg-brand-900/0 group-hover:bg-brand-900/25 transition grid place-items-center opacity-0 group-hover:opacity-100 text-white"><Eye size={18} /></span>
     </button>)
 }
@@ -105,7 +105,7 @@ export function AttachmentGrid({ atts, canWrite, onChange, onInsert, inline = tr
                 {image ? <AttachImage id={a.id} alt={a.filename} className="max-h-28 max-w-full object-contain" /> : <span className="text-5xl">{FILE_ICON[a.filetype] || '📎'}</span>}
               </button>
               <div className="p-3 flex flex-col gap-2 flex-1">
-                <div className="min-w-0"><div className="font-bold truncate" title={a.filename}>{a.filename}</div>
+                <div className="min-w-0"><div className="font-bold truncate" title={a.filename}>{niceFileName(a.filename)}</div>
                   <div className="text-xs text-muted flex items-center gap-1.5 mt-0.5 flex-wrap">{KIND_LABEL[kindOf(a.filename)]} · {fmtBytes(a.filesize)}
                     <TextBadge att={a} /></div></div>
                 <div className="flex gap-1.5 flex-wrap mt-auto">
@@ -216,12 +216,12 @@ export function Uploader({ itemId, onUploaded, compact }: { itemId: number; onUp
           <button className="btn outline" disabled={busy} onClick={() => pick(true)}><ImageIcon size={15} />Chọn ảnh</button>
           <span className="hidden md:inline-flex items-center gap-1 text-xs text-muted px-2"><ClipboardPaste size={13} />hoặc Ctrl+V để dán ảnh chụp màn hình</span>
         </div>
-        <label className="check text-xs mt-3 justify-center"><input type="checkbox" checked={confirmMasked} onChange={(e) => setConfirmMasked(e.target.checked)} />Tệp văn bản đã che bí mật (confirm_masked)</label>
+        <label className="check text-xs mt-3 justify-center"><input type="checkbox" checked={confirmMasked} onChange={(e) => setConfirmMasked(e.target.checked)} />Tệp văn bản đã che thông tin bí mật</label>
       </div>
       <div className="flex items-start gap-2 text-xs rounded-lg bg-amber-50 border border-amber-200 text-amber-900 px-3 py-2"><Info size={14} className="shrink-0 mt-0.5" />
         <span>Hệ thống <b>tự đọc chữ</b> của docx, xlsx, pptx, odt/ods/odp, rtf, txt, md, csv, tsv, log, json, xml, yaml. <b>Ảnh và PDF</b> chỉ được lưu — bấm <b>“AI đọc chữ”</b> sau khi tải lên để tìm kiếm/AI dùng được. <b>File ghi âm</b> (mp3, m4a, wav…, tối đa {AUDIO_MB} MB) được AI chép lời. doc/xls/ppt bản cũ chưa đọc được (hãy chuyển sang bản mới).</span></div>
       {jobs.length > 0 && (
-        <div className="border border-line rounded-lg divide-y divide-line-soft bg-white">
+        <div className="border border-line rounded-lg divide-y divide-line-soft bg-white max-h-[320px] overflow-y-auto">
           {jobs.map((j) => (
             <div key={j.key} className="flex items-center gap-3 px-3 py-2 text-sm">
               <button className="shrink-0 border-0 bg-transparent p-0 cursor-pointer" title="Xem trước tệp" onClick={() => j.file.bytes && setLocal({ type: 'local', name: j.file.name, bytes: j.file.bytes })}><LocalThumb file={j.file} className="w-10 h-10" /></button>
