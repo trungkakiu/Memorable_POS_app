@@ -1,8 +1,7 @@
 import { create } from 'zustand'
 import { ApiError, LocalFile, checkFile, get, isAiVisionName, post, postFiles, uploadAttachments, AUDIO_MB, UPLOAD_MB } from '../lib/api'
 import { can } from '../lib/permissions'
-import type { Agent, AgentMemoryUse, AgentToolUse, AskFileInfo, ItemRow, KSearchResult } from '../lib/types'
-import { askClaudeConsent, itemMarkdown } from '../lib/claudeLocal'
+import type { Agent, AgentMemoryUse, AgentToolUse, AskFileInfo } from '../lib/types'
 import { useAuth } from './auth'
 import { toast } from './ui'
 
@@ -145,98 +144,8 @@ export const useChat = create<ChatState>((set, getState) => {
   const patchMsg = (id: number, p: Partial<Msg>) => set((s) => { const n = s.msgs.map((x) => (x.id === id ? { ...x, ...p } : x)); save(n); return { msgs: n } })
   const finish = (am: Msg | Msg[]) => set((s) => { const arr = Array.isArray(am) ? am : [am]; const m = [...s.msgs, ...arr]; save(m); return { msgs: m, busy: false, unseen: s.open ? 0 : s.unseen + 1 } })
 
-  /** Trả lời bằng Claude ngay trong Electron (chế độ Ngoài tài liệu / Internet). Trả null để dùng máy chủ Memorable. */
-  async function viaClaude(mode: 'general' | 'web', question: string, files: LocalFile[] = [], opts?: { anyMode?: boolean }): Promise<Msg | null> {
-    const d = window.desk
-    if (!d?.aiChat || files.some((f) => !f.bytes)) return null
-    const ms = getState().msgs
-    const prev = ms.length && ms[ms.length - 1].role === 'user' ? ms.slice(0, -1) : ms // bỏ câu hỏi hiện tại (đã đẩy vào danh sách)
-    // Lịch sử chỉ gồm các lượt cùng chế độ, để không lẫn nội dung tài liệu nội bộ
-    // Dự phòng (anyMode): giữ các câu hỏi của người dùng và các câu Claude đã trả lời trước đó, không lấy câu trả lời từ tài liệu công ty
-    const keep = (m: Msg) => !m.err && !!m.text && (opts?.anyMode ? (m.role === 'user' || (m.role === 'ai' && !!m.ans?.model?.startsWith('claude'))) : m.mode === mode && (m.role === 'user' || m.role === 'ai'))
-    const history = prev.filter(keep).slice(-8)
-      .map((m) => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }))
-    const r = await d.aiChat({ mode, messages: [...history, { role: 'user', content: question }], files: files.map((f) => ({ name: f.name, bytes: f.bytes })), webScope: getState().webScope })
-    if (!r.ok) return { id: ++seq, role: 'ai', text: '', mode, err: r.error || 'Claude chưa trả lời được' }
-    const x = r.data
-    if (!x || x.fallback || !x.answer) return null
-    if (mode === 'general') return { id: ++seq, role: 'ai', text: x.answer, mode, question, ans: { mode, answer: x.answer, sources: [], model: x.model || '', cost_usd: 0 } }
-    const citations: WebCitation[] = (x.citations || []).map((c) => {
-      const official = /(^|\.)(gov|edu)(\.vn)?$/i.test(c.host)
-      return { ...c, tier: official ? 'official' : 'unverified', tier_label: official ? 'Cơ quan nhà nước / giáo dục' : 'Chưa xác minh', link: 'skipped' as const }
-    })
-    const off = citations.filter((c) => c.tier === 'official').length
-    const verification: WebVerification = {
-      score: citations.length ? Math.round((off / citations.length) * 100) : 0, level: off >= 2 ? 'high' : off === 1 ? 'medium' : 'low',
-      official: off, unverified: citations.length - off, sites: citations.length,
-      notes: [citations.length ? 'Nguồn do Claude tìm trực tiếp trên web; hệ thống chỉ nhận ra trang .gov / .edu là chính thống, các trang khác chưa được xác minh.' : 'Claude không trích dẫn nguồn nào cho câu trả lời này, hãy kiểm tra lại thông tin.'],
-    }
-    const web: WebInfo = { citations, verification, suggestions: [], scope: getState().webScope, consulted_count: x.searches ?? citations.length, checked_at: new Date().toISOString() }
-    return { id: ++seq, role: 'ai', text: x.answer, mode, question, ans: { mode, answer: x.answer, sources: [], model: x.model || '', cost_usd: 0, web } }
-  }
-
-  /** Trả lời theo tài liệu công ty bằng Claude: lấy đoạn liên quan từ máy chủ (theo quyền người dùng), Claude trả lời trong Electron. Trả null để dùng kiến thức chung. */
-  /** Bỏ ảnh nhúng dạng Markdown (trỏ tới tệp đính kèm, khung chat không tải được): thay bằng chú thích ngắn. */
-  const noImg = (s: string) => s.replace(/!\[([^\]]*)\]\([^)]*\)/g, (_m, alt: string) => (alt.trim() ? `[Hình: ${alt.trim()}]` : ''))
-  interface DocPass { id: number; title: string; type: string; tier?: string; tier_label: string; trust_label?: string; freshness?: string; text: string; ap?: AnsPassage }
-  async function viaDocs(question: string, mode: 'documents' | 'hybrid', itemIds?: number[]): Promise<Msg | null> {
-    const d = window.desk
-    if (!d?.aiDocs) return null
-    const pol = getState().policy
-    let ps: DocPass[] = []; let searched = false
-    // Hỏi về một bài cụ thể (nút "Hỏi về bài này", "Trợ lý tóm tắt bài này"): chỉ đọc đúng các bài đó, không tìm trong cả kho
-    if (itemIds?.length) {
-      for (const id of itemIds.slice(0, 5)) {
-        try {
-          const it = await get<ItemRow>(`/items/${id}`)
-          if (it.sensitivity_level === 'restricted') continue
-          const md = noImg(await itemMarkdown(id))
-          if (md.trim()) ps.push({ id, title: it.title, type: it.type, tier_label: it.trust_label || '', trust_label: it.trust_label, freshness: it.freshness, text: md.slice(0, 40000) })
-        } catch { /* bỏ qua bài không đọc được */ }
-      }
-      searched = true
-    } else try {
-      const r = await get<KSearchResult>('/knowledge/search', { q: question.slice(0, 300), limit: 8, expand: false, ...(pol !== 'auto' ? { source_policy: pol } : {}) })
-      searched = true
-      ps = (r.passages || []).filter((p) => !(p.flags || []).some((f) => /restrict|secret/i.test(f))).map((p) => ({
-        id: p.item_id, title: p.item_title, type: p.item_type, tier: p.tier, tier_label: p.tier_label, trust_label: p.trust_label, freshness: p.freshness, text: noImg(p.text),
-        ap: { chunk_id: p.chunk_id, kind: p.source?.kind, attachment_id: p.source?.attachment_id, filename: p.source?.filename, page: p.source?.page_start ? String(p.source.page_start) : undefined, section: p.source?.heading_path || undefined, tier: p.tier, score: p.score, excerpt: p.text.slice(0, 300) },
-      }))
-    } catch { /* tìm theo ý nghĩa cần AI của máy chủ: thử tìm theo từ khóa bên dưới */ }
-    if (!ps.length && !itemIds?.length) {
-      try {
-        const rs = await get<{ results: ItemRow[] }>('/search', { q: question.slice(0, 200), limit: 4 })
-        searched = true
-        for (const it of (rs.results || []).filter((x) => x.sensitivity_level !== 'restricted').slice(0, 3)) {
-          try {
-            const md = await itemMarkdown(it.id)
-            if (md.trim()) ps.push({ id: it.id, title: it.title, type: it.type, tier_label: it.trust_label || '', trust_label: it.trust_label, freshness: it.freshness, text: noImg(md).slice(0, 12000) })
-          } catch { /* bỏ qua mục không đọc được */ }
-        }
-      } catch { /* không tìm được */ }
-    }
-    if (!ps.length) {
-      if (!searched || mode === 'hybrid') return null
-      const none = 'Chưa tìm thấy thông tin này trong tài liệu công ty.'
-      return { id: ++seq, role: 'ai', text: none, mode, question, ans: { mode, answer: none, insufficient_info: true, grounded: false, sources: [], model: '', cost_usd: 0 } }
-    }
-    const ms = getState().msgs
-    const prev = ms.length && ms[ms.length - 1].role === 'user' ? ms.slice(0, -1) : ms
-    const history = prev.filter((m) => !m.err && !!m.text && (m.role === 'user' || (m.role === 'ai' && !!m.ans?.model?.startsWith('claude')))).slice(-8)
-      .map((m) => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }))
-    const r = await d.aiDocs({ mode, messages: [...history, { role: 'user', content: question }], passages: ps.map((p) => ({ id: p.id, title: p.title, tier_label: p.tier_label, text: p.text })) })
-    if (!r.ok) return { id: ++seq, role: 'ai', text: '', mode, err: r.error || 'Claude chưa trả lời được' }
-    if (!r.data || r.data.fallback || !r.data.answer) return null
-    const valid = new Set(ps.map((p) => p.id)); const cited = new Set<number>()
-    const answer = noImg(r.data.answer).replace(/\[(?:doc:)?(\d+)\]/g, (_m, n: string) => { const id = Number(n); if (!valid.has(id)) return ''; cited.add(id); return `[doc:${id}]` })
-    const sources: Src[] = Array.from(cited).map((id) => {
-      const mine = ps.filter((p) => p.id === id); const f = mine[0]
-      return { id, title: f.title, type: f.type, trust_label: f.trust_label || f.tier_label || '', freshness: f.freshness || '', next_review_date: '', tier: f.tier, tier_label: f.tier_label, passages: mine.map((p) => p.ap).filter((x): x is AnsPassage => !!x) }
-    })
-    return { id: ++seq, role: 'ai', text: answer, mode, question, ans: { mode, answer, grounded: cited.size > 0, insufficient_info: cited.size === 0 && mode === 'documents', sources, model: r.data.model || '', cost_usd: 0 } }
-  }
-
-  /** Gửi câu hỏi (hỏi đáp thường hoặc Agent) và thêm câu trả lời; không thêm tin nhắn người dùng. */  async function runAsk(question: string, mode: AskMode, opts?: { item_ids?: number[] }) {
+  /** Gửi câu hỏi (hỏi đáp thường hoặc Agent) và thêm câu trả lời; không thêm tin nhắn người dùng. */
+  async function runAsk(question: string, mode: AskMode, opts?: { item_ids?: number[] }) {
     set({ busy: true })
     const { agentId, convId, agents } = getState()
     if (agentId) {
@@ -250,21 +159,11 @@ export const useChat = create<ChatState>((set, getState) => {
         })
       } catch (e) {
         const er = e as ApiError; const st = e instanceof ApiError ? er.status : 0
-        // Máy chủ chưa bật AI (503) và câu lệnh nhắc tới bài [doc:ID] (các nút trợ lý trên bài đang mở): Claude đọc đúng các bài đó
-        const docIds = Array.from(question.matchAll(/\[doc:(\d+)\]/g)).map((x) => Number(x[1]))
-        if (st === 503 && docIds.length && window.desk?.aiDocs && (await askClaudeConsent())) {
-          const dm = await viaDocs(question, 'documents', docIds)
-          if (dm) { finish({ ...dm, mode, agentName: ag?.name }); return }
-        }
         const full = st === 409 && /đầy|full/i.test(er.message) ? 'Hội thoại đã đầy (200 tin) — hãy bắt đầu hội thoại mới.' : st === 409 ? 'Agent đang tắt hoặc hội thoại không dùng được.' : st === 404 ? 'Không tìm thấy Agent hoặc hội thoại này (có thể đã bị xóa).' : errText(st, er.full ?? String(e), e)
         if (st === 404 || (st === 409 && /đầy|full/i.test(er.message))) { set({ convId: null }); saveAgent(agentId, null) }
         finish({ id: ++seq, role: 'ai', text: '', mode, agentName: ag?.name, err: full })
       }
       return
-    }
-    if (mode === 'web' || mode === 'general') {
-      const cm = await viaClaude(mode, question)
-      if (cm) { finish(cm); return }
     }
     if (mode === 'web') {
       try {
@@ -302,14 +201,6 @@ export const useChat = create<ChatState>((set, getState) => {
       finish({ id: ++seq, role: 'ai', text: r.answer, ans: { ...r, mode: r.mode ?? mode }, mode, question })
     } catch (e) {
       const er = e as ApiError
-      // Máy chủ chưa bật AI (503): hỏi người dùng rồi để Claude trả lời ngay trong app.
-      // Ưu tiên theo tài liệu công ty (tìm đoạn qua API máy chủ); không tìm được thì trả lời bằng kiến thức chung (giao diện tự hiện cảnh báo).
-      if (e instanceof ApiError && e.status === 503 && window.desk?.aiChat && (await askClaudeConsent())) {
-        const dm = mode === 'documents' || mode === 'hybrid' ? await viaDocs(question, mode, opts?.item_ids) : null
-        if (dm) { finish({ ...dm, mode }); return }
-        const cm = await viaClaude('general', question, [], { anyMode: true })
-        if (cm && !cm.err) { finish({ ...cm, mode }); return }
-      }
       finish({ id: ++seq, role: 'ai', text: '', mode, err: errText(e instanceof ApiError ? er.status : 0, e instanceof ApiError ? er.full : String(e), e) })
     }
   }
@@ -393,10 +284,6 @@ export const useChat = create<ChatState>((set, getState) => {
       const um: Msg = { id: ++seq, role: 'user', text: question, mode, files: fresh.map((f) => ({ name: f.name, size: f.size, status: 'saved' as const })) }
       fresh.forEach((f, i) => f.bytes && chatBytes.set(`${um.id}:${i}`, f.bytes))
       push(um); set({ busy: true, fileCtx: ctx })
-      if (mode === 'general') {
-        const cm = await viaClaude('general', question || 'Hãy xem tệp và cho biết nội dung chính.', ctx)
-        if (cm) { finish(cm); return }
-      }
       const pol = s.policy
       const call = (conv: number | null) => postFiles<{ conversation_id: number; answer: string; files: FileChatInfo['files']; skipped: FileChatInfo['skipped']; kb: boolean; sources: Src[]; model: string; cost_usd: number }>(
         '/ai/file-chat', ctx, { message: question || undefined, conversation_id: conv || undefined, kb, ...(kb && pol !== 'auto' ? { source_policy: pol } : {}) }, 5)
@@ -410,10 +297,6 @@ export const useChat = create<ChatState>((set, getState) => {
         finish({ id: ++seq, role: 'ai', text: r.answer, mode, question: question || ctx.map((f) => f.name).join(', '), ans: { mode, answer: r.answer, sources: r.sources || [], model: r.model, cost_usd: r.cost_usd, fileChat: { files: r.files, skipped: r.skipped || [], kb: r.kb } } })
       } catch (e) {
         const er = e as ApiError; const st = e instanceof ApiError ? er.status : 0
-        if (st === 503 && (await askClaudeConsent())) {
-          const cm = await viaClaude('general', question || 'Hãy xem tệp và cho biết nội dung chính.', ctx, { anyMode: true })
-          if (cm && !cm.err) { finish({ ...cm, mode }); return }
-        }
         const msg = st === 413 ? `Quá 5 tệp, hoặc có tệp quá lớn (${UPLOAD_MB} MB, ghi âm ${AUDIO_MB} MB).` : st === 422 ? `Không dùng được tệp hoặc câu hỏi: ${er.full}` : errText(st, e instanceof ApiError ? er.full : String(e), e)
         patchMsg(um.id, { files: um.files!.map((f) => ({ ...f, status: 'error' as const, error: msg })) })
         set({ fileCtx: s.fileCtx })

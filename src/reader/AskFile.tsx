@@ -11,7 +11,6 @@ import { Ans, Msg, useChat } from '../store/chat'
 import { toast } from '../store/ui'
 import { Bubble } from './Assistant'
 import { takeQueued } from './fileQueue'
-import { askClaudeConsent } from '../lib/claudeLocal'
 
 const MAX = 5
 let seq = 1
@@ -91,18 +90,6 @@ export function ServerFileAsk() {
       const fileAsk: AskFileInfo = { uploaded: r.uploaded || [], skipped: r.skipped || [], need: r.need, key_facts: r.key_facts, discrepancies: r.discrepancies || [], related: r.related || [], note: r.note }
       setMsgs((m) => [...m, { id: seq++, role: 'ai', text: r.answer, question: text, ans: { ...r, sources: r.sources || [], fileAsk } }])
     } catch (e) {
-      // Máy chủ chưa bật AI (503): Claude đọc tệp ngay trong app (ảnh, PDF, văn bản); giao diện hiện cảnh báo không dựa trên tài liệu công ty
-      if ((e as { status?: number })?.status === 503 && window.desk?.aiChat && list.every((f) => f.bytes) && (await askClaudeConsent())) {
-        try {
-          const r = await window.desk.aiChat({ mode: 'general', messages: [{ role: 'user', content: text || 'Tệp này nói gì, tôi cần làm gì?' }], files: list.map((f) => ({ name: f.name, bytes: f.bytes })) })
-          if (r.ok && r.data?.answer) {
-            const fileAsk: AskFileInfo = { uploaded: [], skipped: [], discrepancies: [], related: [] }
-            setMsgs((m) => [...m, { id: seq++, role: 'ai', text: r.data!.answer!, question: text, ans: { mode: 'general', answer: r.data!.answer!, sources: [], model: r.data!.model || '', cost_usd: 0, fileAsk } }])
-            return
-          }
-          if (!r.ok) { setMsgs((m) => [...m, { id: seq++, role: 'ai', text: '', err: r.error || friendlyErr(e) }]); return }
-        } catch { /* quay về thông báo lỗi bên dưới */ }
-      }
       setMsgs((m) => [...m, { id: seq++, role: 'ai', text: '', err: friendlyErr(e) }])
     } finally { setBusy(false) }
   }

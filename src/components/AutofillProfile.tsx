@@ -132,16 +132,6 @@ function ProfileDialog({ onClose, onScan }: { onClose: () => void; onScan?: () =
 }
 
 /** Quét CCCD: chọn ảnh mặt trước, mặt sau; AI đọc; người dùng xem lại, chọn thông tin cần lưu */
-/** Đọc CCCD bằng Claude trực tiếp (khóa trong .env của Electron). Trả null khi không dùng được để quay về máy chủ Memorable. */
-async function scanLocal(files: LocalFile[], fields: ProfileField[]): Promise<ScanResult | null> {
-  const d = window.desk
-  if (!d?.scanId || !fields.length || files.some((f) => !f.bytes)) return null
-  const r = await d.scanId({ files: files.map((f) => ({ name: f.name, bytes: f.bytes })), fields: fields.map(({ key, label, hint }) => ({ key, label, hint })) })
-  if (!r.ok) throw new ApiError(r.error || 'Không đọc được CCCD', 0)
-  if (!r.data || r.data.fallback) return null
-  return { values: r.data.values || {}, document_type: r.data.document_type ?? null, unclear: r.data.unclear || [], warnings: r.data.warnings || [], fields: fields.map(({ key, label }) => ({ key, label })), cost_usd: 0 }
-}
-
 function ScanDialog({ onClose }: { onClose: () => void }) {
   const { data, save } = useProfile()
   const [front, setFront] = useState<LocalFile | null>(null)
@@ -168,7 +158,7 @@ function ScanDialog({ onClose }: { onClose: () => void }) {
     if (!files.length) return
     setBusy(true)
     try {
-      const r = (await scanLocal(files, data?.fields || [])) ?? (await postFiles<ScanResult>('/fill/profile/scan', files, {}, 2))
+      const r = await postFiles<ScanResult>('/fill/profile/scan', files, {}, 2)
       setRes(r); setVals(r.values)
       const cur = data?.values || {}
       setPick(new Set(Object.keys(r.values).filter((k) => r.values[k] && r.values[k] !== cur[k])))

@@ -3,14 +3,6 @@ import { APP_CONFIG } from './appConfig'
 
 type Reply<T> = { ok: boolean; data?: T; error?: string }
 interface Desk {
-  /** Trả lời theo các đoạn tài liệu công ty (giao diện lấy đoạn từ máy chủ, Claude trả lời trong Electron). */
-  aiDocs?: (a: { mode: 'documents' | 'hybrid'; messages: { role: 'user' | 'assistant'; content: string }[]; passages: { id: number; title: string; tier_label: string; text: string }[] }) => Promise<Reply<{ fallback?: string; answer?: string; model?: string }>>
-  /** So sánh 2-5 bài bằng Claude trong Electron. */
-  aiCompare?: (a: { docs: { id: number; title: string; tier_label?: string; trust_label?: string; effective_date?: string | null; markdown: string }[]; question?: string }) => Promise<Reply<{ fallback?: string; summary?: string; recommendation?: string; gaps?: string[]; common_points?: { point: string; item_ids: number[] }[]; differences?: { topic: string; positions: { item_id: number; statement: string }[] }[]; conflicts?: { topic: string; detail: string; item_ids: number[]; resolution?: string }[]; model?: string }>>
-  /** Chat với Claude ngay trong Electron (chế độ Ngoài tài liệu / Internet); có fallback thì giao diện dùng máy chủ. */
-  aiChat?: (a: { mode: 'general' | 'web'; messages: { role: 'user' | 'assistant'; content: string }[]; files?: { name: string; bytes: Uint8Array | null }[]; webScope?: string }) => Promise<Reply<{ fallback?: string; answer?: string; model?: string; citations?: { n: number; url: string; title: string; host: string }[]; searches?: number }>>
-  /** Đọc CCCD bằng Claude ngay trong Electron (cần ANTHROPIC_API_KEY trong .env); có fallback thì giao diện dùng máy chủ. */
-  scanId?: (a: { files: { name: string; bytes: Uint8Array | null }[]; fields: { key: string; label: string; hint?: string }[] }) => Promise<Reply<{ fallback?: string; values?: Record<string, string>; document_type?: string | null; unclear?: string[]; warnings?: string[] }>>
   request: (a: { method?: string; path: string; query?: object; body?: unknown; token?: string | null }) => Promise<Reply<{ status: number; ok: boolean; json: { RD: unknown; RC: number; RM: string } | null; text?: string }>>
   download: (a: { path: string; query?: object; token?: string | null; filename?: string; filters?: { name: string; extensions: string[] }[] }) => Promise<Reply<{ ok: boolean; canceled?: boolean; filePath?: string; error?: string }>>
   uploadForm: (a: { path: string; query?: object; token?: string | null; files: { name: string; bytes: Uint8Array }[]; confirmMasked?: boolean; fields?: Record<string, string | number | boolean | undefined> }) => Promise<Reply<{ status: number; ok: boolean; json: { RD: unknown; RM: string } | null }>>
@@ -185,20 +177,16 @@ export async function uploadAttachment(itemId: number, f: LocalFile, confirmMask
 }
 
 const blobCache = new Map<number, Promise<{ mime: string; name: string; dataUrl: string; base64: string }>>()
-type BlobFile = { mime: string; name: string; base64: string; dataUrl: string }
-/** Tải một lần (không qua cache) nội dung tệp đính kèm bằng đường 'view' (xem ảnh) hoặc 'download' (tải về). */
-async function loadBlob(id: number, kind: 'view' | 'download'): Promise<BlobFile> {
-  const r = await desk().blob({ path: `/attachments/${id}/${kind}`, token })
-  if (!r.ok || !r.data) throw new ApiError(r.error || 'Lỗi tải tệp', 0)
-  const d = r.data
-  if (!d.ok) { if (d.status === 401) onUnauthorized?.(); throw new ApiError(d.error || `Lỗi HTTP ${d.status}`, d.status || 0) }
-  return { mime: d.mime || 'application/octet-stream', name: d.name || '', base64: d.base64 || '', dataUrl: `data:${d.mime};base64,${d.base64}` }
-}
-/** Tải nội dung tệp đính kèm (có cache) để xem trước. Đường xem ảnh lỗi (trừ hết phiên đăng nhập) thì thử đường tải về. */
-export function fetchAttachment(id: number, view = false): Promise<BlobFile> {
+/** Tải nội dung tệp đính kèm (có cache) để xem trước. */
+export function fetchAttachment(id: number, view = false) {
   let p = blobCache.get(id)
   if (!p) {
-    p = view ? loadBlob(id, 'view').catch((e) => { if (e instanceof ApiError && e.status === 401) throw e; return loadBlob(id, 'download') }) : loadBlob(id, 'download')
+    p = desk().blob({ path: `/attachments/${id}/${view ? 'view' : 'download'}`, token }).then((r) => {
+      if (!r.ok || !r.data) throw new ApiError(r.error || 'Lỗi tải tệp', 0)
+      const d = r.data
+      if (!d.ok) { if (d.status === 401) onUnauthorized?.(); throw new ApiError(d.error || `Lỗi HTTP ${d.status}`, d.status || 0) }
+      return { mime: d.mime || 'application/octet-stream', name: d.name || '', base64: d.base64 || '', dataUrl: `data:${d.mime};base64,${d.base64}` }
+    })
     p.catch(() => blobCache.delete(id))
     blobCache.set(id, p)
   }
