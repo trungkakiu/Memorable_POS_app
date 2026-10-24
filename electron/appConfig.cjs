@@ -70,4 +70,16 @@ function publicValues() {
   return Object.fromEntries(Object.entries(r).filter(([k]) => k.startsWith('MEMORABLE_')))
 }
 
-module.exports = { loadConfig, publicValues, parseEnvFile, DEFAULTS, ROOT }
+/**
+ * Khóa bí mật (chỉ dùng trong tiến trình chính của Electron / script Node).
+ * Đọc từ biến môi trường hệ điều hành hoặc .env; KHÔNG nằm trong publicValues(), nên không vào giao diện hay bản build.
+ * Bản cài không chứa .env: cần đặt biến môi trường trên máy chạy, hoặc dùng khóa phía máy chủ.
+ */
+const SECRET_NAMES = ['ANTHROPIC_API_KEY']
+function getSecret(name) {
+  if (!SECRET_NAMES.includes(name)) throw new Error('Khóa không được khai báo: ' + name)
+  const v = process.env[name] || parseEnvFile(path.join(ROOT, '.env'))[name] || ''
+  return String(v).trim()
+}
+
+module.exports = { loadConfig, publicValues, getSecret, parseEnvFile, DEFAULTS, ROOT }

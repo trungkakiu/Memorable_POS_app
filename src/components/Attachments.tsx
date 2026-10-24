@@ -18,9 +18,9 @@ const isAiText = (n: string) => ['text', 'md', 'csv'].includes(kindOf(n))
 /** Ảnh đính kèm tải qua API (cần token) nên hiển thị bằng data URL. */
 export function AttachImage({ id, alt, className, onClick }: { id: number; alt?: string; className?: string; onClick?: () => void }) {
   const [src, setSrc] = useState<string | null>(null)
-  const [err, setErr] = useState(false)
-  useEffect(() => { let on = true; fetchAttachment(id, true).then((r) => on && setSrc(r.dataUrl)).catch(() => on && setErr(true)); return () => { on = false } }, [id])
-  if (err) return <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2 py-1"><AlertCircle size={12} />Không tải được ảnh #{id}</span>
+  const [err, setErr] = useState<string | false>(false)
+  useEffect(() => { let on = true; fetchAttachment(id, true).then((r) => on && setSrc(r.dataUrl)).catch((e) => on && setErr(e instanceof Error && e.message ? e.message : 'lỗi không rõ')); return () => { on = false } }, [id])
+  if (err !== false) return <span title={err} className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2 py-1"><AlertCircle size={12} />Không tải được ảnh #{id}{err ? ' (' + err + ')' : ''}</span>
   if (!src) return <span className={clsx('inline-flex items-center justify-center bg-brand-50 border border-line-soft rounded-md', className)} style={{ minHeight: 40, minWidth: 60 }}><Loader2 size={16} className="animate-spin text-brand-500" /></span>
   return <img src={src} alt={alt || `Ảnh đính kèm #${id}`} className={clsx(onClick && 'cursor-zoom-in', className)} onClick={onClick} />
 }

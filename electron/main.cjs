@@ -5,6 +5,13 @@ const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 
+// Tin thêm kho chứng chỉ của hệ điều hành (diệt virus / proxy công ty hay chèn chứng chỉ riêng vào Windows).
+// Vẫn xác thực SSL đầy đủ, chỉ bổ sung danh sách CA tin cậy; lỗi thì bỏ qua và dùng danh sách mặc định.
+try {
+  const tls = require('node:tls')
+  if (typeof tls.setDefaultCACertificates === 'function') tls.setDefaultCACertificates([...tls.getCACertificates('default'), ...tls.getCACertificates('system')])
+} catch { /* giữ danh sách CA mặc định */ }
+
 const { loadConfig } = require('./appConfig.cjs')
 
 const isDev = process.env.ELECTRON_DEV === '1'
@@ -139,11 +146,14 @@ async function filePick({ imagesOnly, audioOnly }) {
 }
 
 /** Tải nội dung tệp đính kèm về dạng base64 để xem trước (ảnh, văn bản). */
+const blobLog = (line) => { try { fs.appendFileSync(path.join(require('node:os').tmpdir(), 'memorable-blob.log'), `${new Date().toISOString()} ${line}\n`) } catch { /* bỏ qua */ } }
 async function httpBlob({ path: p, token }) {
-  const res = await doFetch(buildUrl(p), { headers: authHeaders(token) }, CONFIG.downloadTimeoutMs)
+  let res
+  try { res = await doFetch(buildUrl(p), { headers: authHeaders(token) }, CONFIG.downloadTimeoutMs) } catch (e) { blobLog(`${p} -> LOI KET NOI: ${e && e.message}`); throw e }
   if (!res.ok) {
     let msg = `HTTP ${res.status}`
     try { msg = (await res.json()).RM || msg } catch { /* ignore */ }
+    blobLog(`${p} -> ${res.status} ${msg} (${buildUrl(p).replace(/\?.*$/, '').replace(/^(https?:\/\/[^/]+).*/, '$1')})`)
     return { ok: false, status: res.status, error: msg }
   }
   const buf = Buffer.from(await res.arrayBuffer())
@@ -153,6 +163,7 @@ async function httpBlob({ path: p, token }) {
   if (buf.length > maxFor(name)) return { ok: false, status: 413, error: 'Tệp quá lớn để xem trước' }
   let mime = (res.headers.get('content-type') || '').split(';')[0]
   if (!mime || mime === 'application/octet-stream') mime = MIME[name.split('.').pop().toLowerCase()] || 'application/octet-stream'
+  blobLog(p + ' -> OK ' + mime + ' ' + buf.length + ' bytes')
   return { ok: true, mime, name, base64: buf.toString('base64'), size: buf.length }
 }
 
@@ -166,7 +177,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false,
     },
-  })
+  })
+  { const rl = (s) => { try { fs.appendFileSync(path.join(require('node:os').tmpdir(), 'memorable-renderer.log'), new Date().toISOString() + ' ' + s + '\n') } catch {} }; mainWin.webContents.on('console-message', (e, lv, msg, ln, src) => rl('[console ' + (e && e.level !== undefined ? e.level : lv) + '] ' + ((e && e.message) || msg) + ' @' + ((e && e.sourceId) || src) + ':' + ((e && e.lineNumber) || ln))); mainWin.webContents.on('did-fail-load', (e, code, desc, url) => rl('did-fail-load ' + code + ' ' + desc + ' ' + url)); mainWin.webContents.on('render-process-gone', (e, d) => rl('render-process-gone ' + JSON.stringify(d))) }
   mainWin.once('ready-to-show', () => { mainWin.maximize(); mainWin.show() })
   mainWin.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/i.test(url)) shell.openExternal(url)
@@ -199,6 +211,11 @@ function registerIpc() {
   ipcMain.handle('http:uploadForm', wrap(httpUploadForm))
   ipcMain.handle('file:pick', wrap(filePick))
   ipcMain.handle('http:blob', wrap(httpBlob))
+  // Đọc CCCD bằng Claude (khóa ANTHROPIC_API_KEY chỉ nằm ở tiến trình này)
+  ipcMain.handle('ai:scanId', wrap(require('./aiScan.cjs').scanId))
+  ipcMain.handle('ai:chat', wrap(require('./aiChat.cjs').chat))
+  ipcMain.handle('ai:docs', wrap(require('./aiDocs.cjs').docsAnswer))
+  ipcMain.handle('ai:compare', wrap(require('./aiDocs.cjs').compareDocs))
   // Mở tệp bằng ứng dụng mặc định của máy (Word, Excel, trình đọc PDF…) qua một bản sao tạm.
   ipcMain.handle('file:openExternal', wrap(async ({ name, base64 }) => {
     const safe = path.basename(String(name || 'tep')).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')

@@ -13,6 +13,7 @@ import { toast } from '../store/ui'
 import { Md, plainWords } from './shared'
 import { Field, Modal, Pill, Seg } from './ui'
 import { LimitedList } from './ShowMore'
+import { askClaudeConsent, compareViaClaude } from '../lib/claudeLocal'
 
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.full : String(e))
 
@@ -265,6 +266,11 @@ export function ComparePanel({ initial = [], onOpen, plain }: { initial?: { id: 
     try { setRes(await post<CompareResult>('/knowledge/compare', { item_ids: docs.map((d) => d.id), question: question.trim() || undefined })) }
     catch (e) {
       const er = e as ApiError
+      // Máy chủ chưa bật AI (503): Claude đối chiếu ngay trong app, bài vẫn đọc qua API máy chủ theo quyền của bạn
+      if (er.status === 503 && window.desk?.aiCompare && (await askClaudeConsent())) {
+        try { setRes(await compareViaClaude(docs, question.trim())) } catch (e2) { setErr(e2 instanceof Error ? e2.message : String(e2)) }
+        return
+      }
       setErr(er.status === 422 ? `Chưa đủ 2 tài liệu hợp lệ để so sánh (chỉ so sánh bài đã duyệt, không hạn chế, bạn được xem và không chứa bí mật). ${(er.errors as { skipped?: { reason?: string }[] } | undefined)?.skipped ? '' : ''}${er.message}` : er.status === 429 ? 'Đã hết hạn mức AI.' : er.status === 503 ? 'AI chưa bật hoặc tính năng so sánh đang bị tắt.' : errMsg(e))
     } finally { setBusy(false) }
   }

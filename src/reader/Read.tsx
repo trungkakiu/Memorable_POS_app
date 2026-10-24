@@ -3,9 +3,9 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   AlertTriangle, ArrowLeft, Check, CheckCircle2, ClipboardCopy, Clock, Download, Eye, FileText, FolderOpen, Frown, Info, ListChecks, Loader2, MessageCircleQuestion, Phone, Play, Printer,
-  RotateCcw, GitCompare, MoreHorizontal, ShieldAlert, ShieldCheck, BookOpenText, SkipForward, Sparkles, Undo2, User as UserIcon, Volume2, VolumeX, XCircle,
+  RotateCcw, GitCompare, MoreHorizontal, ShieldAlert, ShieldCheck, BookOpenText, SkipForward, Sparkles, Trash2, Undo2, User as UserIcon, Volume2, VolumeX, XCircle,
 } from 'lucide-react'
-import { ApiError, download, get, isAudioName, patch, post } from '../lib/api'
+import { ApiError, del, download, forgetAttachment, get, isAudioName, patch, post } from '../lib/api'
 import { bytes as fmtBytes, FILE_ICON, niceFileName, SEVERITY_LABEL } from '../lib/format'
 import { KIND_LABEL, extOf, kindOf } from '../lib/preview'
 import { can } from '../lib/permissions'
@@ -18,7 +18,7 @@ import { MarkdownModal, useIsOfficial } from '../components/Knowledge'
 import { INGEST_LABEL } from '../lib/format'
 import { useAuth } from '../store/auth'
 import { useChat } from '../store/chat'
-import { toast } from '../store/ui'
+import { confirmDialog, toast } from '../store/ui'
 import { TYPE_ICON, TYPE_PLAIN, friendlyDate } from './common'
 import { FavStar, MiniRow } from './Pages'
 import { DOC_ACTIONS, runDocAction } from './aiAgent'
@@ -34,13 +34,17 @@ const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
 // ====================================================================
 //  Tệp đính kèm: thẻ lớn, xem trước và tải về chỉ một bấm
 // ====================================================================
-function ReaderFiles({ atts }: { atts: Attachment[] }) {
+function ReaderFiles({ atts, onRemoved }: { atts: Attachment[]; onRemoved: (id: number) => void }) {
   const role = useAuth((s) => s.user?.role)
   const vision = useAiFeature('vision')
   const [view, setView] = useState<Attachment | null>(null)
   const [ask, setAsk] = useState<Attachment | null>(null)
   const [text, setText] = useState<Attachment | null>(null)
   async function dl(a: Attachment) { try { const r = await download(`/attachments/${a.id}/download`, undefined, a.filename); if (r.ok) toast.ok('Đã tải tệp về máy') } catch (e) { toast.error(e) } }
+  async function rm(a: Attachment) {
+    if (!(await confirmDialog('Gỡ tệp đính kèm', `Gỡ “${a.filename}” khỏi bài này? Bài vẫn được giữ, chỉ tệp này bị gỡ.`, { danger: true, okText: 'Gỡ tệp' }))) return
+    try { await del(`/attachments/${a.id}`); forgetAttachment(a.id); toast.ok('Đã gỡ tệp'); onRemoved(a.id) } catch (e) { toast.error(e) }
+  }
   const KIND_PLAIN: Record<string, string> = { image: 'Ảnh', pdf: 'Tệp PDF', text: 'Văn bản', md: 'Văn bản', csv: 'Bảng tính', docx: 'Tài liệu Word', xlsx: 'Bảng tính Excel', pptx: 'Bài thuyết trình', archive: 'Tệp nén', office: 'Tài liệu', other: 'Tệp' }
   return (
     <>
@@ -66,6 +70,7 @@ function ReaderFiles({ atts }: { atts: Attachment[] }) {
                 <button className="rd-btn secondary sm" onClick={() => dl(a)}><Download size={17} />Tải về</button>
                 {(a.ingest_status === 'done' || a.text_extracted) && <button className="rd-btn secondary sm" onClick={() => setText(a)}><BookOpenText size={17} />Đọc chữ trong tệp</button>}
                 {a.ai_readable && !isAudioName(a.filename) && vision && can(role, 'ask') && <button className="rd-btn secondary sm" onClick={() => setAsk(a)}><MessageCircleQuestion size={17} />Nhờ trợ lý xem</button>}
+                {can(role, 'write') && <button className="rd-btn secondary sm" style={{ color: '#d92d20' }} onClick={() => void rm(a)}><Trash2 size={17} />Gỡ tệp</button>}
               </div>
             </div>)
         })}
@@ -377,7 +382,7 @@ export default function ReaderRead() {
             <div className="rd-callout info !py-3 text-[0.92em]"><BookOpenText size={20} className="shrink-0 mt-0.5" />Đây là toàn bộ bài và chữ trong các tệp đính kèm gộp thành một văn bản; mỗi nguồn được tách riêng và ghi rõ.</div>
             {whole === 'loading' ? <div className="flex items-center gap-3 text-muted"><Loader2 size={20} className="animate-spin" />Đang gộp nội dung…</div> : <Md>{whole.markdown}</Md>}
           </section>)}
-        {atts.length > 0 && <section className="flex flex-col gap-3"><h2 className="rd-h2 !mb-0">Tệp đính kèm ({atts.length})</h2><ReaderFiles atts={atts} /></section>}
+        {atts.length > 0 && <section className="flex flex-col gap-3"><h2 className="rd-h2 !mb-0">Tệp đính kèm ({atts.length})</h2><ReaderFiles atts={atts} onRemoved={(aid) => setIt((cur) => (cur ? { ...cur, attachments: (cur.attachments || []).filter((x) => x.id !== aid) } : cur))} /></section>}
 
         {it.type === 'runbook' && (
           <>
