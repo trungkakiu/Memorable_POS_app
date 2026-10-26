@@ -153,7 +153,7 @@ async function httpBlob({ path: p, token }) {
   if (!res.ok) {
     let msg = `HTTP ${res.status}`
     try { msg = (await res.json()).RM || msg } catch { /* ignore */ }
-    blobLog(`${p} -> ${res.status} ${msg} (${buildUrl(p).replace(/\?.*$/, '').replace(/^(https?:\/\/[^/]+).*/, '$1')})`)
+    blobLog(`${p} -> ${res.status} ${msg} (${String(buildUrl(p)).replace(/\?.*$/, '').replace(/^(https?:\/\/[^/]+).*/, '$1')})`)
     return { ok: false, status: res.status, error: msg }
   }
   const buf = Buffer.from(await res.arrayBuffer())
