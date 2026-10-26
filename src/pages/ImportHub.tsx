@@ -367,7 +367,7 @@ export default function ImportHub() {
       toast.ok(`AI đã soạn ${r.drafts.length} bản nháp — hãy xem lại trước khi tạo`)
     } catch (e) {
       const er = e as ApiError
-      setErr(er.status === 429 ? 'Đã hết hạn mức AI (theo phút, ngày hoặc ngân sách tháng). Thử lại sau.' : er.status === 503 ? 'AI chưa bật hoặc tính năng nhập thông minh (smart_import) đang tắt.' : er.status === 403 ? 'Vai trò của bạn không được nhập tri thức.' : er.status === 413 ? 'Quá nhiều tệp hoặc tệp quá lớn.' : er.full || String(e))
+      setErr(er.status === 429 ? 'Đã hết hạn mức AI (theo phút, ngày hoặc ngân sách tháng). Thử lại sau.' : er.status === 503 ? `Máy chủ AI chưa dùng được${er.message ? ': ' + er.message : ' (AI chưa bật hoặc tính năng smart_import đang tắt)'}.` : er.status === 403 ? 'Vai trò của bạn không được nhập tri thức.' : er.status === 413 ? 'Quá nhiều tệp hoặc tệp quá lớn.' : er.full || String(e))
     } finally { setBusy(false) }
   }
   const setForm = (key: string) => (p: Partial<DraftForm>, field?: string) => setForms((x) => x.map((f) => (f.key === key ? { ...f, ...p, touched: field && !f.touched.includes(field) ? [...f.touched, field] : f.touched, error: undefined } : f)))
