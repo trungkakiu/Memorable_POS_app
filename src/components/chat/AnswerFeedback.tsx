@@ -2,6 +2,12 @@ import { useState } from 'react'
 import { Loader2, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { Msg, useChat } from '../../store/chat'
 
+const FLAG = 'memorable.answerFeedback.unsupportedAt'
+const DAY = 24 * 3600 * 1000
+/** Máy chủ chưa có tính năng đánh giá: ẩn nút trong 24 giờ để người dùng không gặp lỗi lặp lại. */
+const unsupported = () => { try { const t = Number(localStorage.getItem(FLAG)); return t > 0 && Date.now() - t < DAY } catch { return false } }
+const markUnsupported = () => { try { localStorage.setItem(FLAG, String(Date.now())) } catch { /* bỏ qua */ } }
+
 const REASONS = ['Sai thông tin', 'Thiếu thông tin', 'Không đúng câu hỏi', 'Nguồn cũ hoặc không phù hợp']
 
 /** Đánh giá câu trả lời của AI. Đánh giá "chưa hữu ích" được gửi tới kiểm duyệt viên để bổ sung hoặc sửa tài liệu. */
@@ -12,7 +18,9 @@ export function AnswerFeedback({ m }: { m: Msg }) {
   const [note, setNote] = useState('')
   const [need, setNeed] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [off, setOff] = useState(unsupported)
 
+  if (off) return null
   if (given) {
     return <div className="text-[11.5px] text-muted">{given === 'up' ? 'Cảm ơn bạn đã đánh giá.' : 'Đã gửi phản hồi cho kiểm duyệt viên. Cảm ơn bạn.'}</div>
   }
@@ -20,17 +28,18 @@ export function AnswerFeedback({ m }: { m: Msg }) {
   const send = async (helpful: boolean) => {
     setBusy(true)
     const reason = [...chips, note.trim()].filter(Boolean).join('; ')
-    await useChat.getState().rateAnswer(m.id, helpful, reason || undefined, need)
+    const r = await useChat.getState().rateAnswer(m.id, helpful, reason || undefined, need)
+    if (r === 'unsupported') { markUnsupported(); setOff(true) }
     setBusy(false)
   }
   const toggle = (r: string) => setChips((c) => (c.includes(r) ? c.filter((x) => x !== r) : [...c, r]))
 
   return (
     <div className="text-[12px]">
-      <div className="flex items-center gap-2 text-muted">
+      <div className="flex flex-wrap items-center gap-2 text-muted">
         <span>Câu trả lời này có hữu ích không?</span>
-        <button className="btn outline sm" disabled={busy} onClick={() => void send(true)} title="Hữu ích"><ThumbsUp size={12} />Hữu ích</button>
-        <button className="btn outline sm" disabled={busy} onClick={() => setForm((v) => !v)} title="Chưa hữu ích"><ThumbsDown size={12} />Chưa hữu ích</button>
+        <button className="btn outline sm whitespace-nowrap" disabled={busy} onClick={() => void send(true)} title="Hữu ích"><ThumbsUp size={12} />Hữu ích</button>
+        <button className="btn outline sm whitespace-nowrap" disabled={busy} onClick={() => setForm((v) => !v)} title="Chưa hữu ích"><ThumbsDown size={12} />Chưa hữu ích</button>
       </div>
       {form && (
         <div className="mt-2 rounded-md border border-line bg-white p-2.5 flex flex-col gap-2">

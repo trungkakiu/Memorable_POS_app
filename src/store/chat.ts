@@ -102,8 +102,8 @@ interface ChatState {
   openLearned: (id: number) => Promise<void>
   /** Đánh giá câu trả lời Internet */
   rateWeb: (msgId: number, helpful: boolean) => Promise<void>
-  /** Đánh giá câu trả lời; 'chưa hữu ích' sẽ báo cho kiểm duyệt viên. Trả về true nếu đã gửi. */
-  rateAnswer: (msgId: number, helpful: boolean, reason?: string, contentRequest?: boolean) => Promise<boolean>
+  /** Đánh giá câu trả lời; 'chưa hữu ích' sẽ báo cho kiểm duyệt viên. Trả về 'unsupported' nếu máy chủ chưa có tính năng này. */
+  rateAnswer: (msgId: number, helpful: boolean, reason?: string, contentRequest?: boolean) => Promise<'ok' | 'fail' | 'unsupported'>
   /** Tìm sâu: mở rộng qua thẻ liên quan và nhiều tài liệu hơn (chậm hơn) */
   deep: boolean
   setDeep: (v: boolean) => void
@@ -354,7 +354,7 @@ export const useChat = create<ChatState>((set, getState) => {
     },
     rateAnswer: async (msgId, helpful, reason, contentRequest) => {
       const m = getState().msgs.find((x) => x.id === msgId)
-      if (!m?.ans || m.ans.fb) return false
+      if (!m?.ans || m.ans.fb) return 'fail'
       try {
         await post('/ai/answers/feedback', {
           question: m.question || '', answer: m.text.slice(0, 1500), mode: m.ans.mode, helpful,
@@ -362,8 +362,11 @@ export const useChat = create<ChatState>((set, getState) => {
           source_ids: [...(m.ans.sources || []).map((s) => s.id), ...(m.ans.sourceIds || [])].slice(0, 20),
         })
         patchMsg(msgId, { ans: { ...m.ans, fb: helpful ? 'up' : 'down' } })
-        return true
-      } catch (e) { toast.error(e instanceof ApiError ? e.full : String(e)); return false }
+        return 'ok'
+      } catch (e) {
+        if (e instanceof ApiError && (e.status === 404 || e.status === 501 || /route not found|chưa hỗ trợ/i.test(e.message))) return 'unsupported'
+        toast.error(e instanceof ApiError ? e.full : String(e)); return 'fail'
+      }
     },
     setDeep: (v) => set({ deep: v }),
     setPolicy: (p) => { try { localStorage.setItem('memorable.chat.policy', p) } catch { /* bỏ qua */ } set({ policy: p }) },
