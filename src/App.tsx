@@ -4,6 +4,7 @@ import { toast } from './store/ui'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/layout/Layout'
 import { ConfirmHost, Toasts } from './components/ui'
+import { OfflineBanner } from './components/OfflineBanner'
 import { can, Cap } from './lib/permissions'
 import { useAuth } from './store/auth'
 import Login from './pages/Login'
@@ -177,7 +178,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </HashRouter>
-      <Toasts />
+      <OfflineBanner /><Toasts />
       <ConfirmHost />
     </>
   )

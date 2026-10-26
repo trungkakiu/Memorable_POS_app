@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { APP_CONFIG } from './appConfig'
+import { cacheGet, cacheKey, cachePut, clearOfflineCache, isCacheable, isQueueable, queueAdd, queueList, queueSet, useOffline } from './offline'
 
 type Reply<T> = { ok: boolean; data?: T; error?: string }
 interface Desk {
@@ -45,7 +46,7 @@ export class ApiError extends Error {
 
 let token: string | null = null
 let onUnauthorized: (() => void) | null = null
-export const setToken = (t: string | null) => { token = t }
+export const setToken = (t: string | null) => { token = t; if (!t) clearOfflineCache() }
 export const getToken = () => token
 export const setUnauthorizedHandler = (fn: () => void) => { onUnauthorized = fn }
 
@@ -69,8 +70,46 @@ function unwrap<T>(r: Reply<{ status: number; ok: boolean; json: { RD: unknown; 
 export interface Opts { query?: Record<string, unknown>; body?: unknown; auth?: boolean }
 export async function api<T = any>(method: string, path: string, o: Opts = {}): Promise<T> {
   const auth = o.auth !== false
+  const m = method.toUpperCase()
+  const key = m === 'GET' && auth && isCacheable(path) ? cacheKey(path, o.query) : null
   const r = await desk().request({ method, path, query: o.query, body: o.body, token: auth ? token : null })
+  if (!r.ok || !r.data) {
+    // Mất kết nối tới máy chủ (không phải máy chủ trả lỗi)
+    useOffline.getState().setOffline(true)
+    if (key) {
+      const c = cacheGet(key)
+      if (c) { useOffline.getState().setStale(true); return c.d as T }
+    }
+    if (auth && isQueueable(m, path)) {
+      queueAdd({ method: m, path, body: o.body ?? {} })
+      throw new ApiError('Đang mất kết nối. Nội dung đã được lưu trên máy và sẽ tự gửi khi có mạng trở lại.', 0, { queued: true })
+    }
+  } else {
+    useOffline.getState().setOffline(false)
+    if (key && r.data.ok && r.data.json) cachePut(key, r.data.json.RD)
+  }
   return unwrap<T>(r, auth)
+}
+
+let flushing = false
+/** Gửi lại các việc đã xếp hàng khi mất mạng. Dừng khi vẫn chưa có mạng; máy chủ từ chối thì bỏ mục đó để không gửi lặp mãi. */
+export async function flushQueue(): Promise<{ sent: number; failed: number }> {
+  if (flushing || !token) return { sent: 0, failed: 0 }
+  flushing = true
+  let sent = 0, failed = 0
+  try {
+    let q = queueList()
+    while (q.length) {
+      const c = q[0]
+      const r = await desk().request({ method: c.method, path: c.path, body: c.body, token })
+      if (!r.ok || !r.data) break
+      if (r.data.ok) sent++; else failed++
+      q = q.slice(1)
+      queueSet(q)
+    }
+  } finally { flushing = false }
+  if (sent) useOffline.getState().setOffline(false)
+  return { sent, failed }
 }
 export const get = <T = any>(path: string, query?: Record<string, unknown>) => api<T>('GET', path, { query })
 export const post = <T = any>(path: string, body?: unknown, query?: Record<string, unknown>) => api<T>('POST', path, { body: body ?? {}, query })

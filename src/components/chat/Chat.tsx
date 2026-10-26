@@ -19,6 +19,7 @@ import { Pill, Seg } from '../ui'
 import { ConflictList, FileAskBlock, MemoryUsed, PolicySelect } from '../Knowledge'
 import { TIER_LABEL, TIER_TONE } from '../../lib/format'
 import { LimitedList } from '../ShowMore'
+import { AnswerFeedback } from './AnswerFeedback'
 
 const STARTERS = ['Quy trình xử lý lỗi ERR_504 là gì?', 'Sao lưu cơ sở dữ liệu chạy lúc mấy giờ?', 'Có prompt nào dịch văn bản không?']
 const routeItemId = (p: string) => { const m = /^\/items\/(\d+)/.exec(p); return m ? Number(m[1]) : undefined }
@@ -135,6 +136,7 @@ export function Messages({ msgs, busy, onOpenItem, onPick, onAsk, compact }: { m
               </div>)}
             {m.ans && m.ans.sources.length === 0 && m.ans.sourceIds && m.ans.sourceIds.length > 0 && (
               <div className="flex gap-1.5 flex-wrap items-center text-xs text-muted"><ShieldCheck size={12} />Nguồn đã trích: <LimitedList items={m.ans.sourceIds} first={10} noun="tài liệu" className="contents" render={(id) => <button key={id} className="cat-chip !py-0.5 !px-2 !text-[11px]" onClick={() => onOpenItem(id)}>tài liệu #{id}</button>} /></div>)}
+            {m.ans && !m.ans.web && !m.ans.localFile && m.question && <AnswerFeedback m={m} />}
             {m.ans && <div className="text-[10.5px] text-muted">{m.ans.model} · ${m.ans.cost_usd}</div>}
           </div></div>))}
       {busy && <div className="msg ai"><span className="av"><Bot size={15} /></span><div className="bubble a"><span className="typing"><i /><i /><i /></span></div></div>}

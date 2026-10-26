@@ -47,6 +47,8 @@ export interface Ans {
   memory?: AgentMemoryUse
   // Tìm trên Internet: nguồn, xác minh, gợi ý
   web?: WebInfo
+  // Đánh giá của người dùng cho câu trả lời này
+  fb?: 'up' | 'down'
   // Trò chuyện kèm tệp (AI nhìn ảnh/PDF, đọc tài liệu, chép lời ghi âm)
   fileChat?: FileChatInfo
 }
@@ -100,6 +102,8 @@ interface ChatState {
   openLearned: (id: number) => Promise<void>
   /** Đánh giá câu trả lời Internet */
   rateWeb: (msgId: number, helpful: boolean) => Promise<void>
+  /** Đánh giá câu trả lời; 'chưa hữu ích' sẽ báo cho kiểm duyệt viên. Trả về true nếu đã gửi. */
+  rateAnswer: (msgId: number, helpful: boolean, reason?: string, contentRequest?: boolean) => Promise<boolean>
   /** Tìm sâu: mở rộng qua thẻ liên quan và nhiều tài liệu hơn (chậm hơn) */
   deep: boolean
   setDeep: (v: boolean) => void
@@ -347,6 +351,19 @@ export const useChat = create<ChatState>((set, getState) => {
       if (!m || !w || w.feedback) return
       patchMsg(msgId, { ans: { ...m.ans!, web: { ...w, feedback: helpful ? 'up' : 'down' } } })
       try { await post('/ai/web/feedback', w.learned ? { learned_id: w.learned.id, helpful } : { result_id: w.result_id, helpful }) } catch { /* đánh giá không quan trọng bằng việc đọc tiếp */ }
+    },
+    rateAnswer: async (msgId, helpful, reason, contentRequest) => {
+      const m = getState().msgs.find((x) => x.id === msgId)
+      if (!m?.ans || m.ans.fb) return false
+      try {
+        await post('/ai/answers/feedback', {
+          question: m.question || '', answer: m.text.slice(0, 1500), mode: m.ans.mode, helpful,
+          reason: reason || undefined, content_request: contentRequest || undefined,
+          source_ids: [...(m.ans.sources || []).map((s) => s.id), ...(m.ans.sourceIds || [])].slice(0, 20),
+        })
+        patchMsg(msgId, { ans: { ...m.ans, fb: helpful ? 'up' : 'down' } })
+        return true
+      } catch (e) { toast.error(e instanceof ApiError ? e.full : String(e)); return false }
     },
     setDeep: (v) => set({ deep: v }),
     setPolicy: (p) => { try { localStorage.setItem('memorable.chat.policy', p) } catch { /* bỏ qua */ } set({ policy: p }) },
