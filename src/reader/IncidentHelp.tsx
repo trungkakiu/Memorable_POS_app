@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { AlertTriangle, ArrowRight, CheckCircle2, Clock, Eye, Headset, ListChecks, Loader2, LifeBuoy, ShieldAlert, Siren, Sparkles, UserRound } from 'lucide-react'
 import { ApiError, get, patch, post } from '../lib/api'
-import { STATUS_TEXT, STATUS_TONE, ago, type IncidentRow, type RunbookSuggestion, type Severity } from '../lib/incident'
+import { STATUS_TEXT, STATUS_TONE, ago, type IncidentRow, type KnownIncident as KnownData, type RunbookSuggestion, type Severity } from '../lib/incident'
 import { toast } from '../store/ui'
+import { KnownIncident } from '../components/KnownIncident'
 
 // Mức độ nói bằng lời thường để người đọc chọn dễ
 const IMPACT: { v: Severity; t: string; d: string }[] = [
@@ -46,6 +47,7 @@ function ReportTab({ onReported }: { onReported: () => void }) {
   const [sev, setSev] = useState<Severity>('medium')
   const [sugg, setSugg] = useState<RunbookSuggestion[] | null>(null)
   const [looking, setLooking] = useState(false)
+  const [known, setKnown] = useState<KnownData | null>(null)
   const [busy, setBusy] = useState<number | 'report' | null>(null)
   const ready = text.trim().length >= 5
 
@@ -57,6 +59,13 @@ function ReportTab({ onReported }: { onReported: () => void }) {
       get<RunbookSuggestion[]>('/incidents/suggest-runbooks', { text: `${system} ${text}`.trim().slice(0, 900), system: system.trim() || undefined, limit: 4 })
         .then(setSugg).catch(() => setSugg([])).finally(() => setLooking(false))
     }, 450)
+    return () => clearTimeout(h)
+  }, [text, system]) // eslint-disable-line
+
+  // Sự cố đã từng xảy ra và có kết luận đã duyệt: Agent tự giải thích
+  useEffect(() => {
+    if (!ready) { setKnown(null); return }
+    const h = setTimeout(() => { post<KnownData>('/incidents/explain', { text: text.trim().slice(0, 900), system: system.trim() || undefined }).then(setKnown).catch(() => setKnown(null)) }, 1200)
     return () => clearTimeout(h)
   }, [text, system]) // eslint-disable-line
 
@@ -89,6 +98,7 @@ function ReportTab({ onReported }: { onReported: () => void }) {
 
       <div className="flex flex-col gap-3.5 min-w-0">
         <div className="ih-side-h"><Sparkles size={18} />Cách xử lý gợi ý cho bạn</div>
+        {ready && known && <KnownIncident data={known} variant="reader" />}
         {!ready && <div className="rd-card ih-empty"><LifeBuoy size={36} className="text-brand-300" /><b>Mô tả lỗi để nhận gợi ý</b><span>Hệ thống tìm các hướng dẫn phù hợp, ưu tiên cách đã từng xử lý được lỗi tương tự.</span></div>}
         {ready && looking && !sugg && <div className="rd-card ih-empty"><Loader2 size={30} className="animate-spin text-brand-500" />Đang tìm hướng dẫn phù hợp…</div>}
         {ready && sugg && sugg.length === 0 && <div className="rd-card ih-empty"><Headset size={36} className="text-brand-300" /><b>Chưa có hướng dẫn khớp</b><span>Hãy báo bộ phận kỹ thuật, họ sẽ liên hệ bạn.</span></div>}

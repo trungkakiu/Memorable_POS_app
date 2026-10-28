@@ -12,6 +12,12 @@ export interface IncidentRow {
   approval_status?: 'none' | 'pending' | 'approved' | 'rejected'; approval_label?: string; approval_due_at?: string | null
   approved_by?: number | null; approved_at?: string | null; approval_note?: string | null; approval_overdue?: boolean
 }
+export interface KnownIncidentMatch {
+  id: number; title: string; system: string | null; error_group: string | null; conclusion: string
+  resolved_at: string | null; runbook_id: number | null; mttr_minutes: number | null
+}
+/** Kết quả Agent tự giải thích khi sự cố đã từng xảy ra (GET /incidents/:id/explain, POST /incidents/explain) */
+export interface KnownIncident { known: boolean; matches: KnownIncidentMatch[]; runbooks: RunbookSuggestion[]; explanation: string | null; ai: boolean }
 export interface IncidentRunLog { index: number; status: 'done' | 'skipped' | 'failed'; at: string; note: string | null; action: string | null }
 export interface IncidentRun {
   id: number; runbook_id: number; runbook_title: string | null; user: PersonRef | null; started_at: string; finished_at: string | null

@@ -4,17 +4,18 @@ import { ReactNode, useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  AlertTriangle, ArrowRight, BookOpenCheck, CheckCircle2, Clock, FileUp, Flame, Hand, History, ListChecks, Loader2, Play, Plus, RefreshCw, Search, Siren, Timer, UserRound, XCircle,
+  AlertTriangle, ArrowRight, BookOpenCheck, CheckCircle2, Clock, FileUp, Flame, Hand, History, ListChecks, Loader2, Play, Plus, RefreshCw, Search, Siren, Timer, UserRound, XCircle, LayoutGrid, List,
 } from 'lucide-react'
 import { ApiError, get, patch, post, useGet } from '../lib/api'
 import { can } from '../lib/permissions'
 import { dt, fromLocalInput, toLocalInput } from '../lib/format'
 import {
-  IncidentDetail, IncidentRow, IncidentStats, IncidentStatus, RunbookSuggestion, Severity, SEVERITY_COLOR, SEVERITY_LIST, SEVERITY_TEXT, STATUS_TEXT, STATUS_TONE, ago, fmtMinutes,
+  IncidentDetail, IncidentRow, IncidentStats, IncidentStatus, KnownIncident as KnownData, RunbookSuggestion, Severity, SEVERITY_COLOR, SEVERITY_LIST, SEVERITY_TEXT, STATUS_TEXT, STATUS_TONE, ago, fmtMinutes,
 } from '../lib/incident'
 import { Empty, Field, Modal, PageHeader, Pill } from '../components/ui'
 import { ErrorBox, Loading, Pager, useBusy } from '../components/shared'
 import { useAuth } from '../store/auth'
+import { KnownIncident } from '../components/KnownIncident'
 import { toast } from '../store/ui'
 
 const TABS: { k: '' | IncidentStatus; t: string }[] = [{ k: '', t: 'Tất cả' }, { k: 'open', t: 'Mới báo' }, { k: 'investigating', t: 'Đang xử lý' }, { k: 'resolved', t: 'Đã khắc phục' }, { k: 'declined', t: 'Lưu trữ · Từ chối' }]
@@ -41,11 +42,24 @@ export default function IncidentCenter() {
   const [severity, setSeverity] = useState('')
   const [q, setQ] = useState('')
   const [mine, setMine] = useState(false)
+  const [view, setView] = useState<'list' | 'board'>(() => { try { return localStorage.getItem('inc_view') === 'board' ? 'board' : 'list' } catch { return 'list' } })
+  const changeView = (v: 'list' | 'board') => { setView(v); try { localStorage.setItem('inc_view', v) } catch { /* không lưu được thì bỏ qua */ } }
+  const board = view === 'board' && !status
   const [report, setReport] = useState(false)
   const openId = Number(sp.get('open')) || null
   const stats = useGet<IncidentStats>('/incidents/stats')
   const { data, loading, error, reload } = useGet<{ incidents: IncidentRow[]; total: number; page: number; pages: number }>('/incidents', { page, limit: 20, status: status || undefined, severity: severity || undefined, q: q.trim() || undefined, mine: mine || undefined })
-  const refresh = () => { reload(); stats.reload() }
+  type ColData = { incidents: IncidentRow[]; total: number }
+  const colQ = { limit: 30, severity: severity || undefined, q: q.trim() || undefined, mine: mine || undefined }
+  const colOpen = useGet<ColData>('/incidents', { ...colQ, status: 'open' }, board)
+  const colInv = useGet<ColData>('/incidents', { ...colQ, status: 'investigating' }, board)
+  const colRes = useGet<ColData>('/incidents', { ...colQ, status: 'resolved' }, board)
+  const refresh = () => { reload(); stats.reload(); if (board) { void colOpen.reload(); void colInv.reload(); void colRes.reload() } }
+  async function moveTo(id: number, to: IncidentStatus) {
+    const row = [...(colOpen.data?.incidents || []), ...(colInv.data?.incidents || [])].find((x) => x.id === id)
+    if (!row || row.status === to) return
+    try { await patch(`/incidents/${id}`, { status: to }); toast.ok(`Đã chuyển sang “${STATUS_TEXT[to]}”`); refresh() } catch (e) { toast.error(e instanceof ApiError ? e.full : e) }
+  }
   const openDetail = (id: number | null) => { const n = new URLSearchParams(sp); if (id) n.set('open', String(id)); else n.delete('open'); setSp(n, { replace: true }) }
   const s = stats.data
   // Quy trình còn nháp: nhân viên không thấy, sự cố không được gợi ý
@@ -80,11 +94,16 @@ export default function IncidentCenter() {
         <select className="select !w-auto" value={severity} onChange={(e) => { setSeverity(e.target.value); setPage(1) }} aria-label="Lọc mức độ"><option value="">Mọi mức độ</option>{SEVERITY_LIST.map((x) => <option key={x} value={x}>{SEVERITY_TEXT[x]}</option>)}</select>
         <label className="search-box !w-64"><Search size={17} /><input className="input" value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} placeholder="Tìm theo tên sự cố…" /></label>
         <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" checked={mine} onChange={(e) => { setMine(e.target.checked); setPage(1) }} />Của tôi</label>
-        <button className="btn ghost sm ml-auto" onClick={refresh} title="Tải lại"><RefreshCw size={15} /></button>
+        <div className="inline-flex ml-auto rounded-lg border border-gray-200 overflow-hidden" role="group" aria-label="Kiểu hiển thị">
+          <button type="button" className={clsx('btn sm !rounded-none', view !== 'list' && 'ghost')} aria-pressed={view === 'list'} onClick={() => changeView('list')} title="Danh sách"><List size={15} /></button>
+          <button type="button" className={clsx('btn sm !rounded-none', view !== 'board' && 'ghost')} aria-pressed={view === 'board'} onClick={() => changeView('board')} title="Bảng kéo thả (kanban)"><LayoutGrid size={15} /></button>
+        </div>
+        <button className="btn ghost sm" onClick={refresh} title="Tải lại"><RefreshCw size={15} /></button>
       </div>
 
       <ErrorBox error={error} onRetry={reload} />
-      <div className="tbl-wrap"><table className="tbl inc-tbl"><thead><tr><th>Sự cố</th><th>Mức độ</th><th>Trạng thái</th><th>Hệ thống</th><th>Người báo / xử lý</th><th>Phát hiện</th><th className="num">Khắc phục sau</th></tr></thead><tbody>
+      {board && <IncidentBoard cols={[['open', colOpen], ['investigating', colInv], ['resolved', colRes]]} manage={manage} onOpen={openDetail} onMove={(id, to) => void moveTo(id, to)} />}
+      {!board && <div className="tbl-wrap"><table className="tbl inc-tbl"><thead><tr><th>Sự cố</th><th>Mức độ</th><th>Trạng thái</th><th>Hệ thống</th><th>Người báo / xử lý</th><th>Phát hiện</th><th className="num">Khắc phục sau</th></tr></thead><tbody>
         {loading && !data && <tr><td colSpan={7}><Loading /></td></tr>}
         {data && data.incidents.length === 0 && <tr><td colSpan={7}><Empty text={status || severity || q || mine ? 'Không có sự cố khớp bộ lọc' : 'Chưa có sự cố nào. Tuyệt vời!'} icon={<Siren size={42} strokeWidth={1.4} />} /></td></tr>}
         {data?.incidents.map((i) => (
@@ -97,11 +116,42 @@ export default function IncidentCenter() {
             <td className="whitespace-nowrap text-xs" title={dt(i.detected_at)}>{ago(i.detected_at)}</td>
             <td className="num font-bold whitespace-nowrap">{i.resolved_at ? fmtMinutes(i.mttr_minutes) : <span className="text-muted font-normal">đang mở {fmtMinutes((Date.now() - new Date(i.detected_at).getTime()) / 60000)}</span>}</td>
           </tr>))}
-      </tbody></table></div>
-      {data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
+      </tbody></table></div>}
+      {!board && data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
 
       {report && <ReportIncident manage={manage} onClose={() => setReport(false)} onDone={(id) => { setReport(false); refresh(); openDetail(id) }} />}
       {openId && <IncidentDrawer id={openId} manage={manage} meId={user.id} onClose={() => openDetail(null)} onChanged={refresh} />}
+    </div>)
+}
+
+/** Bảng kéo thả: kéo thẻ giữa "Mới báo" và "Đang xử lý"; đóng sự cố phải mở thẻ để ghi kết luận */
+function IncidentBoard({ cols, manage, onOpen, onMove }: {
+  cols: ['open' | 'investigating' | 'resolved', { data?: { incidents: IncidentRow[]; total: number }; loading: boolean }][]
+  manage: boolean; onOpen: (id: number) => void; onMove: (id: number, to: IncidentStatus) => void
+}) {
+  const [over, setOver] = useState<string | null>(null)
+  return (
+    <div className="grid gap-3 lg:grid-cols-3 items-start">
+      {cols.map(([k, col]) => {
+        const canDrop = manage && k !== 'resolved'
+        return (
+          <div key={k} className={clsx('card !p-2.5 flex flex-col gap-2 min-h-[180px]', over === k && 'ring-2 ring-violet-300')}
+            onDragOver={(e) => { if (canDrop) { e.preventDefault(); setOver(k) } }}
+            onDragLeave={() => setOver((o) => (o === k ? null : o))}
+            onDrop={(e) => { e.preventDefault(); setOver(null); const id = Number(e.dataTransfer.getData('text/plain')); if (canDrop && id) onMove(id, k) }}>
+            <div className="flex items-center gap-2 px-1"><Pill sm tone={STATUS_TONE[k]}>{STATUS_TEXT[k]}</Pill><span className="text-xs text-muted">{col.data ? col.data.total : '…'}</span></div>
+            {col.loading && !col.data && <Loading />}
+            {col.data && col.data.incidents.length === 0 && <div className="text-xs text-muted px-1 py-4 text-center">Không có sự cố</div>}
+            {col.data?.incidents.map((i) => (
+              <div key={i.id} draggable={manage && i.status !== 'resolved'} onDragStart={(e) => e.dataTransfer.setData('text/plain', String(i.id))} onClick={() => onOpen(i.id)}
+                className="rounded-lg border border-gray-200 bg-white p-2.5 cursor-pointer hover:shadow-sm flex flex-col gap-1.5">
+                <div className="font-bold text-sm leading-snug line-clamp-2">{i.title}</div>
+                <div className="flex items-center gap-2 flex-wrap text-xs"><SeverityDot s={i.severity} label /><span className="text-muted truncate max-w-[150px]">{i.system}</span></div>
+                <div className="text-xs text-muted flex justify-between gap-2"><span className="truncate">{i.assignee ? `→ ${i.assignee.name}` : 'Chưa ai nhận'}</span><span className="shrink-0">{ago(i.detected_at)}</span></div>
+              </div>))}
+            {col.data && col.data.total > col.data.incidents.length && <div className="text-xs text-muted text-center">Hiện {col.data.incidents.length}/{col.data.total}. Lọc hoặc đổi sang dạng danh sách để xem thêm.</div>}
+          </div>)
+      })}
     </div>)
 }
 
@@ -118,6 +168,13 @@ export function ReportIncident({ manage, onClose, onDone }: { manage: boolean; o
   const [f, setF] = useState({ title: '', system: '', severity: 'medium' as Severity, description: '', error_group: '', detected_at: toLocalInput() })
   const { busy, run } = useBusy()
   const [sugg, setSugg] = useState<RunbookSuggestion[]>([])
+  const [known, setKnown] = useState<KnownData | null>(null)
+  useEffect(() => {
+    const text = `${f.title} ${f.description}`.trim()
+    if (text.length < 8) { setKnown(null); return }
+    const t = setTimeout(() => { post<KnownData>('/incidents/explain', { text: text.slice(0, 900), system: f.system || undefined }).then(setKnown).catch(() => setKnown(null)) }, 1200)
+    return () => clearTimeout(t)
+  }, [f.title, f.description, f.system])
   useEffect(() => {
     const text = `${f.title} ${f.description}`.trim()
     if (text.length < 4) { setSugg([]); return }
@@ -141,6 +198,7 @@ export function ReportIncident({ manage, onClose, onDone }: { manage: boolean; o
           <Field label="Thời điểm phát hiện"><input type="datetime-local" className="input" value={f.detected_at} onChange={(e) => setF({ ...f, detected_at: e.target.value })} /></Field>
         </>}
       </div>
+      {known && <div className="mt-4"><KnownIncident data={known} /></div>}
       {sugg.length > 0 && (
         <div className="inc-hint mt-4">
           <div className="font-bold text-sm flex items-center gap-2"><BookOpenCheck size={16} />Có sẵn quy trình xử lý có thể dùng:</div>
@@ -162,6 +220,15 @@ function IncidentDrawer({ id, manage, meId, onClose, onChanged }: { id: number; 
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
   const [declining, setDeclining] = useState(false)
+  const [known, setKnown] = useState<KnownData | null>(null)
+  const openLike = Boolean(d) && d?.status !== 'resolved' && d?.status !== 'declined'
+  useEffect(() => {
+    setKnown(null)
+    if (!openLike) return
+    let off = false
+    get<KnownData>(`/incidents/${id}/explain`).then((r) => { if (!off) setKnown(r) }).catch(() => undefined)
+    return () => { off = true }
+  }, [id, openLike])
   const [declineReason, setDeclineReason] = useState('')
   const { busy, run } = useBusy()
   async function approve() {
@@ -230,6 +297,7 @@ function IncidentDrawer({ id, manage, meId, onClose, onChanged }: { id: number; 
                   </select></label>
               </div>)}
 
+            {known?.known && <KnownIncident data={known} onOpen={(i) => nav({ search: `?open=${i}` })} onRun={startRun} />}
             {d.status === 'declined' && <div className="rounded-lg border border-gray-300 bg-gray-50 text-gray-800 px-3 py-2 text-sm"><b>Đã từ chối xử lý, nằm trong lưu trữ.</b>{d.conclusion ? <> Lý do: {d.conclusion}</> : null}</div>}
             {declining && !resolved && d.status !== 'declined' && (
               <div className="rounded-lg border border-red-200 bg-red-50 text-red-900 px-4 py-3 flex flex-col gap-2 text-sm">
