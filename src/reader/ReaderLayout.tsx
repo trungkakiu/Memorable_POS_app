@@ -2,7 +2,7 @@ import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'reac
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  AudioLines, Bell, Wand2, BookMarked, Brain, ChevronDown, FileSearch, GitCompare, Clock, Compass, FolderOpen, History, Home, LayoutDashboard, LifeBuoy, ListChecks, Siren, LogOut, Menu, MessageCircleQuestion, Minus, PlayCircle, Plus, Search, Star, Timer, Type, X,
+  AudioLines, Bell, FilePlus, Wand2, BookMarked, Brain, ChevronDown, FileSearch, GitCompare, Clock, Compass, FolderOpen, History, Home, LayoutDashboard, LifeBuoy, ListChecks, Siren, LogOut, Menu, MessageCircleQuestion, Minus, PlayCircle, Plus, Search, Star, Timer, Type, X,
 } from 'lucide-react'
 import { ApiError, get, post } from '../lib/api'
 import { ROLE_LABEL, WORK_TYPE, num, todayStr } from '../lib/format'
@@ -86,6 +86,7 @@ function Rail({ onTime, onClose }: { onTime: () => void; onClose: () => void }) 
         <RailLink to="/autofill" icon={<Wand2 size={19} />} label="Điền giấy tờ" />
         <RailLink to="/transcribe" icon={<AudioLines size={19} />} label="Ghi âm thành chữ" />
         <RailLink onClick={() => { window.location.hash = '#/'; setTimeout(() => window.dispatchEvent(new CustomEvent('rd:focus-chat')), 150) }} icon={<FileSearch size={19} />} label="Hỏi về tệp của tôi" />
+        <RailLink to="/them-tai-lieu" icon={<FilePlus size={19} />} label="Thêm tài liệu" />
         <RailLink to="/compare" icon={<GitCompare size={19} />} label="So sánh các bài" />
         <RailLink onClick={onTime} icon={<Timer size={19} />} label="Ghi giờ làm" />
       </div>

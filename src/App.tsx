@@ -125,6 +125,7 @@ export default function App() {
               <Route path="transcribe" element={<ReaderTranscribePage />} />
               <Route path="autofill" element={<ReaderAutofillPage />} />
               <Route path="compare" element={<ReaderCompare />} />
+              <Route path="them-tai-lieu" element={<ImportHub reader />} />
               <Route path="memory" element={<ReaderMemory />} />
               <Route path="su-co" element={<IncidentHelp />} />
               <Route path="thong-bao" element={<NotificationsPage reader />} />

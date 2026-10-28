@@ -91,7 +91,7 @@ function DraftEditor({ f, set, onCreate, onDiscard }: { f: DraftForm; set: (p: P
         <div className="grid md:grid-cols-2 gap-4">
           <L label="Mảng nội dung *" field="space_id" f={f}><select className="select" value={f.space_id} onChange={(e) => set({ space_id: e.target.value }, 'space_id')}><option value="">— Chọn mảng —</option>{spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></L>
           <L label="Mức rủi ro" field="risk_level" f={f} hint={d.risk_reason || undefined}><select className="select" value={f.risk_level} onChange={(e) => set({ risk_level: e.target.value as Risk }, 'risk_level')}>{(['R1', 'R2', 'R3'] as Risk[]).map((r) => <option key={r} value={r}>{RISK_HINT[r]}</option>)}</select></L>
-          <L label="Độ nhạy cảm" field="sensitivity_level" f={f} hint={d.sensitivity_reason || undefined}><select className="select" value={f.sensitivity_level} onChange={(e) => set({ sensitivity_level: e.target.value as 'internal' | 'restricted' }, 'sensitivity_level')}><option value="internal">Nội bộ</option><option value="restricted">Hạn chế (không gửi AI, ít người xem)</option></select></L>
+          <L label="Độ nhạy cảm" field="sensitivity_level" f={f} hint={d.sensitivity_reason || undefined}><select className="select" value={f.sensitivity_level} onChange={(e) => set({ sensitivity_level: e.target.value as 'internal' | 'restricted' }, 'sensitivity_level')}><option value="internal">Nội bộ</option>{role !== 'reader' && <option value="restricted">Hạn chế (không gửi AI, ít người xem)</option>}</select></L>
           <div className="grid grid-cols-2 gap-3">
             <L label="Hiệu lực từ" field="effective_date" f={f}><input type="date" className="input" value={f.effective_date} onChange={(e) => set({ effective_date: e.target.value }, 'effective_date')} /></L>
             <L label="Rà soát lại" field="next_review_date" f={f}><input type="date" className="input" value={f.next_review_date} onChange={(e) => set({ next_review_date: e.target.value }, 'next_review_date')} /></L>
@@ -184,7 +184,7 @@ function DraftEditor({ f, set, onCreate, onDiscard }: { f: DraftForm; set: (p: P
           {d.secret_warning && <label className="check text-[12.5px] text-red-800 bg-red-50 border border-red-200 rounded-md p-2"><input type="checkbox" checked={f.confirmMasked} onChange={(e) => set({ confirmMasked: e.target.checked })} />Nội dung có thể chứa mật khẩu/khóa. Tôi đã che hoặc xác nhận an toàn.</label>}
           <div className="flex flex-col gap-1.5 text-[12.5px] border-t border-line-soft pt-2.5">
             {f.sourceFiles.length > 0 && <label className="check"><input type="checkbox" checked={f.attachSources} onChange={(e) => set({ attachSources: e.target.checked })} />Đính kèm {f.sourceFiles.length} tệp gốc làm bằng chứng nguồn</label>}
-            <label className="check"><input type="checkbox" checked={f.submitAfter} onChange={(e) => set({ submitAfter: e.target.checked })} />Gửi duyệt ngay sau khi tạo{f.risk_level === 'R1' ? ' (R1 sẽ tự xuất bản)' : ''}</label>
+            <label className="check"><input type="checkbox" checked={f.submitAfter} onChange={(e) => set({ submitAfter: e.target.checked })} />Gửi duyệt ngay sau khi tạo{role === 'reader' ? ' (kiểm duyệt viên sẽ xem trước khi mọi người thấy)' : f.risk_level === 'R1' ? ' (R1 sẽ tự xuất bản)' : ''}</label>
           </div>
           {f.error && <div className="rounded-md bg-red-50 border border-red-200 text-red-800 text-[12.5px] p-2 flex gap-1.5"><XCircle size={14} className="shrink-0 mt-0.5" />{f.error}</div>}
           <div className="flex gap-2">
@@ -315,7 +315,7 @@ function Drop({ onFiles, disabled, label, small }: { onFiles: (f: LocalFile[]) =
 // ====================================================================
 //  Trang Nhập tri thức
 // ====================================================================
-export default function ImportHub() {
+export default function ImportHub({ reader = false }: { reader?: boolean }) {
   const nav = useNavigate()
   const { spaces, tags, loadCatalog } = useAuth()
   const role = useAuth((s) => s.user?.role)
@@ -355,7 +355,7 @@ export default function ImportHub() {
     e.preventDefault(); addFiles(await Promise.all(list.map((f, i) => fromBrowserFile(new File([f], f.name && f.name !== 'image.png' ? f.name : `anh-chup-${Date.now()}-${i}.png`, { type: f.type })))))
   }
   function loadResult(r: SmartImportResult, srcFiles: LocalFile[]) {
-    const fs = r.drafts.map((d) => toForm(d, srcFiles, canTag))
+    const fs = r.drafts.map((d) => toForm(d, srcFiles, canTag, reader))
     setRes(r); setForms(fs); setActive(fs[0]?.key || ''); setCreated([]); setMode('ai')
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
   }
@@ -391,17 +391,19 @@ export default function ImportHub() {
   const canAnalyze = !busy && aiOn && (src === 'files' ? files.length > 0 : text.trim().length >= 20)
   const totalLow = useMemo(() => forms.reduce((a, f) => a + lowFields(f).length, 0), [forms])
 
-  const methods: { k: 'ai' | 'manual' | 'bulk' | 'runbook'; icon: ReactNode; t: string; d: string; tag?: string }[] = [
+  const allMethods: { k: 'ai' | 'manual' | 'bulk' | 'runbook'; icon: ReactNode; t: string; d: string; tag?: string }[] = [
     { k: 'ai', icon: <Wand2 size={22} />, t: 'AI đọc và tự điền', d: 'Đưa tệp hoặc dán văn bản. AI phân loại, điền mọi trường, gắn thẻ, kiểm tra trùng. Bạn xem lại rồi tạo.', tag: 'Nên dùng' },
     { k: 'bulk', icon: <FileStack size={22} />, t: 'Nhập hàng loạt', d: `Tối đa ${MAX_BULK} tệp, mỗi tệp thành một bản nháp; tự tạo khi đủ điều kiện, còn lại chờ bạn xem lại.` },
     { k: 'runbook', icon: <Siren size={22} />, t: 'Quy trình xử lý sự cố', d: 'Tải mẫu Word hoặc CSV, điền từng bước rồi nhập hàng loạt. Đọc theo mẫu, không tốn AI.' },
     { k: 'manual', icon: <PencilLine size={22} />, t: 'Nhập thủ công', d: 'Tự điền biểu mẫu từ đầu (có AI gợi ý tóm tắt, thẻ, rủi ro trong biểu mẫu).' },
   ]
+  // Người đọc chỉ dùng cách AI đọc và tự điền; mục tạo ra luôn chờ kiểm duyệt viên duyệt.
+  const methods = reader ? allMethods.filter((m) => m.k === 'ai') : allMethods
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Nhập tri thức" subtitle="Đưa tri thức mới vào kho nhanh và chuẩn: AI đọc tài liệu, điền sẵn toàn bộ trường kèm độ tin cậy, phát hiện trùng; bạn chỉ cần xem lại và xác nhận."
-        actions={<><button className="btn outline" onClick={() => nav('/data')}><Files size={15} />Nhập từ CSV/JSON</button><button className="btn outline" onClick={() => nav('/items?status=draft')}><Layers size={15} />Bản nháp hiện có</button></>} />
+      <PageHeader title={reader ? 'Thêm tài liệu' : 'Nhập tri thức'} subtitle="Đưa tri thức mới vào kho nhanh và chuẩn: AI đọc tài liệu, điền sẵn toàn bộ trường kèm độ tin cậy, phát hiện trùng; bạn chỉ cần xem lại và xác nhận."
+        actions={reader ? undefined : <><button className="btn outline" onClick={() => nav('/data')}><Files size={15} />Nhập từ CSV/JSON</button><button className="btn outline" onClick={() => nav('/items?status=draft')}><Layers size={15} />Bản nháp hiện có</button></>} />
 
       <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
         {methods.map((m) => (

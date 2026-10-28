@@ -16,7 +16,7 @@ export interface DraftForm {
 
 let seq = 1
 /** Bản nháp AI -> biểu mẫu chỉnh sửa (gắn kèm đúng tệp nguồn của bản nháp). */
-export function toForm(d: SmartDraft, files: LocalFile[], canTag: boolean): DraftForm {
+export function toForm(d: SmartDraft, files: LocalFile[], canTag: boolean, submitAfter = false): DraftForm {
   const rb = d.runbook; const pr = d.prompt
   return {
     key: `d${seq++}`, origin: d, sourceFiles: (d.source_files.length ? d.source_files.map((i) => files[i - 1]).filter(Boolean) : []),
@@ -27,7 +27,7 @@ export function toForm(d: SmartDraft, files: LocalFile[], canTag: boolean): Draf
     steps: rb?.steps?.length ? rb.steps : [], verification: rb?.verification || '', rollback: rb?.rollback || '', contact_info: rb?.contact_info || '',
     purpose: pr?.purpose || '', model_used: pr?.model_used || '', variables: pr?.variables || [], usage_guide: pr?.usage_guide || '',
     example_input: pr?.example_input || '', example_output: pr?.example_output || '', limitations: pr?.limitations || '',
-    touched: [], ackSimilar: d.similar.length === 0, confirmMasked: false, attachSources: true, submitAfter: false, status: 'edit',
+    touched: [], ackSimilar: d.similar.length === 0, confirmMasked: false, attachSources: true, submitAfter, status: 'edit',
   }
 }
 
