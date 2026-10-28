@@ -6,7 +6,7 @@ import { ApiError, get, patch, post } from '../lib/api'
 import { SEVERITY_TEXT, STATUS_TEXT, STATUS_TONE, ago, type IncidentDetail, type IncidentRow, type KnownIncident as KnownData, type RunbookSuggestion, type Severity } from '../lib/incident'
 import { toast } from '../store/ui'
 import { KnownIncident } from '../components/KnownIncident'
-import { Modal } from '../components/ui'
+import { Modal, Pill } from '../components/ui'
 import { dt } from '../lib/format'
 
 // Mức độ nói bằng lời thường để người đọc chọn dễ
@@ -147,32 +147,65 @@ function MineTab() {
     </div>)
 }
 
-/** Xem chi tiết một sự cố của mình: nội dung, người phụ trách, kết luận (hoặc lý do bị từ chối) và diễn biến */
+/** Xem chi tiết một sự cố của mình: nội dung, người phụ trách, kết luận (hoặc lý do bị từ chối), diễn biến và Agent gợi ý cách xử lý */
 function MineDetail({ id, busy, onClose, onFixed }: { id: number; busy: boolean; onClose: () => void; onFixed: (r: IncidentRow) => void }) {
+  const nav = useNavigate()
   const [d, setD] = useState<IncidentDetail | null>(null)
   const [err, setErr] = useState('')
+  const [known, setKnown] = useState<KnownData | null>(null)
+  const [sugg, setSugg] = useState<RunbookSuggestion[] | null>(null)
   useEffect(() => { get<IncidentDetail>(`/incidents/${id}`).then(setD).catch((e) => setErr(e instanceof ApiError ? e.full : String(e))) }, [id])
   const active = d != null && d.status !== 'resolved' && d.status !== 'declined'
+  // Agent gợi ý: sự cố đã từng xảy ra thì giải thích, kèm các hướng dẫn xử lý phù hợp
+  useEffect(() => {
+    if (!d || !active) return
+    let off = false
+    get<KnownData>(`/incidents/${id}/explain`).then((r) => { if (!off) setKnown(r) }).catch(() => undefined)
+    get<RunbookSuggestion[]>('/incidents/suggest-runbooks', { text: `${d.title} ${d.description || ''}`.trim().slice(0, 900), system: d.system || undefined, error_group: d.error_group || undefined, limit: 3 })
+      .then((r) => { if (!off) setSugg(r) }).catch(() => { if (!off) setSugg([]) })
+    return () => { off = true }
+  }, [d?.id, active]) // eslint-disable-line
   return (
     <Modal title={d ? `Sự cố #${d.id}` : 'Sự cố'} size="lg" onClose={onClose}
       footer={<><button className="btn outline" onClick={onClose}>Đóng</button>{active && <button className="btn" disabled={busy} onClick={() => onFixed(d)}><CheckCircle2 size={15} />Lỗi đã hết</button>}</>}>
-      {err && <div className="rd-callout warn"><AlertTriangle size={20} />{err}</div>}
-      {!d && !err && <div className="ih-empty"><Loader2 size={30} className="animate-spin text-brand-500" />Đang tải…</div>}
+      {err && <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-900 px-3 py-2 text-sm flex items-center gap-2"><AlertTriangle size={18} />{err}</div>}
+      {!d && !err && <div className="py-6 flex items-center justify-center gap-2 text-muted"><Loader2 size={22} className="animate-spin" />Đang tải…</div>}
       {d && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={clsx('ih-st', STATUS_TONE[d.status])}>{STATUS_TEXT[d.status]}</span>
-            {d.severity && <span className="text-sm font-semibold">{SEVERITY_TEXT[d.severity]}</span>}
+            <Pill tone={STATUS_TONE[d.status]}>{STATUS_TEXT[d.status]}</Pill>
+            {d.severity && <span className="text-sm font-semibold">Mức độ: {SEVERITY_TEXT[d.severity]}</span>}
           </div>
           <div className="font-black text-lg leading-snug">{d.title}</div>
-          <div className="ih-meta">
-            <span><Clock size={14} />{ago(d.detected_at)}</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+            <span className="inline-flex items-center gap-1"><Clock size={14} />{ago(d.detected_at)}</span>
             {d.system && <span>{d.system}</span>}
-            <span><UserRound size={14} />{d.assignee ? `${d.assignee.name} đang phụ trách` : 'Chưa ai nhận'}</span>
+            <span className="inline-flex items-center gap-1"><UserRound size={14} />{d.assignee ? `${d.assignee.name} đang phụ trách` : 'Chưa ai nhận'}</span>
           </div>
           {d.description && <p className="m-0 whitespace-pre-line">{d.description}</p>}
-          {d.status === 'resolved' && d.conclusion && <div className="ih-concl"><CheckCircle2 size={16} />{d.conclusion}</div>}
-          {d.status === 'declined' && <div className="ih-concl"><AlertTriangle size={16} />Bộ phận kỹ thuật không xử lý sự cố này{d.conclusion ? `. Lý do: ${d.conclusion}` : '.'}</div>}
+          {d.status === 'resolved' && d.conclusion && <div className="rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-900 px-3 py-2 text-sm flex items-start gap-2"><CheckCircle2 size={16} className="mt-0.5 shrink-0" />{d.conclusion}</div>}
+          {d.status === 'declined' && <div className="rounded-lg border border-gray-300 bg-gray-50 text-gray-800 px-3 py-2 text-sm flex items-start gap-2"><AlertTriangle size={16} className="mt-0.5 shrink-0" />Bộ phận kỹ thuật không xử lý sự cố này{d.conclusion ? `. Lý do: ${d.conclusion}` : '.'}</div>}
+
+          {active && (
+            <div className="flex flex-col gap-2.5">
+              {known && <KnownIncident data={known} />}
+              <div className="font-bold flex items-center gap-2"><Sparkles size={16} />Cách xử lý gợi ý</div>
+              {sugg === null && <div className="flex items-center gap-2 text-sm text-muted"><Loader2 size={16} className="animate-spin" />Đang tìm hướng dẫn phù hợp…</div>}
+              {sugg && sugg.length === 0 && <div className="text-sm text-muted">Chưa có hướng dẫn khớp. Bộ phận kỹ thuật sẽ liên hệ bạn.</div>}
+              {sugg?.map((s) => (
+                <div key={s.id} className="rounded-lg border border-gray-200 p-3 flex items-center gap-3 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold leading-snug">{s.title}</div>
+                    <div className="text-xs text-muted flex flex-wrap gap-x-3 mt-0.5">
+                      <span>{s.steps} bước</span>
+                      {s.used_for_similar > 0 && <span className="text-emerald-700">Đã giúp {s.used_for_similar} lần</span>}
+                      {s.dangerous_steps > 0 && <span className="text-amber-700">{s.dangerous_steps} bước cần cẩn thận</span>}
+                    </div>
+                  </div>
+                  <button className="btn sm" onClick={() => nav(`/items/${s.id}?run=1&incident=${d.id}`)}><ArrowRight size={14} />Làm theo từng bước</button>
+                </div>))}
+            </div>)}
+
           {d.timeline.length > 0 && (
             <div>
               <div className="font-bold mb-1.5">Diễn biến</div>
