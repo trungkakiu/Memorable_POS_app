@@ -204,7 +204,7 @@ function IncidentDrawer({ id, manage, meId, onClose, onChanged }: { id: number; 
         <div className="inc-detail">
           <div className="flex flex-col gap-4 min-w-0">
             <div>
-              <div className="flex items-center gap-2 flex-wrap mb-1.5"><Pill tone={STATUS_TONE[d.status]}>{STATUS_TEXT[d.status]}</Pill>{d.approval_status && d.approval_status !== 'none' && <Pill sm tone={d.approval_status === 'approved' ? 'ok' : d.approval_status === 'rejected' ? 'bad' : d.approval_overdue ? 'bad' : 'warn'}>{d.approval_label}{d.approval_status === 'pending' && d.approval_due_at ? ` · hạn ${dt(d.approval_due_at, false)}${d.approval_overdue ? ' (quá hạn)' : ''}` : ''}</Pill>}<SeverityDot s={d.severity} label /><Pill sm tone="gray">{d.system}</Pill><Pill sm tone="soft">{d.error_group}</Pill></div>
+              <div className="flex items-center gap-2 flex-wrap mb-1.5"><Pill tone={STATUS_TONE[d.status]}>{STATUS_TEXT[d.status]}</Pill>{can(role, 'moderate') && d.approval_status && d.approval_status !== 'none' && <Pill sm tone={d.approval_status === 'approved' ? 'ok' : d.approval_status === 'rejected' ? 'bad' : d.approval_overdue ? 'bad' : 'warn'}>{d.approval_label}{d.approval_status === 'pending' && d.approval_due_at ? ` · hạn ${dt(d.approval_due_at, false)}${d.approval_overdue ? ' (quá hạn)' : ''}` : ''}</Pill>}<SeverityDot s={d.severity} label /><Pill sm tone="gray">{d.system}</Pill><Pill sm tone="soft">{d.error_group}</Pill></div>
               <h2 className="m-0 text-[19px] font-extrabold leading-snug">{d.title}</h2>
               {d.description && d.description.trim() !== d.title.trim() && <p className="mt-1.5 mb-0 text-[13.5px] text-ink-2 whitespace-pre-wrap leading-relaxed">{d.description}</p>}
               <div className="text-xs text-muted mt-2 flex gap-x-4 gap-y-1 flex-wrap">
@@ -239,7 +239,7 @@ function IncidentDrawer({ id, manage, meId, onClose, onChanged }: { id: number; 
                   <button className="btn outline sm" disabled={busy} onClick={() => { setDeclining(false); setDeclineReason('') }}>Hủy</button>
                 </div>
               </div>)}
-            {d.approval_status === 'rejected' && d.approval_note && <div className="rounded-lg border border-red-200 bg-red-50 text-red-800 px-3 py-2 text-sm"><b>Kết luận bị từ chối:</b> {d.approval_note}</div>}
+            {can(role, 'moderate') && d.approval_status === 'rejected' && d.approval_note && <div className="rounded-lg border border-red-200 bg-red-50 text-red-800 px-3 py-2 text-sm"><b>Kết luận bị từ chối:</b> {d.approval_note}</div>}
             {d.approval_status === 'pending' && can(role, 'moderate') && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 flex flex-col gap-2 text-sm">
                 <div className="font-bold">Chờ duyệt kết luận{d.approval_due_at ? ` — hạn ${dt(d.approval_due_at, false)}` : ''}{d.approval_overdue ? ' (đã quá hạn)' : ''}</div>
