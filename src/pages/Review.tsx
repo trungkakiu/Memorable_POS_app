@@ -9,7 +9,7 @@ import { ErrorBox, Loading, Pager, RiskPill, TypePill, useBusy } from '../compon
 import { itemIdOf, useNotices } from '../store/notices'
 import { toast } from '../store/ui'
 
-interface QItem { id: number; type: string; title: string; risk_level: string; owner: { id: number; name: string }; version: number; waiting_business_days: number; sla_days: number; sla_breached: boolean; approvals: number; approvals_needed: number; approved_by_me: boolean }
+interface QItem { id: number; type: string; title: string; risk_level: string; owner: { id: number; name: string }; version: number; waiting_business_days: number; sla_days: number; sla_breached: boolean; due_date?: string | null; approvals: number; approvals_needed: number; approved_by_me: boolean }
 
 export function ReviewQueue() {
   const nav = useNavigate()
@@ -38,7 +38,7 @@ export function ReviewQueue() {
           <tr key={it.id}>
             <td className="font-bold cursor-pointer text-brand-800" onClick={() => nav(`/items/${it.id}`)}><div className="max-w-[360px] truncate">{it.title} <span className="text-muted font-normal">v{it.version}</span></div></td>
             <td><TypePill t={it.type} /></td><td><RiskPill r={it.risk_level} /></td><td>{it.owner?.name}</td>
-            <td><Pill sm tone={it.sla_breached ? 'bad' : 'ok'}>{it.waiting_business_days}/{it.sla_days} ngày{it.sla_breached ? ' · quá SLA' : ''}</Pill></td>
+            <td><Pill sm tone={it.sla_breached ? 'bad' : 'ok'}>{it.waiting_business_days}/{it.sla_days} ngày{it.sla_breached ? ' · quá SLA' : ''}</Pill>{it.due_date && <div className={`text-xs mt-1 ${it.sla_breached ? 'text-red-600 font-semibold' : 'text-muted'}`}>Hạn duyệt {dt(it.due_date, false)}</div>}</td>
             <td>{it.approvals}/{it.approvals_needed} {it.approved_by_me && <Pill sm tone="soft">bạn đã duyệt</Pill>}</td>
             <td className="num"><div className="flex gap-1 justify-end">
               <button className="btn success sm" disabled={busy || it.approved_by_me} onClick={() => approve(it)}><CheckCircle2 size={13} />Duyệt</button>
