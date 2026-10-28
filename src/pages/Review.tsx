@@ -23,13 +23,13 @@ export function ReviewQueue() {
     if (r) { toast.ok(r.status === 'approved' ? `Đã duyệt & xuất bản “${it.title}”` : `Đã ghi nhận (${r.approvals}/${r.needed}) — cần thêm người duyệt`); reload() }
   }
   async function reject() {
-    if (!rej || !reason.trim()) return toast.warn('Nhập lý do trả lại')
-    const r = await run(() => post(`/items/${rej.id}/reject`, { reason: reason.trim() }), 'Đã trả mục về nháp')
+    if (!rej || !reason.trim()) return toast.warn('Nhập lý do từ chối')
+    const r = await run(() => post(`/items/${rej.id}/reject`, { reason: reason.trim() }), 'Đã từ chối duyệt, mục về nháp')
     if (r !== undefined) { setRej(null); setReason(''); reload() }
   }
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Hàng đợi duyệt" subtitle="Mục chờ duyệt kèm hạn xử lý (SLA, tính theo ngày làm việc). Bạn không thể duyệt mục của chính mình." />
+      <PageHeader title="Hàng đợi duyệt" subtitle="Mục chờ duyệt kèm hạn xử lý (SLA, tính theo ngày làm việc). Quản trị viên được duyệt mục của chính mình, các vai trò khác thì không." />
       <ErrorBox error={error} onRetry={reload} />
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Tiêu đề</th><th>Loại</th><th>Rủi ro</th><th>Chủ sở hữu</th><th>Đã chờ</th><th>Duyệt</th><th /></tr></thead><tbody>
         {loading && !data && <tr><td colSpan={7}><Loading /></td></tr>}
@@ -42,10 +42,10 @@ export function ReviewQueue() {
             <td>{it.approvals}/{it.approvals_needed} {it.approved_by_me && <Pill sm tone="soft">bạn đã duyệt</Pill>}</td>
             <td className="num"><div className="flex gap-1 justify-end">
               <button className="btn success sm" disabled={busy || it.approved_by_me} onClick={() => approve(it)}><CheckCircle2 size={13} />Duyệt</button>
-              <button className="btn danger sm" disabled={busy} onClick={() => setRej(it)}><XCircle size={13} />Trả lại</button></div></td></tr>))}
+              <button className="btn danger sm" disabled={busy} onClick={() => setRej(it)}><XCircle size={13} />Từ chối</button></div></td></tr>))}
       </tbody></table></div>
       {data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
-      {rej && <Modal title={`Trả lại: ${rej.title}`} size="sm" onClose={() => setRej(null)} footer={<><button className="btn outline" onClick={() => setRej(null)}>Hủy</button><button className="btn danger" disabled={busy} onClick={reject}>Trả lại</button></>}>
+      {rej && <Modal title={`Từ chối duyệt: ${rej.title}`} size="sm" onClose={() => setRej(null)} footer={<><button className="btn outline" onClick={() => setRej(null)}>Hủy</button><button className="btn danger" disabled={busy} onClick={reject}>Từ chối</button></>}>
         <Field label="Lý do (bắt buộc)"><textarea className="textarea" autoFocus rows={4} value={reason} onChange={(e) => setReason(e.target.value)} /></Field></Modal>}
     </div>
   )

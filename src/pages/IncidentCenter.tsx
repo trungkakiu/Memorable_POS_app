@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  AlertTriangle, ArrowRight, BookOpenCheck, CheckCircle2, Clock, FileUp, Flame, Hand, History, ListChecks, Loader2, Play, Plus, RefreshCw, Search, Siren, Timer, UserRound,
+  AlertTriangle, ArrowRight, BookOpenCheck, CheckCircle2, Clock, FileUp, Flame, Hand, History, ListChecks, Loader2, Play, Plus, RefreshCw, Search, Siren, Timer, UserRound, XCircle,
 } from 'lucide-react'
 import { ApiError, get, patch, post, useGet } from '../lib/api'
 import { can } from '../lib/permissions'
@@ -157,7 +157,20 @@ function IncidentDrawer({ id, manage, meId, onClose, onChanged }: { id: number; 
   const [err, setErr] = useState('')
   const [sugg, setSugg] = useState<RunbookSuggestion[] | null>(null)
   const [conclusion, setConclusion] = useState('')
+  const role = useAuth((s) => s.user)!.role
+  const [note, setNote] = useState('')
+  const [rejecting, setRejecting] = useState(false)
+  const [reason, setReason] = useState('')
   const { busy, run } = useBusy()
+  async function approve() {
+    const r = await run(() => post<IncidentDetail>(`/incidents/${id}/approve`, note.trim() ? { note: note.trim() } : {}), 'Đã duyệt kết luận sự cố')
+    if (r) { setD(r); setNote(''); onChanged() }
+  }
+  async function reject() {
+    if (reason.trim().length < 3) return toast.warn('Nhập lý do từ chối (ít nhất 3 ký tự)')
+    const r = await run(() => post<IncidentDetail>(`/incidents/${id}/reject`, { reason: reason.trim() }), 'Đã từ chối, sự cố quay về “Đang xử lý”')
+    if (r) { setD(r); setReason(''); setRejecting(false); onChanged() }
+  }
   async function load() {
     try {
       const x = await get<IncidentDetail>(`/incidents/${id}`)
@@ -184,7 +197,7 @@ function IncidentDrawer({ id, manage, meId, onClose, onChanged }: { id: number; 
         <div className="inc-detail">
           <div className="flex flex-col gap-4 min-w-0">
             <div>
-              <div className="flex items-center gap-2 flex-wrap mb-1.5"><Pill tone={STATUS_TONE[d.status]}>{STATUS_TEXT[d.status]}</Pill><SeverityDot s={d.severity} label /><Pill sm tone="gray">{d.system}</Pill><Pill sm tone="soft">{d.error_group}</Pill></div>
+              <div className="flex items-center gap-2 flex-wrap mb-1.5"><Pill tone={STATUS_TONE[d.status]}>{STATUS_TEXT[d.status]}</Pill>{d.approval_status && d.approval_status !== 'none' && <Pill sm tone={d.approval_status === 'approved' ? 'ok' : d.approval_status === 'rejected' ? 'bad' : d.approval_overdue ? 'bad' : 'warn'}>{d.approval_label}{d.approval_status === 'pending' && d.approval_due_at ? ` · hạn ${dt(d.approval_due_at, false)}${d.approval_overdue ? ' (quá hạn)' : ''}` : ''}</Pill>}<SeverityDot s={d.severity} label /><Pill sm tone="gray">{d.system}</Pill><Pill sm tone="soft">{d.error_group}</Pill></div>
               <h2 className="m-0 text-[19px] font-extrabold leading-snug">{d.title}</h2>
               {d.description && d.description.trim() !== d.title.trim() && <p className="mt-1.5 mb-0 text-[13.5px] text-ink-2 whitespace-pre-wrap leading-relaxed">{d.description}</p>}
               <div className="text-xs text-muted mt-2 flex gap-x-4 gap-y-1 flex-wrap">
@@ -207,6 +220,23 @@ function IncidentDrawer({ id, manage, meId, onClose, onChanged }: { id: number; 
                     {d.assignee && !people.some((p) => p.id === d.assignee_id) && <option value={d.assignee_id ?? ''}>{d.assignee.name}</option>}
                     {people.map((p) => <option key={p.id} value={p.id}>{p.id === meId ? `${p.name} (tôi)` : p.name}</option>)}
                   </select></label>
+              </div>)}
+
+            {d.approval_status === 'rejected' && d.approval_note && <div className="rounded-lg border border-red-200 bg-red-50 text-red-800 px-3 py-2 text-sm"><b>Kết luận bị từ chối:</b> {d.approval_note}</div>}
+            {d.approval_status === 'pending' && can(role, 'moderate') && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 flex flex-col gap-2 text-sm">
+                <div className="font-bold">Chờ duyệt kết luận{d.approval_due_at ? ` — hạn ${dt(d.approval_due_at, false)}` : ''}{d.approval_overdue ? ' (đã quá hạn)' : ''}</div>
+                {role !== 'admin' && d.reporter_id === meId
+                  ? <div>Bạn là người báo sự cố này nên không tự duyệt được. Hãy nhờ quản trị viên hoặc kiểm duyệt viên khác.</div>
+                  : <>
+                    {!rejecting && <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú khi duyệt (không bắt buộc)" maxLength={300} />}
+                    {rejecting && <textarea className="textarea" rows={3} autoFocus value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Lý do từ chối (bắt buộc)" maxLength={300} />}
+                    <div className="flex gap-2 flex-wrap">
+                      {!rejecting && <button className="btn success sm" disabled={busy} onClick={() => void approve()}><CheckCircle2 size={14} />Duyệt kết luận</button>}
+                      {!rejecting && <button className="btn danger sm" disabled={busy} onClick={() => setRejecting(true)}><XCircle size={14} />Từ chối</button>}
+                      {rejecting && <button className="btn danger sm" disabled={busy} onClick={() => void reject()}><XCircle size={14} />Xác nhận từ chối</button>}
+                      {rejecting && <button className="btn outline sm" disabled={busy} onClick={() => { setRejecting(false); setReason('') }}>Hủy</button>}
+                    </div></>}
               </div>)}
 
             {!resolved && (

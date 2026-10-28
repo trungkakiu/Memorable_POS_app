@@ -58,8 +58,8 @@ export default function ItemDetail() {
     if (r) { toast.ok(r.status === 'approved' ? 'Đã duyệt & xuất bản' : `Đã ghi nhận duyệt (${r.approvals}/${r.needed}) — cần thêm người duyệt khác`); reload() }
   }
   async function doReject() {
-    if (!reason.trim()) return toast.warn('Nhập lý do trả lại')
-    const r = await run(() => post(`/items/${id}/reject`, { reason: reason.trim() }), 'Đã trả mục về nháp')
+    if (!reason.trim()) return toast.warn('Nhập lý do từ chối')
+    const r = await run(() => post(`/items/${id}/reject`, { reason: reason.trim() }), 'Đã từ chối duyệt, mục về nháp')
     if (r !== undefined) { setReject(false); setReason(''); reload() }
   }
   async function setOfficial(on: boolean) {
@@ -108,7 +108,7 @@ export default function ItemDetail() {
           {w && it.status === 'draft' && <button className="btn" disabled={busy} onClick={() => act(`/items/${id}/submit`, {}, it.risk_level === 'R1' ? 'Đã xuất bản (R1)' : 'Đã gửi duyệt')}><Send size={15} />Gửi duyệt</button>}
           {mod && it.status === 'pending' && <>
             <button className="btn success" disabled={busy} onClick={approve}><CheckCircle2 size={15} />Duyệt</button>
-            <button className="btn danger" disabled={busy} onClick={() => setReject(true)}><XCircle size={15} />Trả lại</button></>}
+            <button className="btn danger" disabled={busy} onClick={() => setReject(true)}><XCircle size={15} />Từ chối</button></>}
           {mod && it.status === 'approved' && <button className={official ? 'btn outline' : 'btn'} disabled={busy} title="Xác nhận đây là bản chính thức để AI ưu tiên và tin cậy" onClick={() => { setOffNote(''); setOffDlg(true) }}><ShieldCheck size={15} />{official ? 'Gỡ nguồn chính thống' : 'Xác nhận nguồn chính thống'}</button>}
           {w && (it.status === 'approved' || it.status === 'overdue') && <button className="btn" disabled={busy} onClick={() => act(`/items/${id}/renew`, {}, 'Đã gia hạn ngày rà soát')}><RefreshCw size={15} />Xác nhận còn đúng</button>}
           {w && it.status === 'archived' && <button className="btn" disabled={busy} onClick={() => act(`/items/${id}/restore`, {}, 'Đã khôi phục về nháp')}><RotateCcw size={15} />Khôi phục</button>}
@@ -159,7 +159,7 @@ export default function ItemDetail() {
           </div>
         </Modal>)}
       {reject && (
-        <Modal title="Trả mục về nháp" size="sm" onClose={() => setReject(false)} footer={<><button className="btn outline" onClick={() => setReject(false)}>Hủy</button><button className="btn danger" disabled={busy} onClick={doReject}>Trả lại</button></>}>
+        <Modal title="Từ chối duyệt, trả mục về nháp" size="sm" onClose={() => setReject(false)} footer={<><button className="btn outline" onClick={() => setReject(false)}>Hủy</button><button className="btn danger" disabled={busy} onClick={doReject}>Từ chối</button></>}>
           <Field label="Lý do (bắt buộc)"><textarea className="textarea" autoFocus rows={4} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
         </Modal>)}
       {tagEdit && (

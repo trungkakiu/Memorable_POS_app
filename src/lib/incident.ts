@@ -9,6 +9,8 @@ export interface IncidentRow {
   detected_at: string; resolved_at: string | null; runbook_id: number | null; conclusion: string | null
   reporter: PersonRef | null; assignee: PersonRef | null; reporter_id: number | null; assignee_id: number | null
   created_at: string | null; updated_at: string | null; mttr_minutes: number | null
+  approval_status?: 'none' | 'pending' | 'approved' | 'rejected'; approval_label?: string; approval_due_at?: string | null
+  approved_by?: number | null; approved_at?: string | null; approval_note?: string | null; approval_overdue?: boolean
 }
 export interface IncidentRunLog { index: number; status: 'done' | 'skipped' | 'failed'; at: string; note: string | null; action: string | null }
 export interface IncidentRun {
