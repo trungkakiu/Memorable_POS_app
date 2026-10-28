@@ -3,9 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { AlertTriangle, ArrowRight, CheckCircle2, Clock, Eye, Headset, ListChecks, Loader2, LifeBuoy, ShieldAlert, Siren, Sparkles, UserRound } from 'lucide-react'
 import { ApiError, get, patch, post } from '../lib/api'
-import { STATUS_TEXT, STATUS_TONE, ago, type IncidentRow, type KnownIncident as KnownData, type RunbookSuggestion, type Severity } from '../lib/incident'
+import { SEVERITY_TEXT, STATUS_TEXT, STATUS_TONE, ago, type IncidentDetail, type IncidentRow, type KnownIncident as KnownData, type RunbookSuggestion, type Severity } from '../lib/incident'
 import { toast } from '../store/ui'
 import { KnownIncident } from '../components/KnownIncident'
+import { Modal } from '../components/ui'
+import { dt } from '../lib/format'
 
 // Mức độ nói bằng lời thường để người đọc chọn dễ
 const IMPACT: { v: Severity; t: string; d: string }[] = [
@@ -115,6 +117,7 @@ function MineTab() {
   const [rows, setRows] = useState<IncidentRow[] | null>(null)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState<number | null>(null)
+  const [open, setOpen] = useState<number | null>(null)
   const load = () => get<{ incidents: IncidentRow[] }>('/incidents', { mine: true, limit: 50 }).then((r) => setRows(r.incidents)).catch((e) => setErr((e as ApiError).full))
   useEffect(() => { void load() }, [])
   async function fixed(r: IncidentRow) {
@@ -126,7 +129,7 @@ function MineTab() {
   if (rows.length === 0) return <div className="rd-card ih-empty"><CheckCircle2 size={38} className="text-emerald-400" /><b>Bạn chưa báo sự cố nào</b><span>Khi gặp lỗi, mô tả ở thẻ “Báo sự cố” để được gợi ý cách xử lý.</span></div>
   return (
     <div className="flex flex-col gap-3">{rows.map((r) => (
-      <div key={r.id} className="rd-card ih-mine">
+      <div key={r.id} className="rd-card ih-mine cursor-pointer" role="button" tabIndex={0} onClick={() => setOpen(r.id)} onKeyDown={(e) => { if (e.key === 'Enter') setOpen(r.id) }}>
         <span className={clsx('ih-st', STATUS_TONE[r.status])}>{STATUS_TEXT[r.status]}</span>
         <div className="min-w-0 flex-1">
           <div className="font-black leading-snug">{r.title}</div>
@@ -136,9 +139,47 @@ function MineTab() {
             {r.assignee && <span><UserRound size={14} />{r.assignee.name} đang phụ trách</span>}
           </div>
           {r.status === 'resolved' && r.conclusion && <div className="ih-concl"><CheckCircle2 size={16} />{r.conclusion}</div>}
+          {r.status === 'declined' && <div className="ih-concl"><AlertTriangle size={16} />Bộ phận kỹ thuật không xử lý sự cố này{r.conclusion ? `. Lý do: ${r.conclusion}` : '.'}</div>}
         </div>
-        {r.status !== 'resolved' && <button className="rd-btn secondary sm" disabled={busy === r.id} onClick={() => void fixed(r)}>{busy === r.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}Lỗi đã hết</button>}
-      </div>))}</div>)
+        {r.status !== 'resolved' && r.status !== 'declined' && <button className="rd-btn secondary sm" disabled={busy === r.id} onClick={(e) => { e.stopPropagation(); void fixed(r) }}>{busy === r.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}Lỗi đã hết</button>}
+      </div>))}
+      {open && <MineDetail id={open} busy={busy === open} onClose={() => setOpen(null)} onFixed={(r) => { void fixed(r).then(() => setOpen(null)) }} />}
+    </div>)
+}
+
+/** Xem chi tiết một sự cố của mình: nội dung, người phụ trách, kết luận (hoặc lý do bị từ chối) và diễn biến */
+function MineDetail({ id, busy, onClose, onFixed }: { id: number; busy: boolean; onClose: () => void; onFixed: (r: IncidentRow) => void }) {
+  const [d, setD] = useState<IncidentDetail | null>(null)
+  const [err, setErr] = useState('')
+  useEffect(() => { get<IncidentDetail>(`/incidents/${id}`).then(setD).catch((e) => setErr(e instanceof ApiError ? e.full : String(e))) }, [id])
+  const active = d != null && d.status !== 'resolved' && d.status !== 'declined'
+  return (
+    <Modal title={d ? `Sự cố #${d.id}` : 'Sự cố'} size="lg" onClose={onClose}
+      footer={<><button className="btn outline" onClick={onClose}>Đóng</button>{active && <button className="btn" disabled={busy} onClick={() => onFixed(d)}><CheckCircle2 size={15} />Lỗi đã hết</button>}</>}>
+      {err && <div className="rd-callout warn"><AlertTriangle size={20} />{err}</div>}
+      {!d && !err && <div className="ih-empty"><Loader2 size={30} className="animate-spin text-brand-500" />Đang tải…</div>}
+      {d && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={clsx('ih-st', STATUS_TONE[d.status])}>{STATUS_TEXT[d.status]}</span>
+            {d.severity && <span className="text-sm font-semibold">{SEVERITY_TEXT[d.severity]}</span>}
+          </div>
+          <div className="font-black text-lg leading-snug">{d.title}</div>
+          <div className="ih-meta">
+            <span><Clock size={14} />{ago(d.detected_at)}</span>
+            {d.system && <span>{d.system}</span>}
+            <span><UserRound size={14} />{d.assignee ? `${d.assignee.name} đang phụ trách` : 'Chưa ai nhận'}</span>
+          </div>
+          {d.description && <p className="m-0 whitespace-pre-line">{d.description}</p>}
+          {d.status === 'resolved' && d.conclusion && <div className="ih-concl"><CheckCircle2 size={16} />{d.conclusion}</div>}
+          {d.status === 'declined' && <div className="ih-concl"><AlertTriangle size={16} />Bộ phận kỹ thuật không xử lý sự cố này{d.conclusion ? `. Lý do: ${d.conclusion}` : '.'}</div>}
+          {d.timeline.length > 0 && (
+            <div>
+              <div className="font-bold mb-1.5">Diễn biến</div>
+              <ul className="m-0 pl-5 flex flex-col gap-1 text-sm">{d.timeline.map((x, i) => <li key={i}><span className="text-muted">{dt(x.at)}</span> {x.text}</li>)}</ul>
+            </div>)}
+        </div>)}
+    </Modal>)
 }
 
 export default function IncidentHelp() {
