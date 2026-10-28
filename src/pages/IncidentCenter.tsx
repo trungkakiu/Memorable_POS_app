@@ -17,7 +17,7 @@ import { ErrorBox, Loading, Pager, useBusy } from '../components/shared'
 import { useAuth } from '../store/auth'
 import { toast } from '../store/ui'
 
-const TABS: { k: '' | IncidentStatus; t: string }[] = [{ k: '', t: 'Tất cả' }, { k: 'open', t: 'Mới báo' }, { k: 'investigating', t: 'Đang xử lý' }, { k: 'resolved', t: 'Đã khắc phục' }]
+const TABS: { k: '' | IncidentStatus; t: string }[] = [{ k: '', t: 'Tất cả' }, { k: 'open', t: 'Mới báo' }, { k: 'investigating', t: 'Đang xử lý' }, { k: 'resolved', t: 'Đã khắc phục' }, { k: 'declined', t: 'Lưu trữ · Từ chối' }]
 
 // Dòng phụ dưới tên sự cố: mô tả nếu khác tên, không thì nhóm lỗi (bỏ "Chưa phân loại")
 const subLine = (i: IncidentRow) => {
@@ -219,8 +219,8 @@ function IncidentDrawer({ id, manage, meId, onClose, onChanged }: { id: number; 
                 <div className="inc-seg" role="radiogroup" aria-label="Trạng thái">
                   {(['open', 'investigating', 'resolved'] as IncidentStatus[]).map((s) => <button key={s} role="radio" aria-checked={d.status === s} className={clsx(d.status === s && 'on', s)} disabled={busy || s === 'resolved'} onClick={() => void update({ status: s }, `Đã chuyển sang “${STATUS_TEXT[s]}”`)} title={s === 'resolved' ? 'Ghi kết luận bên dưới để đóng sự cố' : undefined}>{STATUS_TEXT[s]}</button>)}
                 </div>
-                {!resolved && d.assignee_id !== meId && <button className="btn outline sm" disabled={busy} onClick={() => void update({ assignee_id: meId, status: d.status === 'open' ? 'investigating' : undefined }, 'Bạn đã nhận xử lý sự cố này')}><Hand size={14} />Nhận xử lý</button>}
-              {!resolved && d.assignee_id && (d.assignee_id === meId || role === 'admin') && <button className="btn outline sm" disabled={busy} onClick={() => setDeclining(true)}><XCircle size={14} />Từ chối xử lý</button>}
+                {!resolved && d.status !== 'declined' && d.assignee_id !== meId && <button className="btn outline sm" disabled={busy} onClick={() => void update({ assignee_id: meId, status: d.status === 'open' ? 'investigating' : undefined }, 'Bạn đã nhận xử lý sự cố này')}><Hand size={14} />Nhận xử lý</button>}
+              {!resolved && d.status !== 'declined' && manage && <button className="btn outline sm" disabled={busy} onClick={() => setDeclining(true)}><XCircle size={14} />Từ chối xử lý</button>}
                 <select className="select !w-auto !py-1.5" value={d.severity || ''} disabled={busy} onChange={(e) => void update({ severity: e.target.value }, 'Đã đổi mức độ')} aria-label="Mức độ"><option value="" disabled>Mức độ…</option>{SEVERITY_LIST.map((s) => <option key={s} value={s}>{SEVERITY_TEXT[s]}</option>)}</select>
                 <label className="flex items-center gap-1.5 text-xs text-muted ml-auto">Giao cho
                   <select className="select !w-auto !py-1.5 !text-[13px]" value={d.assignee_id ?? ''} disabled={busy || resolved} onChange={(e) => { const v = Number(e.target.value); const who = people.find((p) => p.id === v)?.name; void update({ assignee_id: v, status: d.status === 'open' ? 'investigating' : undefined }, `Đã giao cho ${who || 'người phụ trách'}`) }} aria-label="Giao cho">
@@ -230,7 +230,8 @@ function IncidentDrawer({ id, manage, meId, onClose, onChanged }: { id: number; 
                   </select></label>
               </div>)}
 
-            {declining && !resolved && (
+            {d.status === 'declined' && <div className="rounded-lg border border-gray-300 bg-gray-50 text-gray-800 px-3 py-2 text-sm"><b>Đã từ chối xử lý, nằm trong lưu trữ.</b>{d.conclusion ? <> Lý do: {d.conclusion}</> : null}</div>}
+            {declining && !resolved && d.status !== 'declined' && (
               <div className="rounded-lg border border-red-200 bg-red-50 text-red-900 px-4 py-3 flex flex-col gap-2 text-sm">
                 <div className="font-bold">Từ chối xử lý sự cố này</div>
                 <textarea className="textarea" rows={3} autoFocus value={declineReason} onChange={(e) => setDeclineReason(e.target.value)} placeholder="Lý do từ chối (bắt buộc), ví dụ: không thuộc phạm vi của tôi" maxLength={300} />

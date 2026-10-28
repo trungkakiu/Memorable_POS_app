@@ -1,5 +1,5 @@
 // Sự cố và quy trình xử lý: kiểu dữ liệu (khớp API /incidents, /runbooks) và nhãn hiển thị dùng chung cho quản lý và người đọc.
-export type IncidentStatus = 'open' | 'investigating' | 'resolved'
+export type IncidentStatus = 'open' | 'investigating' | 'resolved' | 'declined'
 export type Severity = 'low' | 'medium' | 'high' | 'critical'
 
 export interface PersonRef { id: number; name: string }
@@ -21,7 +21,7 @@ export interface IncidentDetail extends IncidentRow {
   runbook_title: string | null; runs: IncidentRun[]; timeline: { at: string; kind: string; text: string }[]
 }
 export interface IncidentStats {
-  open: number; investigating: number; resolved: number; open_by_severity: Record<string, number>
+  open: number; investigating: number; resolved: number; declined?: number; open_by_severity: Record<string, number>
   last_30_days: { resolved: number; mttr_minutes: number | null; with_runbook: number; top_error_groups: { name: string; count: number }[] }
   previous_30_days?: { resolved: number; mttr_minutes: number | null }
 }
@@ -46,8 +46,8 @@ export interface CommitResult {
   results: { index: number; ok: boolean; id?: number; title: string; status?: string | number; warnings?: string[]; error?: string; errors?: { field: string; message: string }[]; similar?: { id: number; title: string }[] }[]
 }
 
-export const STATUS_TEXT: Record<IncidentStatus, string> = { open: 'Mới báo', investigating: 'Đang xử lý', resolved: 'Đã khắc phục' }
-export const STATUS_TONE: Record<IncidentStatus, 'bad' | 'warn' | 'ok'> = { open: 'bad', investigating: 'warn', resolved: 'ok' }
+export const STATUS_TEXT: Record<IncidentStatus, string> = { open: 'Mới báo', investigating: 'Đang xử lý', resolved: 'Đã khắc phục', declined: 'Từ chối' }
+export const STATUS_TONE: Record<IncidentStatus, 'bad' | 'warn' | 'ok' | 'gray'> = { open: 'bad', investigating: 'warn', resolved: 'ok', declined: 'gray' }
 export const SEVERITY_TEXT: Record<Severity, string> = { low: 'Thấp', medium: 'Trung bình', high: 'Cao', critical: 'Nghiêm trọng' }
 export const SEVERITY_LIST: Severity[] = ['critical', 'high', 'medium', 'low']
 // Màu theo mức độ (đậm dần), dùng cho chấm màu và nhãn
