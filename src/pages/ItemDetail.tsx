@@ -14,10 +14,13 @@ import { Empty, Field, Modal, Pill, Seg } from '../components/ui'
 import { ErrorBox, ItemBadges, KV, Loading, Md, Section, Tags, TagPicker, TierPill, useBusy } from '../components/shared'
 import { useIsOfficial, useOfficial } from '../components/Knowledge'
 import { useAuth } from '../store/auth'
+import { ChangesModal } from '../components/Changes'
+import { loadView, saveView } from '../lib/viewState'
 import { confirmDialog, toast } from '../store/ui'
 
 const arr = <T,>(v: unknown): T[] => { if (Array.isArray(v)) return v as T[]; if (typeof v === 'string') { try { const x = JSON.parse(v); return Array.isArray(x) ? x : [] } catch { return [] } } return [] }
 type Tab = 'content' | 'merged' | 'detail' | 'versions' | 'files' | 'tests' | 'run'
+const rememberedTab = (): Tab => { const t = loadView<Tab>('itemTab'); return t && t !== 'run' ? t : 'content' }
 
 export default function ItemDetail() {
   const { id } = useParams()
@@ -28,7 +31,9 @@ export default function ItemDetail() {
   // ?tab=run&incident=ID (mở từ Trung tâm sự cố): vào thẳng chế độ chạy, lần chạy gắn với sự cố
   const [sp] = useSearchParams()
   const incidentId = Number(sp.get('incident')) || null
-  const [tab, setTab] = useState<Tab>(sp.get('tab') === 'run' ? 'run' : 'content')
+  const [tab, setTab] = useState<Tab>(sp.get('tab') === 'run' ? 'run' : rememberedTab())
+  const [chg, setChg] = useState(false)
+  const pickTab = (t: Tab) => { setTab(t); if (t !== 'run') saveView('itemTab', t) }
   const { busy: busyRun, run } = useBusy()
   const [busy2, setBusy2] = useState(false)
   const busy = busyRun || busy2
@@ -42,7 +47,7 @@ export default function ItemDetail() {
   // Chỉ về tab Nội dung khi chuyển sang mục khác; lần mở đầu giữ tab theo ?tab= (VD mở thẳng chế độ chạy quy trình từ sự cố)
   const shownId = useRef(id)
   useEffect(() => {
-    if (shownId.current !== id) { shownId.current = id; setTab('content') }
+    if (shownId.current !== id) { shownId.current = id; setTab(rememberedTab()) }
     void post('/usage-events', { event_type: 'view', item_id: Number(id) }).catch(() => undefined)
   }, [id])
 
@@ -91,8 +96,22 @@ export default function ItemDetail() {
     ...(it.type === 'prompt' ? [{ v: 'tests' as Tab, l: 'Kiểm thử' }] : []), ...(it.type === 'runbook' ? [{ v: 'run' as Tab, l: 'Làm theo quy trình' }] : []),
   ]
 
+  // Tab đã nhớ có thể không có ở mục này (VD Kiểm thử chỉ có ở câu lệnh): về Nội dung
+  const curTab: Tab = tabs.some((t) => t.v === tab) ? tab : 'content'
+  const rej = it.status === 'draft' ? it.last_rejection : null
+
   return (
     <div className="flex flex-col gap-4">
+      {rej && (
+        <div className="rounded-xl border border-red-300 bg-red-50 p-4 flex gap-3 items-start" role="alert">
+          <XCircle size={22} className="text-red-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <div className="font-extrabold text-red-800">Mục này bị từ chối duyệt{rej.version ? ` (bản v${rej.version})` : ''}</div>
+            <div className="text-sm text-red-900 mt-1 whitespace-pre-wrap">{rej.reason || 'Người duyệt không ghi lý do.'}</div>
+            <div className="text-xs text-red-700 mt-1">{rej.rejected_by?.name ? `${rej.rejected_by.name} · ` : ''}{dt(rej.rejected_at)}</div>
+          </div>
+          {w && <button className="btn shrink-0" onClick={() => nav(`/items/${id}/edit?resubmit=1`)}><Pencil size={15} />Sửa và gửi lại</button>}
+        </div>)}
       <section className="panel">
         <div className="px-5 pt-4 pb-3 flex flex-col gap-2">
           {incidentId
@@ -109,6 +128,7 @@ export default function ItemDetail() {
           {mod && it.status === 'pending' && <>
             <button className="btn success" disabled={busy} onClick={approve}><CheckCircle2 size={15} />Duyệt</button>
             <button className="btn danger" disabled={busy} onClick={() => setReject(true)}><XCircle size={15} />Từ chối</button></>}
+          {(mod || it.owner?.id === user.id) && it.status === 'pending' && <button className="btn outline" onClick={() => setChg(true)}><GitCompare size={15} />Xem thay đổi</button>}
           {mod && it.status === 'approved' && <button className={official ? 'btn outline' : 'btn'} disabled={busy} title="Xác nhận đây là bản chính thức để AI ưu tiên và tin cậy" onClick={() => { setOffNote(''); setOffDlg(true) }}><ShieldCheck size={15} />{official ? 'Gỡ nguồn chính thống' : 'Xác nhận nguồn chính thống'}</button>}
           {w && (it.status === 'approved' || it.status === 'overdue') && <button className="btn" disabled={busy} onClick={() => act(`/items/${id}/renew`, {}, 'Đã gia hạn ngày rà soát')}><RefreshCw size={15} />Xác nhận còn đúng</button>}
           {w && it.status === 'archived' && <button className="btn" disabled={busy} onClick={() => act(`/items/${id}/restore`, {}, 'Đã khôi phục về nháp')}><RotateCcw size={15} />Khôi phục</button>}
@@ -126,9 +146,10 @@ export default function ItemDetail() {
         </div>
       </section>
 
-      <Seg value={tab} onChange={setTab} options={tabs.map((t) => ({ value: t.v, label: t.l }))} />
+      <Seg value={curTab} onChange={pickTab} options={tabs.map((t) => ({ value: t.v, label: t.l }))} />
 
-      {tab === 'content' && (
+      {chg && <ChangesModal id={Number(id)} title={it.title} onClose={() => setChg(false)} />}
+      {curTab === 'content' && (
         <div className="grid xl:grid-cols-[1fr_380px] gap-5 items-start">
           <div className="flex flex-col gap-4 min-w-0">
             <div className="card">{it.content ? <Md>{it.content}</Md> : <Empty text="Mục chưa có nội dung" />}</div>
@@ -142,12 +163,12 @@ export default function ItemDetail() {
             <RelatedPanel id={Number(id)} />
           </div>
         </div>)}
-      {tab === 'merged' && <Merged id={Number(id)} atts={it.attachments || []} />}
-      {tab === 'detail' && <DetailPane it={it} x={x} />}
-      {tab === 'versions' && <Versions id={Number(id)} canWrite={w} onRestored={reload} />}
-      {tab === 'files' && <Files id={Number(id)} atts={it.attachments || []} canWrite={w} onChange={reload} />}
-      {tab === 'tests' && <Tests id={Number(id)} canWrite={w} />}
-      {tab === 'run' && <RunbookRun id={Number(id)} incidentId={incidentId} />}
+      {curTab === 'merged' && <Merged id={Number(id)} atts={it.attachments || []} />}
+      {curTab === 'detail' && <DetailPane it={it} x={x} />}
+      {curTab === 'versions' && <Versions id={Number(id)} canWrite={w} onRestored={reload} />}
+      {curTab === 'files' && <Files id={Number(id)} atts={it.attachments || []} canWrite={w} onChange={reload} />}
+      {curTab === 'tests' && <Tests id={Number(id)} canWrite={w} />}
+      {curTab === 'run' && <RunbookRun id={Number(id)} incidentId={incidentId} />}
 
       {offDlg && (
         <Modal title={official ? 'Gỡ nguồn chính thống' : 'Xác nhận nguồn chính thống'} size="sm" onClose={() => setOffDlg(false)}

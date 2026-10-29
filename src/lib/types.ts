@@ -26,6 +26,7 @@ export interface Attachment {
 }
 export interface ItemDetail extends ItemRow {
   version?: VersionRef; content?: string | null; detail?: Record<string, any> | null; attachments?: Attachment[]
+  last_rejection?: { reason: string; rejected_at: string; rejected_by: { id: number; name: string } | null; version: number | null } | null
 }
 export interface PromptVar { name: string; type?: 'string' | 'number' | 'text' | 'boolean'; description?: string; example?: string }
 export interface RunbookStep { action: string; expected: string; dangerous?: boolean }

@@ -91,6 +91,7 @@ export default function ItemForm() {
   // ?type=runbook (từ trang Nhập quy trình xử lý sự cố): mở sẵn đúng loại nội dung
   const [sp] = useSearchParams()
   const preType = sp.get('type')
+  const resubmit = edit && sp.get('resubmit') === '1' // từ nút "Sửa và gửi lại" của mục bị từ chối
   const [f, setF] = useState<Form>(() => ({ ...blank(), ...(preType && ['article', 'document', 'prompt', 'runbook'].includes(preType) ? { type: preType as Form['type'] } : {}) }))
   const [loading, setLoading] = useState(edit)
   const [err, setErr] = useState<ApiError | null>(null)
@@ -130,6 +131,9 @@ export default function ItemForm() {
       }
       const w = (r as { warnings?: string[] }).warnings
       if (w?.length) toast.warn(w.join(' · '))
+      if (resubmit) {
+        try { await post(`/items/${id}/submit`, {}); toast.ok('Đã gửi duyệt lại') } catch (e2) { toast.warn(`Đã lưu nhưng chưa gửi duyệt được: ${e2 instanceof ApiError ? e2.full : (e2 as Error).message}. Bấm "Gửi duyệt" ở trang mục.`) }
+      }
       nav(`/items/${edit ? id : r.id}`)
     } catch (e) {
       const m = e instanceof ApiError ? e.full : (e as Error).message
@@ -157,7 +161,7 @@ export default function ItemForm() {
       <PageHeader title={edit ? `Sửa mục #${id}` : 'Tạo mục mới'} subtitle={edit ? 'Mỗi lần lưu tạo một phiên bản mới; mục đã duyệt sẽ quay lại luồng duyệt' : 'Mục mới ở trạng thái nháp; vào chi tiết để gửi duyệt'}
         actions={<>
           <button className="btn outline" onClick={() => nav(-1)}>Hủy</button>
-          <button className="btn" disabled={busy} onClick={saveWithHints}><Save size={16} />{edit ? 'Lưu thay đổi' : 'Tạo mục'}</button>
+          <button className="btn" disabled={busy} onClick={saveWithHints}><Save size={16} />{resubmit ? 'Lưu và gửi duyệt lại' : edit ? 'Lưu thay đổi' : 'Tạo mục'}</button>
         </>} />
       {(formErr.length > 0 || serverHint) && (
         <div className="rounded-lg bg-red-50 border border-red-200 text-red-800 p-4 text-sm">

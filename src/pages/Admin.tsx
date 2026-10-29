@@ -11,6 +11,7 @@ import { toast } from '../store/ui'
 import { useNotices } from '../store/notices'
 import { APP_CONFIG } from '../lib/appConfig'
 import { useClientPage } from '../components/ShowMore'
+import { useRememberedState } from '../lib/viewState'
 
 const AUDIENCE_LABEL: Record<Audience, string> = { office: 'Văn phòng', field: 'Sản xuất' }
 
@@ -25,7 +26,7 @@ export function Users() {
   const me = useAuth((s) => s.user)!
   const [page, setPage] = useState(1)
   const [q, setQ] = useState('')
-  const [only, setOnly] = useState<'all' | 'pending'>('all')
+  const [only, setOnly] = useRememberedState<'all' | 'pending'>('users:only', 'all')
   const filter = only === 'pending' ? { status: 'pending' } : {}
   const { data, loading, error, reload } = useGet<{ users: AdminUser[]; total: number; page: number; pages: number }>('/admin/users', q.trim() ? { page: 1, limit: 100, ...filter } : { page, limit: 20, ...filter })
   // Đếm tài khoản chờ duyệt để hiện trên nút lọc

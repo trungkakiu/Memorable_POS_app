@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, ClipboardCheck, XCircle } from 'lucide-react'
+import { CheckCircle2, ClipboardCheck, GitCompare, XCircle } from 'lucide-react'
 import { post, useGet } from '../lib/api'
 import { dt, noticeText, noticeType } from '../lib/format'
 import type { Notice } from '../lib/types'
@@ -8,6 +8,7 @@ import { Empty, Field, Modal, PageHeader, Pill } from '../components/ui'
 import { ErrorBox, Loading, Pager, RiskPill, TypePill, useBusy } from '../components/shared'
 import { itemIdOf, useNotices } from '../store/notices'
 import { toast } from '../store/ui'
+import { ChangesModal } from '../components/Changes'
 
 interface QItem { id: number; type: string; title: string; risk_level: string; owner: { id: number; name: string }; version: number; waiting_business_days: number; sla_days: number; sla_breached: boolean; due_date?: string | null; approvals: number; approvals_needed: number; approved_by_me: boolean }
 
@@ -18,6 +19,7 @@ export function ReviewQueue() {
   const { busy, run } = useBusy()
   const [rej, setRej] = useState<QItem | null>(null)
   const [reason, setReason] = useState('')
+  const [chg, setChg] = useState<QItem | null>(null)
   async function approve(it: QItem) {
     const r = await run(() => post<{ status: string; approvals: number; needed: number }>(`/items/${it.id}/approve`, {}))
     if (r) { toast.ok(r.status === 'approved' ? `Đã duyệt & xuất bản “${it.title}”` : `Đã ghi nhận (${r.approvals}/${r.needed}) — cần thêm người duyệt`); reload() }
@@ -41,10 +43,12 @@ export function ReviewQueue() {
             <td><Pill sm tone={it.sla_breached ? 'bad' : 'ok'}>{it.waiting_business_days}/{it.sla_days} ngày{it.sla_breached ? ' · quá SLA' : ''}</Pill>{it.due_date && <div className={`text-xs mt-1 ${it.sla_breached ? 'text-red-600 font-semibold' : 'text-muted'}`}>Hạn duyệt {dt(it.due_date, false)}</div>}</td>
             <td>{it.approvals}/{it.approvals_needed} {it.approved_by_me && <Pill sm tone="soft">bạn đã duyệt</Pill>}</td>
             <td className="num"><div className="flex gap-1 justify-end">
+              <button className="btn outline sm" title="Xem phần khác so với bản đã duyệt trước" onClick={() => setChg(it)}><GitCompare size={13} />Xem thay đổi</button>
               <button className="btn success sm" disabled={busy || it.approved_by_me} onClick={() => approve(it)}><CheckCircle2 size={13} />Duyệt</button>
               <button className="btn danger sm" disabled={busy} onClick={() => setRej(it)}><XCircle size={13} />Từ chối</button></div></td></tr>))}
       </tbody></table></div>
       {data && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
+      {chg && <ChangesModal id={chg.id} title={chg.title} onClose={() => setChg(null)} />}
       {rej && <Modal title={`Từ chối duyệt: ${rej.title}`} size="sm" onClose={() => setRej(null)} footer={<><button className="btn outline" onClick={() => setRej(null)}>Hủy</button><button className="btn danger" disabled={busy} onClick={reject}>Từ chối</button></>}>
         <Field label="Lý do (bắt buộc)"><textarea className="textarea" autoFocus rows={4} value={reason} onChange={(e) => setReason(e.target.value)} /></Field></Modal>}
     </div>
