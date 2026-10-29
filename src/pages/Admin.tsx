@@ -14,6 +14,13 @@ import { useClientPage } from '../components/ShowMore'
 
 const AUDIENCE_LABEL: Record<Audience, string> = { office: 'Văn phòng', field: 'Sản xuất' }
 
+/** Mật khẩu tạm ngẫu nhiên 14 ký tự, bỏ các ký tự dễ nhầm (0/O, 1/l/I). */
+const tempPassword = () => {
+  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const buf = new Uint32Array(14); crypto.getRandomValues(buf)
+  return Array.from(buf, (n) => chars[n % chars.length]).join('')
+}
+
 export function Users() {
   const me = useAuth((s) => s.user)!
   const [page, setPage] = useState(1)
@@ -29,6 +36,8 @@ export function Users() {
   const upd = async (u: AdminUser, body: Partial<AdminUser>, ok: string) => { await run(() => patch(`/admin/users/${u.id}`, body), ok); reload(); pending.reload() }
   const list = (data?.users || []).filter((u) => (u.name + u.email).toLowerCase().includes(q.toLowerCase()))
   const pwBad = !!f && f.password.length < 10
+  const [rp, setRp] = useState<{ user: AdminUser; password: string } | null>(null)
+  async function resetPw() { if (!rp) return; const r = await run(() => post(`/admin/users/${rp.user.id}/reset-password`, { password: rp.password }), `Đã đặt lại mật khẩu của ${rp.user.name}`); if (r) setRp(null) }
   const nPending = pending.data?.total || 0
   return (
     <div className="flex flex-col gap-4">
@@ -47,12 +56,17 @@ export function Users() {
             ? <select className="select !w-36 !py-1.5" disabled={busy} value={u.audience || ''} onChange={(e) => upd(u, { audience: e.target.value as Audience }, 'Đã đổi khối làm việc')}>{!u.audience && <option value="">Chưa chọn</option>}{Object.entries(AUDIENCE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
             : <span className="text-muted text-xs">Giao diện đầy đủ</span>}</td>
           <td>{u.status === 'active' ? <Pill sm tone="ok">Hoạt động</Pill> : u.status === 'pending' ? <Pill sm tone="warn">Chờ duyệt</Pill> : <Pill sm tone="bad"><Lock size={11} />Bị khóa</Pill>}</td><td>{u.totp_enabled ? <ShieldCheck size={17} className="text-green-600" /> : '—'}</td><td>{dt(u.created_at)}</td>
-          <td className="num">{u.id !== me.id && (u.status === 'pending'
+          <td className="num">{u.id !== me.id && <span className="inline-flex gap-1.5 justify-end">{(u.status === 'pending'
             ? <span className="inline-flex gap-1.5"><button className="btn sm" disabled={busy} onClick={() => upd(u, { status: 'active' }, `Đã duyệt tài khoản ${u.name}`)}><UserCheck size={13} />Duyệt</button><button className="btn outline sm" disabled={busy} onClick={() => upd(u, { status: 'locked' }, 'Đã từ chối (khóa) tài khoản')}>Từ chối</button></span>
-            : u.status === 'active' ? <button className="btn outline sm" disabled={busy} onClick={() => upd(u, { status: 'locked' }, 'Đã khóa tài khoản')}><Lock size={13} />Khóa</button> : <button className="btn sm" disabled={busy} onClick={() => upd(u, { status: 'active' }, 'Đã mở khóa')}><Unlock size={13} />Mở khóa</button>)}</td></tr>))}
+            : u.status === 'active' ? <button className="btn outline sm" disabled={busy} onClick={() => upd(u, { status: 'locked' }, 'Đã khóa tài khoản')}><Lock size={13} />Khóa</button> : <button className="btn sm" disabled={busy} onClick={() => upd(u, { status: 'active' }, 'Đã mở khóa')}><Unlock size={13} />Mở khóa</button>)}{u.status !== 'pending' && <button className="btn outline sm" disabled={busy} onClick={() => setRp({ user: u, password: '' })}><KeyRound size={13} />Đặt lại mật khẩu</button>}</span>}</td></tr>))}
       </tbody></table></div>
       {data && !q.trim() && <Pager page={data.page} pages={data.pages} total={data.total} onPage={setPage} />}
       {data && q.trim() && data.total > 100 && <div className="text-xs text-muted">Đang lọc trong 100 người dùng đầu tiên ({data.total} người). Gõ cụ thể hơn để tìm nhanh.</div>}
+      {rp && <Modal title={`Đặt lại mật khẩu: ${rp.user.name}`} size="sm" onClose={() => setRp(null)} footer={<><button className="btn outline" onClick={() => setRp(null)}>Hủy</button><button className="btn" disabled={busy || rp.password.length < 10} onClick={resetPw}>Đặt lại</button></>}>
+        <div className="grid gap-4">
+          <Field label="Mật khẩu mới (≥ 10 ký tự) *" hint="Không ai đọc lại được mật khẩu cũ. Gửi mật khẩu mới này cho người dùng qua kênh riêng và nhắc họ đổi. Phiên đang đăng nhập của họ (tối đa 1 giờ) chưa bị đăng xuất."><div className="flex gap-2"><input className="input flex-1" autoFocus autoComplete="off" value={rp.password} onChange={(e) => setRp({ ...rp, password: e.target.value })} /><button type="button" className="btn outline" onClick={() => setRp({ ...rp, password: tempPassword() })}>Tạo ngẫu nhiên</button></div>{rp.password && rp.password.length < 10 && <span className="text-xs text-red-600 font-semibold">Cần ít nhất 10 ký tự</span>}</Field>
+        </div>
+      </Modal>}
       {f && <Modal title="Tạo người dùng" size="sm" onClose={() => setF(null)} footer={<><button className="btn outline" onClick={() => setF(null)}>Hủy</button><button className="btn" disabled={busy || !f.name.trim() || !f.email.includes('@') || pwBad} onClick={create}>Tạo</button></>}>
         <div className="grid gap-4"><Field label="Họ tên *"><input className="input" autoFocus value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
           <Field label="Email *"><input className="input" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
